@@ -1,0 +1,99 @@
+# =========================
+# OS generated files
+# =========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# =========================
+# IDEs and Editors
+# =========================
+# IntelliJ IDEA / Android Studio
+.idea/
+.idea_modules/
+*.iml
+*.iws
+*.ipr
+local.properties
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Xcode
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+
+# =========================
+# Android & KMP & Gradle
+# =========================
+.gradle/
+*/build/
+*/*/build/
+buildSrc/build/
+captures/
+.externalNativeBuild
+.cxx
+local.properties
+
+# Kotlin
+*.kotlin_module
+*.kotlin_builtins
+kotlin-js-store/
+kotlin-js-store-*
+
+# =========================
+# CocoaPods
+# =========================
+Pods/
+# If you want to commit Podfile.lock, keep it uncommented.
+# Podfile.lock
+
+# =========================
+# Go (Backend)
+# =========================
+/backend/bin/
+/backend/vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+# coverage
+*.cov
+coverage.txt
+*.out
+
+# =========================
+# Node / Frontend Tools (If any)
+# =========================
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# =========================
+# Environments
+# =========================
+.env
+.env.*
+!.env.example
