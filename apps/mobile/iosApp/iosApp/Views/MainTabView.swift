@@ -59,60 +59,19 @@ struct MainTabView: View {
     // MARK: - カスタムタブバー
 
     private var customTabBar: some View {
-        ZStack {
-            // タブバー背景
-            HStack {
-                ForEach(Tab.allCases, id: \.rawValue) { tab in
-                    if tab == .home {
-                        // 中央はSTARTボタン用のスペースを空ける
-                        Spacer()
-                            .frame(width: 80)
-                    } else {
-                        tabButton(tab: tab)
-                    }
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.top, 12)
-            .padding(.bottom, 28)
-            .background(
-                RoundedRectangle(cornerRadius: 0)
-                    .fill(Color(UIColor.systemBackground))
-                    .shadow(color: .black.opacity(0.1), radius: 8, y: -4)
-            )
-
-            // 中央のStudy Startボタン（タブバーに被せる）
-            VStack(spacing: 0) {
-                Button(action: {
-                    // TODO: タイマー画面をフルスクリーンモーダルで表示
-                }) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [Color.red, Color.orange]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 72, height: 72)
-                            .shadow(color: .orange.opacity(0.4), radius: 8, y: 4)
-
-                        VStack(spacing: 2) {
-                            Image(systemName: "flame.fill")
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.white)
-                            Text("START")
-                                .font(.system(size: 10, weight: .heavy))
-                                .foregroundColor(.white)
-                        }
-                    }
-                }
-                .offset(y: -20)
-
-                Spacer().frame(height: 28)
+        HStack {
+            ForEach(Tab.allCases, id: \.rawValue) { tab in
+                tabButton(tab: tab)
             }
         }
+        .padding(.horizontal, 8)
+        .padding(.top, 12)
+        .padding(.bottom, 28)
+        .background(
+            RoundedRectangle(cornerRadius: 0)
+                .fill(Color(UIColor.systemBackground))
+                .shadow(color: .black.opacity(0.1), radius: 8, y: -4)
+        )
     }
 
     private func tabButton(tab: Tab) -> some View {

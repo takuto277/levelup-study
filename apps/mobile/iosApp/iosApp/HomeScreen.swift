@@ -4,6 +4,7 @@ import SwiftUI
 /// キャラクター表示 + ステータス + 勉強開始の導線
 struct HomeScreenView: View {
     @State private var isBouncing = false
+    @State private var showStudySheet = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,11 +18,19 @@ struct HomeScreenView: View {
 
             Spacer()
 
-            // タブバー分の余白
+            // 勉強開始ボタン
+            studyStartButton
+
+            Spacer()
+
+            // タップバー分の余白
             Spacer().frame(height: 90)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(UIColor.systemGroupedBackground))
+        .fullScreenCover(isPresented: $showStudySheet) {
+            StudyQuestView()
+        }
     }
 
     // MARK: - Header
@@ -73,6 +82,35 @@ struct HomeScreenView: View {
             .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
         }
         .padding()
+    }
+
+    // MARK: - Study Button
+
+    private var studyStartButton: some View {
+        Button(action: {
+            showStudySheet = true
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: "flame.fill")
+                    .font(.title2)
+                Text("勉強をスタートする")
+                    .font(.headline)
+                    .fontWeight(.bold)
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 18)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [.red, .orange]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(20)
+            .shadow(color: .orange.opacity(0.3), radius: 10, y: 5)
+            .padding(.horizontal, 40)
+        }
     }
 
     // MARK: - Character
