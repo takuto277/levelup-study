@@ -25,18 +25,23 @@ fun HomeScreen() {
     var selectedTab by remember { mutableStateOf(2) }
 
     Scaffold(
-        bottomBar = {
-            BottomNavigationBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
-        },
-        containerColor = Color(0xFFF8FAFC) // systemGroupedBackground equivalent
+        containerColor = Color(0xFFF8FAFC)
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            when (selectedTab) {
-                0 -> PlaceholderScreen("冒険 (Quest)", Icons.Default.Place)
-                1 -> PlaceholderScreen("編成 (Party)", Icons.Default.Person)
-                2 -> HomeTabContent()
-                3 -> PlaceholderScreen("召喚 (Gacha)", Icons.Default.Star)
-                4 -> PlaceholderScreen("記録 (Analytics)", Icons.Default.Info)
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Main Content
+            Box(modifier = Modifier.fillMaxSize().padding(bottom = paddingValues.calculateBottomPadding())) {
+                when (selectedTab) {
+                    0 -> PlaceholderScreen("冒険", Icons.Default.Place)
+                    1 -> PlaceholderScreen("編成", Icons.Default.Person)
+                    2 -> HomeTabContent()
+                    3 -> PlaceholderScreen("召喚", Icons.Default.Star)
+                    4 -> PlaceholderScreen("記録", Icons.Default.Info)
+                }
+            }
+            
+            // Floating Tab Bar
+            Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                BottomNavigationBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
             }
         }
     }
@@ -180,41 +185,81 @@ fun StudyStartButton(onClick: () -> Unit) {
 
 @Composable
 fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
-    Surface(
-        color = Color.White,
-        shadowElevation = 16.dp,
-        modifier = Modifier.fillMaxWidth()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 24.dp),
+        contentAlignment = Alignment.BottomCenter
     ) {
-        Row(
-            modifier = Modifier
-                .padding(bottom = 20.dp, top = 8.dp)
-                .height(60.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            color = Color.White.copy(alpha = 0.95f),
+            shape = RoundedCornerShape(32.dp),
+            shadowElevation = 12.dp,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            NavItem(Icons.Default.Place, "冒険", selectedTab == 0) { onTabSelected(0) }
-            NavItem(Icons.Default.Person, "編成", selectedTab == 1) { onTabSelected(1) }
-            NavItem(Icons.Default.Home, "ホーム", selectedTab == 2) { onTabSelected(2) }
-            NavItem(Icons.Default.Star, "召喚", selectedTab == 3) { onTabSelected(3) }
-            NavItem(Icons.Default.Info, "記録", selectedTab == 4) { onTabSelected(4) }
+            Row(
+                modifier = Modifier
+                    .padding(vertical = 8.dp, horizontal = 12.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                NavItem(Icons.Default.Place, "冒険", selectedTab == 0) { onTabSelected(0) }
+                NavItem(Icons.Default.Person, "編成", selectedTab == 1) { onTabSelected(1) }
+                NavItem(Icons.Default.Home, "ホーム", selectedTab == 2, isCenter = true) { onTabSelected(2) }
+                NavItem(Icons.Default.Star, "召喚", selectedTab == 3) { onTabSelected(3) }
+                NavItem(Icons.Default.Info, "記録", selectedTab == 4) { onTabSelected(4) }
+            }
         }
     }
 }
 
 @Composable
-fun NavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, isSelected: Boolean, onClick: () -> Unit) {
+fun NavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, isSelected: Boolean, isCenter: Boolean = false, onClick: () -> Unit) {
     val color = if (isSelected) Color(0xFF3B82F6) else Color.Gray
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(8.dp)
-            .width(50.dp)
+            .padding(vertical = 4.dp)
+            .width(60.dp)
     ) {
-        Icon(icon, contentDescription = label, tint = color, modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(label, fontSize = 10.sp, color = color, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium)
+        Box(
+            modifier = Modifier
+                .height(40.dp)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isCenter) {
+                Surface(
+                    shape = CircleShape,
+                    shadowElevation = 8.dp,
+                    modifier = Modifier.size(56.dp).offset(y = (-16).dp),
+                    brush = Brush.linearGradient(listOf(Color(0xFF3B82F6), Color(0xFF6366F1)))
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(28.dp))
+                    }
+                }
+            } else {
+                if (isSelected) {
+                    Surface(
+                        color = Color(0xFF3B82F6).copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.size(width = 44.dp, height = 32.dp)
+                    ) {}
+                }
+                Icon(icon, contentDescription = label, tint = color, modifier = Modifier.size(24.dp))
+            }
+        }
+        Text(
+            label, 
+            fontSize = 10.sp, 
+            color = if (isCenter) Color.DarkGray else color, 
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            modifier = Modifier.padding(top = if (isCenter) 4.dp else 0.dp)
+        )
     }
 }
 
