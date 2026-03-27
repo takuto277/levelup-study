@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -24,9 +25,11 @@ fun HomeScreenView() {
     // 2: Home (Main Tab)
     var selectedTab by remember { mutableStateOf(2) }
     var showStudySheet by remember { mutableStateOf(false) }
+    var studyMinutes by remember { mutableStateOf(25) }
 
     if (showStudySheet) {
         org.example.project.features.study.StudyQuestScreenView(
+            initialStudyMinutes = studyMinutes,
             onDismiss = { showStudySheet = false }
         )
     } else {
@@ -39,7 +42,11 @@ fun HomeScreenView() {
                 when (selectedTab) {
                     0 -> PlaceholderScreen("冒険", Icons.Default.Place)
                     1 -> PlaceholderScreen("編成", Icons.Default.Person)
-                    2 -> HomeTabContent(onStartStudy = { showStudySheet = true })
+                    2 -> HomeTabContent(
+                        studyMinutes = studyMinutes,
+                        onStudyMinutesChange = { studyMinutes = it },
+                        onStartStudy = { showStudySheet = true }
+                    )
                     3 -> PlaceholderScreen("召喚", Icons.Default.Star)
                     4 -> PlaceholderScreen("記録", Icons.Default.Info)
                 }
@@ -57,7 +64,11 @@ fun HomeScreenView() {
 
 // MARK: - Home Tab
 @Composable
-fun HomeTabContent(onStartStudy: () -> Unit) {
+fun HomeTabContent(
+    studyMinutes: Int,
+    onStudyMinutesChange: (Int) -> Unit,
+    onStartStudy: () -> Unit
+) {
     val infiniteTransition = rememberInfiniteTransition(label = "bounce")
     val offsetY by infiniteTransition.animateFloat(
         initialValue = -15f,
@@ -78,7 +89,35 @@ fun HomeTabContent(onStartStudy: () -> Unit) {
         CharacterView(offsetY = offsetY)
         Spacer(modifier = Modifier.weight(1f))
         
-        // 勉強開始ボタン (Home画面直下へ移動)
+        // 勉強時間の調整
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("今回の冒険時間", fontSize = 12.sp, color = Color.Gray)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                IconButton(onClick = { if (studyMinutes > 1) onStudyMinutesChange(studyMinutes - 1) }) {
+                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Decrease", tint = Color.Blue)
+                }
+                Text(
+                    text = "$studyMinutes 分",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(80.dp),
+                    textAlign = TextAlign.Center
+                )
+                IconButton(onClick = { if (studyMinutes < 120) onStudyMinutesChange(studyMinutes + 1) }) {
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Increase", tint = Color.Blue)
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // 勉強開始ボタン
         StudyStartButton(onClick = onStartStudy)
         Spacer(modifier = Modifier.height(24.dp))
     }

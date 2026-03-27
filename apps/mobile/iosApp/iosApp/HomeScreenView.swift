@@ -5,6 +5,7 @@ import SwiftUI
 struct HomeScreenView: View {
     @State private var isBouncing = false
     @State private var showStudySheet = false
+    @State private var studyMinutes = 25
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,6 +18,37 @@ struct HomeScreenView: View {
             characterView
 
             Spacer()
+            
+            // 勉強時間の調整
+            VStack(spacing: 8) {
+                Text("今回の冒険時間")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                HStack(spacing: 20) {
+                    Button(action: { if studyMinutes > 1 { studyMinutes -= 1 } }) {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.blue)
+                    }
+                    
+                    Text("\(studyMinutes) 分")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .frame(width: 80)
+                    
+                    Button(action: { if studyMinutes < 120 { studyMinutes += 1 } }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.blue)
+                    }
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 16)
+                .background(Color(UIColor.secondarySystemGroupedBackground))
+                .cornerRadius(12)
+            }
+            .padding(.bottom, 20)
 
             // 勉強開始ボタン
             studyStartButton
@@ -29,7 +61,7 @@ struct HomeScreenView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(UIColor.systemGroupedBackground))
         .fullScreenCover(isPresented: $showStudySheet) {
-            StudyQuestScreenView()
+            StudyQuestScreenView(initialStudyMinutes: studyMinutes)
         }
     }
 

@@ -30,13 +30,14 @@ import org.example.project.StudySessionType
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudyQuestScreenView(
+    initialStudyMinutes: Int,
     onDismiss: () -> Unit
 ) {
     val viewModel = remember { StudyQuestViewModel() }
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.startQuest()
+        viewModel.startQuest(initialStudyMinutes)
     }
 
     Scaffold(
@@ -91,13 +92,21 @@ fun MainQuestView(
         // タイマー表示
         Spacer(modifier = Modifier.height(40.dp))
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(if (uiState.type == StudySessionType.STUDY) "今回の特訓は..." else "リフレッシュ中", fontSize = 14.sp, color = Color.Gray)
             Text(
-                text = viewModel.formatTime(uiState.remainingSeconds),
+                if (uiState.isOvertime) "限界突破中! (延長)" else (if (uiState.type == StudySessionType.STUDY) "今回の特訓は..." else "リフレッシュ中"), 
+                fontSize = 14.sp, 
+                color = if (uiState.isOvertime) Color(0xFF9333EA) else Color.Gray
+            )
+            Text(
+                text = viewModel.formatTime(viewModel.getDisplaySeconds(uiState)),
                 fontSize = 80.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
-                color = if (uiState.type == StudySessionType.STUDY) Color.Black else Color(0xFF10B981)
+                color = when {
+                    uiState.isOvertime -> Color(0xFFDB2777)
+                    uiState.type == StudySessionType.STUDY -> Color.Black
+                    else -> Color(0xFF10B981)
+                }
             )
         }
         
@@ -109,7 +118,7 @@ fun MainQuestView(
                 .fillMaxWidth()
                 .height(350.dp)
                 .shadow(10.dp, RoundedCornerShape(32.dp)),
-            color = Color(0xFFF1F5F9),
+            color = if (uiState.isOvertime) Color(0xFFF3E8FF) else Color(0xFFF1F5F9),
             shape = RoundedCornerShape(32.dp)
         ) {
             Column(
@@ -122,14 +131,20 @@ fun MainQuestView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (uiState.type == StudySessionType.STUDY) "🧙‍♂️" else "🏕️", fontSize = 80.sp)
+                        Text(
+                            if (uiState.type == StudySessionType.STUDY) "🧙‍♂️" else "🏕️", 
+                            fontSize = if (uiState.isOvertime) 90.sp else 80.sp
+                        )
                         Text(if (uiState.type == StudySessionType.STUDY) "プレイヤー" else "キャンプ", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     
                     Text(if (uiState.type == StudySessionType.STUDY) "VS" else "&&", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = if (uiState.type == StudySessionType.STUDY) Color.Red else Color.Blue)
                     
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (uiState.type == StudySessionType.STUDY) "👾" else "🍵", fontSize = 80.sp)
+                        Text(
+                            if (uiState.type == StudySessionType.STUDY) "👾" else "🍵", 
+                            fontSize = if (uiState.isOvertime) 90.sp else 80.sp
+                        )
                         Text(if (uiState.type == StudySessionType.STUDY) "モンスター" else "お茶", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
@@ -140,11 +155,14 @@ fun MainQuestView(
                 Column(
                     modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 ) {
+                    if (uiState.isOvertime) {
+                        Text(">> 超集中モード発動中！ <<", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF9333EA))
+                    }
                     uiState.currentLog.forEach { log ->
                         Text(
                             text = "> $log",
                             fontSize = 14.sp,
-                            color = Color.Gray,
+                            color = if (uiState.isOvertime) Color(0xFF9333EA) else Color.Gray,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
@@ -155,30 +173,43 @@ fun MainQuestView(
         Spacer(modifier = Modifier.weight(1f))
         
         // 操作ボタン
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 40.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = { viewModel.togglePause() },
-                modifier = Modifier.weight(1f).height(56.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (uiState.status == StudySessionStatus.RUNNING) Color(0xFFF59E0B) else Color(0xFF3B82F6)
-                )
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(if (uiState.status == StudySessionStatus.RUNNING) Icons.Default.Pause else Icons.Default.PlayArrow, contentDescription = "Toggle")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (uiState.status == StudySessionStatus.RUNNING) "一時停止" else "再開する", fontWeight = FontWeight.Bold)
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 40.dp)) {
+            if (uiState.type == StudySessionType.STUDY) {
+                Button(
+                    onClick = { viewModel.finishSession() },
+                    modifier = Modifier.fillMaxWidth().height(56.dp).padding(bottom = 12.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                ) {
+                    Text("休憩する (結果を見る)", fontWeight = FontWeight.Bold)
                 }
             }
             
-            TextButton(
-                onClick = onExit,
-                modifier = Modifier.padding(start = 16.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("終了する", color = Color.Red, fontWeight = FontWeight.Bold)
+                Button(
+                    onClick = { viewModel.togglePause() },
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (uiState.status == StudySessionStatus.RUNNING) Color(0xFFF59E0B) else Color(0xFF3B82F6)
+                    )
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(if (uiState.status == StudySessionStatus.RUNNING) Icons.Default.Pause else Icons.Default.PlayArrow, contentDescription = "Toggle")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (uiState.status == StudySessionStatus.RUNNING) "一時停止" else "再開する", fontWeight = FontWeight.Bold)
+                    }
+                }
+                
+                TextButton(
+                    onClick = onExit,
+                    modifier = Modifier.padding(start = 16.dp)
+                ) {
+                    Text("中止する", color = Color.Red, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

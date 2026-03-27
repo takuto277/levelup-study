@@ -3,8 +3,9 @@ import Shared
 
 struct StudyQuestScreenView: View {
     @Environment(\.dismiss) var dismiss
+    let initialStudyMinutes: Int
     @State private var viewModel = StudyQuestViewModel()
-    @State private var uiState = StudyQuestState(type: .study, status: .paused, remainingSeconds: 1500, currentLog: [])
+    @State private var uiState = StudyQuestState(type: .study, status: .ready, targetStudyMinutes: 25, targetBreakMinutes: 5, elapsedSeconds: 0, isOvertime: false, currentLog: [])
     
     var body: some View {
         NavigationView {
@@ -28,7 +29,7 @@ struct StudyQuestScreenView: View {
                 }
             }
             .onAppear {
-                viewModel.startQuest()
+                viewModel.startQuest(initialStudyMinutes: KotlinInt(value: Int32(initialStudyMinutes)))
             }
             .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
                 self.uiState = viewModel.uiState.value as! StudyQuestState
@@ -41,27 +42,29 @@ struct StudyQuestScreenView: View {
         VStack(spacing: 20) {
             // タイマー表示
             VStack(spacing: 8) {
-                Text(uiState.type == .study ? "今回の特訓は..." : "リフレッシュ中")
+                Text(uiState.isOvertime ? "限界突破中! (延長)" : (uiState.type == .study ? "今回の特訓は..." : "リフレッシュ中"))
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(uiState.isOvertime ? .purple : .secondary)
                 
-                Text(viewModel.formatTime(seconds: uiState.remainingSeconds))
+                Text(viewModel.formatTime(seconds: viewModel.getDisplaySeconds(state: uiState)))
                     .font(.system(size: 80, weight: .bold, design: .monospaced))
-                    .foregroundColor(uiState.type == .study ? .primary : .green)
+                    .foregroundColor(uiState.isOvertime ? .pink : (uiState.type == .study ? .primary : .green))
+                    .shadow(color: uiState.isOvertime ? .pink.opacity(0.4) : .clear, radius: 10)
             }
             .padding(.top, 40)
             
             // 冒険の描写エリア
             ZStack {
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .fill(Color(UIColor.secondarySystemBackground))
+                    .fill(uiState.isOvertime ? Color.purple.opacity(0.1) : Color(UIColor.secondarySystemBackground))
                     .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
                 
                 VStack {
                     HStack(spacing: 40) {
                         VStack {
                             Text(uiState.type == .study ? "🧙‍♂️" : "🏕️")
-                                .font(.system(size: 80))
+                                .font(.system(size: uiState.isOvertime ? 90 : 80))
+                                .scaleEffect(uiState.isOvertime ? 1.1 : 1.0)
                             Text(uiState.type == .study ? "プレイヤー" : "キャンプ")
                                 .font(.caption).fontWeight(.bold)
                         }
@@ -72,7 +75,7 @@ struct StudyQuestScreenView: View {
                         
                         VStack {
                             Text(uiState.type == .study ? "👾" : "🍵")
-                                .font(.system(size: 80))
+                                .font(.system(size: uiState.isOvertime ? 90 : 80))
                             Text(uiState.type == .study ? "モンスター" : "お茶")
                                 .font(.caption).fontWeight(.bold)
                         }
@@ -84,10 +87,15 @@ struct StudyQuestScreenView: View {
                     // ログ表示
                     ScrollView {
                         VStack(alignment: .leading, spacing: 8) {
+                            if uiState.isOvertime {
+                                Text(">> 超集中モード発動中！ <<")
+                                    .font(.caption).bold()
+                                    .foregroundColor(.purple)
+                            }
                             ForEach(uiState.currentLog, id: \.self) { log in
                                 Text("> \(log)")
                                     .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(uiState.isOvertime ? .purple : .secondary)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -101,31 +109,48 @@ struct StudyQuestScreenView: View {
             
             Spacer()
             
-            // 一時停止 / 再開 ボタン
-            HStack(spacing: 30) {
-                Button(action: {
-                    viewModel.togglePause()
-                }) {
-                    HStack {
-                        Image(systemName: uiState.status == .running ? "pause.fill" : "play.fill")
-                        Text(uiState.status == .running ? "一時停止" : "再開する")
+            // 操作ボタン
+            VStack(spacing: 16) {
+                if uiState.type == .study {
+                    Button(action: {
+                        viewModel.finishSession()
+                    }) {
+                        Text("休憩する (結果を見る)")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.green)
+                            .cornerRadius(20)
+                            .shadow(radius: 5)
                     }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(uiState.status == .running ? Color.orange : Color.blue)
-                    .cornerRadius(20)
                 }
                 
-                Button(action: {
-                    viewModel.stopQuest()
-                    dismiss()
-                }) {
-                    Text("終了する")
+                HStack(spacing: 30) {
+                    Button(action: {
+                        viewModel.togglePause()
+                    }) {
+                        HStack {
+                            Image(systemName: uiState.status == .running ? "pause.fill" : "play.fill")
+                            Text(uiState.status == .running ? "一時停止" : "再開する")
+                        }
                         .font(.headline)
-                        .foregroundColor(.red)
-                        .padding(.horizontal, 20)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(uiState.status == .running ? Color.orange : Color.blue)
+                        .cornerRadius(20)
+                    }
+                    
+                    Button(action: {
+                        viewModel.stopQuest()
+                        dismiss()
+                    }) {
+                        Text("中止する")
+                            .font(.headline)
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 20)
+                    }
                 }
             }
             .padding(.horizontal, 40)
@@ -185,6 +210,6 @@ struct StudyQuestScreenView: View {
 
 struct StudyQuestScreenView_Previews: PreviewProvider {
     static var previews: some View {
-        StudyQuestScreenView()
+        StudyQuestScreenView(initialStudyMinutes: 25)
     }
 }

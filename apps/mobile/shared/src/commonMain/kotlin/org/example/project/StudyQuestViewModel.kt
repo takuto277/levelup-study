@@ -9,17 +9,18 @@ import kotlinx.coroutines.flow.update
  * セッションの種類
  */
 enum class StudySessionType {
-    STUDY,  // 勉強中（25分）
-    BREAK   // 休憩中（5分）
+    STUDY,
+    BREAK
 }
 
 /**
  * セッションのステータス
  */
 enum class StudySessionStatus {
+    READY,
     RUNNING,
     PAUSED,
-    FINISHED // 完了した瞬間（結果画面用）
+    FINISHED
 }
 
 /**
@@ -27,8 +28,11 @@ enum class StudySessionStatus {
  */
 data class StudyQuestState(
     val type: StudySessionType = StudySessionType.STUDY,
-    val status: StudySessionStatus = StudySessionStatus.PAUSED,
-    val remainingSeconds: Long = 1500, // 25分スタート
+    val status: StudySessionStatus = StudySessionStatus.READY,
+    val targetStudyMinutes: Int = 25,
+    val targetBreakMinutes: Int = 5,
+    val elapsedSeconds: Long = 0,
+    val isOvertime: Boolean = false,
     val currentLog: List<String> = listOf("冒険の準備が整った！")
 )
 
@@ -46,8 +50,8 @@ class StudyQuestViewModel {
         "モンスターに10のダメージを与えた！",
         "経験値を5獲得した！",
         "ゴールドを2手に入れた！",
-        "深い霧が立ち込めている...",
-        "草むらからガサガサと音がした"
+        "限界を超えた集中力を発揮している...",
+        "ゾーンに入った！攻撃力が上昇！"
     )
     
     private val breakMessages = listOf(
@@ -57,14 +61,22 @@ class StudyQuestViewModel {
         "これまでの冒険を振り返っている"
     )
 
-    fun startQuest() {
+    fun updateTargetMinutes(studyMinutes: Int) {
+        if (_uiState.value.status != StudySessionStatus.READY) return
+        _uiState.update { it.copy(targetStudyMinutes = studyMinutes) }
+    }
+
+    fun startQuest(initialStudyMinutes: Int? = null) {
         if (_uiState.value.status == StudySessionStatus.RUNNING) return
         
-        val initialSeconds = if (_uiState.value.type == StudySessionType.STUDY) 1500L else 300L
+        val studyMin = initialStudyMinutes ?: _uiState.value.targetStudyMinutes
+        
         _uiState.update { 
             it.copy(
                 status = StudySessionStatus.RUNNING,
-                remainingSeconds = initialSeconds,
+                targetStudyMinutes = studyMin,
+                elapsedSeconds = 0,
+                isOvertime = false,
                 currentLog = listOf(if (it.type == StudySessionType.STUDY) "冒険を開始した！" else "休憩所を見つけた。")
             )
         }
@@ -84,49 +96,93 @@ class StudyQuestViewModel {
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
-            while (isActive && _uiState.value.remainingSeconds > 0) {
+            while (isActive) {
                 delay(1000)
                 _uiState.update { state ->
-                    val newRemaining = state.remainingSeconds - 1
+                    val targetSeconds = if (state.type == StudySessionType.STUDY) 
+                        state.targetStudyMinutes.toLong() * 60 
+                    else 
+                        state.targetBreakMinutes.toLong() * 60
+
+                    val newElapsed = state.elapsedSeconds + 1
                     var newLogs = state.currentLog
                     
                     // 10秒ごとにログ追加
-                    if (newRemaining % 10 == 0L && newRemaining > 0) {
+                    if (newElapsed % 10 == 0L) {
                         val messages = if (state.type == StudySessionType.STUDY) studyMessages else breakMessages
                         newLogs = (newLogs + messages.random()).takeLast(5)
                     }
                     
+                    val overTime = state.type == StudySessionType.STUDY && newElapsed > targetSeconds
+                    
                     state.copy(
-                        remainingSeconds = newRemaining,
+                        elapsedSeconds = newElapsed,
+                        isOvertime = overTime,
                         currentLog = newLogs
                     )
                 }
-            }
-            
-            if (_uiState.value.remainingSeconds <= 0) {
-                _uiState.update { it.copy(status = StudySessionStatus.FINISHED) }
+                
+                // 休憩モードは目標時間に達したら自動終了
+                val state = _uiState.value
+                val targetSeconds = if (state.type == StudySessionType.STUDY) 
+                    state.targetStudyMinutes.toLong() * 60 
+                else 
+                    state.targetBreakMinutes.toLong() * 60
+
+                if (state.type == StudySessionType.BREAK && state.elapsedSeconds >= targetSeconds) {
+                    _uiState.update { it.copy(status = StudySessionStatus.FINISHED) }
+                    break
+                }
             }
         }
     }
 
     /**
-     * 結果画面から次のステップへ
+     * 表示用の秒数を計算する
+     * 勉強中:
+     * - 目標時間内: target - elapsed (カウントダウン)
+     * - 延長中: elapsed (カウントアップ 25:01, 26:00...)
+     * 休憩中:
+     * - target - elapsed (カウントダウン)
      */
+    fun getDisplaySeconds(state: StudyQuestState): Long {
+        val targetSeconds = if (state.type == StudySessionType.STUDY) 
+            state.targetStudyMinutes.toLong() * 60 
+        else 
+            state.targetBreakMinutes.toLong() * 60
+
+        return if (state.type == StudySessionType.STUDY) {
+            if (state.elapsedSeconds <= targetSeconds) {
+                targetSeconds - state.elapsedSeconds
+            } else {
+                state.elapsedSeconds
+            }
+        } else {
+            // 休憩は常にカウントダウン
+            (targetSeconds - state.elapsedSeconds).coerceAtLeast(0)
+        }
+    }
+
+    fun finishSession() {
+        timerJob?.cancel()
+        _uiState.update { it.copy(status = StudySessionStatus.FINISHED) }
+    }
+
     fun nextSession() {
         _uiState.update { 
             if (it.type == StudySessionType.STUDY) {
-                // 勉強終了 -> 休憩へ
                 it.copy(
                     type = StudySessionType.BREAK,
-                    remainingSeconds = 300,
+                    elapsedSeconds = 0,
+                    isOvertime = false,
                     status = StudySessionStatus.RUNNING,
                     currentLog = listOf("休憩を開始した。")
                 )
             } else {
-                // 休憩終了 -> 次の勉強へ
                 it.copy(
                     type = StudySessionType.STUDY,
-                    remainingSeconds = 1500,
+                    elapsedSeconds = 0,
+                    isOvertime = false,
                     status = StudySessionStatus.RUNNING,
                     currentLog = listOf("次の冒険へ出発だ！")
                 )
@@ -138,7 +194,7 @@ class StudyQuestViewModel {
     fun stopQuest() {
         timerJob?.cancel()
         timerJob = null
-        _uiState.update { StudyQuestState() } // リセット
+        _uiState.update { StudyQuestState(status = StudySessionStatus.READY) }
     }
 
     fun formatTime(seconds: Long): String {
