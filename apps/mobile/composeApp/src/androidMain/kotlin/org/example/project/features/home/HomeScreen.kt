@@ -23,8 +23,14 @@ import androidx.compose.ui.unit.sp
 fun HomeScreen() {
     // 2: Home (Main Tab)
     var selectedTab by remember { mutableStateOf(2) }
+    var showStudySheet by remember { mutableStateOf(false) }
 
-    Scaffold(
+    if (showStudySheet) {
+        org.example.project.features.study.StudyQuestScreenView(
+            onDismiss = { showStudySheet = false }
+        )
+    } else {
+        Scaffold(
         containerColor = Color(0xFFF8FAFC)
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
@@ -33,7 +39,7 @@ fun HomeScreen() {
                 when (selectedTab) {
                     0 -> PlaceholderScreen("冒険", Icons.Default.Place)
                     1 -> PlaceholderScreen("編成", Icons.Default.Person)
-                    2 -> HomeTabContent()
+                    2 -> HomeTabContent(onStartStudy = { showStudySheet = true })
                     3 -> PlaceholderScreen("召喚", Icons.Default.Star)
                     4 -> PlaceholderScreen("記録", Icons.Default.Info)
                 }
@@ -47,9 +53,11 @@ fun HomeScreen() {
     }
 }
 
+}
+
 // MARK: - Home Tab
 @Composable
-fun HomeTabContent() {
+fun HomeTabContent(onStartStudy: () -> Unit) {
     val infiniteTransition = rememberInfiniteTransition(label = "bounce")
     val offsetY by infiniteTransition.animateFloat(
         initialValue = -15f,
@@ -71,10 +79,7 @@ fun HomeTabContent() {
         Spacer(modifier = Modifier.weight(1f))
         
         // 勉強開始ボタン (Home画面直下へ移動)
-        StudyStartButton(onClick = {
-            // TODO: KMP Viewmodelのイベントを発火して、タイマー画面に遷移する
-            // viewModel.onStartStudyClicked() みたいになる
-        })
+        StudyStartButton(onClick = onStartStudy)
         Spacer(modifier = Modifier.height(24.dp))
     }
 }

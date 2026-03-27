@@ -29,7 +29,7 @@ struct HomeScreenView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(UIColor.systemGroupedBackground))
         .fullScreenCover(isPresented: $showStudySheet) {
-            StudyQuestView()
+            StudyQuestScreenView()
         }
     }
 
