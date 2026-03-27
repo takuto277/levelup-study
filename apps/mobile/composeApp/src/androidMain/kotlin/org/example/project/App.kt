@@ -28,7 +28,7 @@ fun App() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            org.example.project.features.home.HomeScreen()
+            org.example.project.features.home.HomeScreenView()
         }
     }
 }

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 編成画面（タブ②: 左から2番目）
 /// キャラクターや武器の装備・強化を行う
-struct PartyScreen: View {
+struct PartyScreenView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
@@ -50,8 +50,8 @@ struct PartyScreen: View {
     }
 }
 
-struct PartyScreen_Previews: PreviewProvider {
+struct PartyScreenView_Previews: PreviewProvider {
     static var previews: some View {
-        PartyScreen()
+        PartyScreenView()
     }
 }

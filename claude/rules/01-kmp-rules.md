@@ -4,4 +4,6 @@
 2. **UIの実装:** UIは明示的にネイティブで実装してください。iOSアプリにはSwiftUIを使用し、AndroidアプリにはJetpack Composeを使用します。カスタマイズされた特定のコンポーネントでCompose Multiplatformを使用する場合を除き、ネイティブの操作感を損なうようなUIの共有は避けてください。
 3. **データベース:** クロスプラットフォームでのローカルキャッシュ・保存には、SQLDelight または KMP互換バージョンの Room を使用してください。
 4. **依存性注入 (DI):** 共有モジュールの依存関係の注入には Koin を使用してください。
-5. **命名規則:** iOSとAndroidで対応する画面（View/Screen）のファイル名およびコンポーネント名は、プラットフォーム間で統一してください。例: `StudyQuestScreenView`（iOS: `StudyQuestScreenView.swift`, Android: `StudyQuestScreenView.kt`）。
+5. **命名規則:** iOSとAndroidで対応する画面（View/Screen）のファイル名およびコンポーネント名は、プラットフォーム間で統一してください。
+    - **フルスクリーン画面:** `*ScreenView` というサフィックスを使用します（例: `HomeScreenView.swift`, `HomeScreenView.kt`）。
+    - **個別View / 共通コンポーネント:** `*View` というサフィックスを使用します（例: `MainTabView.swift`, `CharacterView.kt`）。ScreenView 内にある独立したパーツや、複数の画面で再利用されるパーツがこれに該当します。

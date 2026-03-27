@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun HomeScreen() {
+fun HomeScreenView() {
     // 2: Home (Main Tab)
     var selectedTab by remember { mutableStateOf(2) }
     var showStudySheet by remember { mutableStateOf(false) }
@@ -52,7 +52,7 @@ fun HomeScreen() {
         }
     }
 }
-
+}
 }
 
 // MARK: - Home Tab

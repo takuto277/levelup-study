@@ -36,11 +36,11 @@ struct MainTabView: View {
             // Main Content
             Group {
                 switch selectedTab {
-                case .quest: QuestScreen()
-                case .party: PartyScreen()
+                case .quest: QuestScreenView()
+                case .party: PartyScreenView()
                 case .home: HomeScreenView()
-                case .gacha: GachaScreen()
-                case .analytics: AnalyticsScreen()
+                case .gacha: GachaScreenView()
+                case .analytics: AnalyticsScreenView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

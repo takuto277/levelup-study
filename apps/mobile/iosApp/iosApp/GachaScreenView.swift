@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 召喚画面（タブ④: 右から2番目）
 /// ガチャ石を使ってキャラクターや武器を引く
-struct GachaScreen: View {
+struct GachaScreenView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
@@ -81,8 +81,8 @@ struct GachaScreen: View {
     }
 }
 
-struct GachaScreen_Previews: PreviewProvider {
+struct GachaScreenView_Previews: PreviewProvider {
     static var previews: some View {
-        GachaScreen()
+        GachaScreenView()
     }
 }

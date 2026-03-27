@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 記録画面（タブ⑤: 右端）
 /// 勉強時間の統計データを日/週/月で可視化する
-struct AnalyticsScreen: View {
+struct AnalyticsScreenView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
@@ -83,8 +83,8 @@ struct AnalyticsScreen: View {
     }
 }
 
-struct AnalyticsScreen_Previews: PreviewProvider {
+struct AnalyticsScreenView_Previews: PreviewProvider {
     static var previews: some View {
-        AnalyticsScreen()
+        AnalyticsScreenView()
     }
 }

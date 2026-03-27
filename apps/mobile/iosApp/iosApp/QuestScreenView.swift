@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 冒険画面（タブ①: 左端）
 /// 勉強中に自動進行するダンジョンの状況を確認する
-struct QuestScreen: View {
+struct QuestScreenView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
@@ -57,8 +57,8 @@ struct QuestScreen: View {
     }
 }
 
-struct QuestScreen_Previews: PreviewProvider {
+struct QuestScreenView_Previews: PreviewProvider {
     static var previews: some View {
-        QuestScreen()
+        QuestScreenView()
     }
 }
