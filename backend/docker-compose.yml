@@ -1,0 +1,29 @@
+# ============================================================
+# LevelUp Study — ローカル開発用 Docker Compose
+#
+# 使い方:
+#   docker compose up -d       ← PostgreSQL 起動
+#   docker compose down        ← 停止
+#   docker compose down -v     ← 停止 + データ削除
+# ============================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: levelup-study-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: levelup_study
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:

@@ -1,48 +1,88 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/joho/godotenv"
+	"github.com/takuto277/levelup-study/backend/internal/database"
+	"github.com/takuto277/levelup-study/backend/internal/handler"
+	"github.com/takuto277/levelup-study/backend/internal/repository"
+	"github.com/takuto277/levelup-study/backend/internal/router"
+	"github.com/takuto277/levelup-study/backend/internal/service"
 )
 
-type PingResponse struct {
-	Message string `json:"message"`
-	Status  string `json:"status"`
-}
-
 func main() {
-	r := chi.NewRouter()
+	// --- .env ファイルの読み込み（開発用、なければスキップ） ---
+	if err := godotenv.Load(); err != nil {
+		log.Println("ℹ️  .env ファイルが見つかりません（本番環境では環境変数を直接設定してください）")
+	}
 
-	// A good base middleware stack
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	// --- 環境変数からセキュリティ設定を読み込む ---
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("❌ 環境変数 JWT_SECRET が未設定です")
+	}
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		log.Fatal("❌ 環境変数 API_KEY が未設定です")
+	}
+	allowedOrigins := []string{}
+	if origins := os.Getenv("ALLOWED_ORIGINS"); origins != "" {
+		allowedOrigins = strings.Split(origins, ",")
+	}
 
-	// Routing
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Welcome to LevelUp Study API!"))
-	})
-
-	// /api/v1 
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
-			response := PingResponse{
-				Message: "pong",
-				Status:  "success",
-			}
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(response)
-		})
-	})
-
-	log.Println("Starting Go server on :8080...")
-	err := http.ListenAndServe(":8080", r)
+	// --- データベース接続 ---
+	db, err := database.Connect()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("❌ DB接続失敗: %v", err)
+	}
+
+	// --- マイグレーション（開発用） ---
+	if err := database.AutoMigrate(db); err != nil {
+		log.Fatalf("❌ マイグレーション失敗: %v", err)
+	}
+
+	// --- Repository 初期化 ---
+	userRepo := repository.NewUserRepository(db)
+	studyRepo := repository.NewStudyRepository(db)
+	charRepo := repository.NewCharacterRepository(db)
+	weaponRepo := repository.NewWeaponRepository(db)
+	partyRepo := repository.NewPartyRepository(db)
+	dungeonRepo := repository.NewDungeonProgressRepository(db)
+	gachaRepo := repository.NewGachaRepository(db)
+	masterRepo := repository.NewMasterRepository(db)
+
+	// --- Service 初期化 ---
+	studyService := service.NewStudyService(db, userRepo, studyRepo, charRepo, partyRepo, dungeonRepo)
+	gachaService := service.NewGachaService(db, userRepo, gachaRepo, masterRepo, charRepo, weaponRepo)
+
+	// --- Handler 初期化 ---
+	userH := handler.NewUserHandler(userRepo)
+	studyH := handler.NewStudyHandler(studyService)
+	gameH := handler.NewGameHandler(charRepo, weaponRepo, partyRepo, dungeonRepo)
+	gachaH := handler.NewGachaHandler(gachaService)
+	masterH := handler.NewMasterHandler(masterRepo)
+
+	// --- セキュリティ設定 ---
+	sec := router.SecurityConfig{
+		JWTSecret:      jwtSecret,
+		APIKey:         apiKey,
+		AllowedOrigins: allowedOrigins,
+	}
+
+	// --- ルーター構築 ---
+	r := router.NewRouter(sec, userH, studyH, gameH, gachaH, masterH)
+
+	// --- サーバー起動 ---
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Printf("🚀 LevelUp Study API を起動中... http://localhost:%s\n", port)
+	if err := http.ListenAndServe(":"+port, r); err != nil {
+		log.Fatalf("❌ サーバー起動失敗: %v", err)
 	}
 }
