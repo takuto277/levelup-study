@@ -737,7 +737,7 @@ private fun SingleResultCard(item: ResultItem) {
         targetValue = if (revealed) 1f else 0.3f,
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 200f), label = "s"
     )
-    val alpha by animateFloatAsState(
+    val cardAlpha by animateFloatAsState(
         targetValue = if (revealed) 1f else 0f, animationSpec = tween(400), label = "a"
     )
     val rotY by animateFloatAsState(
@@ -751,7 +751,7 @@ private fun SingleResultCard(item: ResultItem) {
             .fillMaxWidth()
             .padding(top = 40.dp)
             .scale(scale)
-            .graphicsLayer { alpha = this@SingleResultCard.alpha; rotationY = rotY }
+            .graphicsLayer { alpha = cardAlpha; rotationY = rotY }
             .background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(24.dp))
             .border(1.dp, rarityColor(item.rarity).copy(alpha = 0.4f), RoundedCornerShape(24.dp))
             .padding(32.dp)
@@ -896,10 +896,4 @@ private fun GlowPullButton(
             }
         }
     }
-}
-
-// ── coroutineScope helper (import) ──
-
-private fun kotlinx.coroutines.CoroutineScope.launch(block: suspend kotlinx.coroutines.CoroutineScope.() -> Unit) {
-    kotlinx.coroutines.launch(block = block)
 }

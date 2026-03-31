@@ -628,7 +628,7 @@ private struct PullAnimationView: View {
 
             // 中央グロー
             RadialGradient(
-                colors: [accentColor.opacity(0.8), accentColor.opacity(0.2), .clear],
+                gradient: Gradient(colors: [accentColor.opacity(0.8), accentColor.opacity(0.2), .clear]),
                 center: .center, startRadius: 0, endRadius: 80
             )
             .frame(width: 160, height: 160)
@@ -637,10 +637,12 @@ private struct PullAnimationView: View {
 
             // バースト（フラッシュ）
             Circle()
-                .fill(RadialGradient(
-                    colors: [.white, accentColor.opacity(0.5), .clear],
-                    center: .center, startRadius: 0, endRadius: 300
-                ))
+                .fill(
+                    RadialGradient(
+                        gradient: Gradient(colors: [.white, accentColor.opacity(0.5), .clear]),
+                        center: .center, startRadius: 0, endRadius: 300
+                    )
+                )
                 .scaleEffect(burstScale)
                 .opacity(burstOpacity)
                 .ignoresSafeArea()
@@ -698,9 +700,12 @@ private struct SummoningOrb: View {
                 .stroke(bannerType.colors.first!.opacity(0.3), lineWidth: 1)
                 .frame(width: 120, height: 120)
                 .rotationEffect(.degrees(-rotation * 0.5))
-            RadialGradient(colors: [bannerType.colors.last!.opacity(0.5), .clear], center: .center, startRadius: 10, endRadius: 60)
-                .frame(width: 120, height: 120)
-                .scaleEffect(pulse ? 1.15 : 0.9)
+            RadialGradient(
+                gradient: Gradient(colors: [bannerType.colors.last!.opacity(0.5), .clear]),
+                center: .center, startRadius: 10, endRadius: 60
+            )
+            .frame(width: 120, height: 120)
+            .scaleEffect(pulse ? 1.15 : 0.9)
             Image(systemName: bannerType.icon)
                 .font(.system(size: 36, weight: .light))
                 .foregroundColor(.white.opacity(0.8))
@@ -795,7 +800,14 @@ private struct SingleResultCard: View {
         VStack(spacing: 20) {
             ZStack {
                 Circle()
-                    .fill(RadialGradient(colors: [item.rarityColor.opacity(0.5), item.rarityColor.opacity(0.1), .clear], center: .center, startRadius: 20, endRadius: 120))
+                    .fill(
+                        RadialGradient(
+                            gradient: Gradient(colors: [item.rarityColor.opacity(0.5), item.rarityColor.opacity(0.1), .clear]),
+                            center: .center,
+                            startRadius: 20,
+                            endRadius: 120
+                        )
+                    )
                     .frame(width: 240, height: 240)
                 Image(systemName: item.type.icon).font(.system(size: 60, weight: .light)).foregroundColor(.white)
                 if item.isNew {
@@ -832,7 +844,12 @@ private struct MultiResultCard: View {
         VStack(spacing: 8) {
             ZStack {
                 Circle()
-                    .fill(RadialGradient(colors: [item.rarityColor.opacity(0.4), .clear], center: .center, startRadius: 5, endRadius: 40))
+                    .fill(
+                        RadialGradient(
+                            gradient: Gradient(colors: [item.rarityColor.opacity(0.4), .clear]),
+                            center: .center, startRadius: 5, endRadius: 40
+                        )
+                    )
                     .frame(width: 70, height: 70)
                 Image(systemName: item.type.icon).font(.system(size: 28, weight: .light)).foregroundColor(.white)
                 if item.isNew {
