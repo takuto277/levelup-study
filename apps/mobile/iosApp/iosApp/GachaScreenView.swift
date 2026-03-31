@@ -502,8 +502,11 @@ private struct PityCounter: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial.opacity(0.3))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(.white.opacity(0.08), lineWidth: 1))
+                .fill(Color.white.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
     }
 }
@@ -536,8 +539,11 @@ private struct RateInfoCard: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial.opacity(0.2))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(.white.opacity(0.06), lineWidth: 1))
+                .fill(Color.white.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
         )
     }
 
@@ -594,7 +600,7 @@ private struct PullAnimationView: View {
             Circle()
                 .stroke(
                     AngularGradient(
-                        colors: [accentColor, accentColor.opacity(0.2), .clear, accentColor.opacity(0.2), accentColor],
+                        gradient: Gradient(colors: [accentColor, accentColor.opacity(0.2), Color.clear, accentColor.opacity(0.2), accentColor]),
                         center: .center
                     ), lineWidth: 3
                 )
@@ -607,7 +613,7 @@ private struct PullAnimationView: View {
             Circle()
                 .stroke(
                     AngularGradient(
-                        colors: [.white.opacity(0.6), .clear, accentColor.opacity(0.4), .clear, .white.opacity(0.6)],
+                        gradient: Gradient(colors: [Color.white.opacity(0.6), Color.clear, accentColor.opacity(0.4), Color.clear, Color.white.opacity(0.6)]),
                         center: .center
                     ), lineWidth: 2
                 )
@@ -693,7 +699,13 @@ private struct SummoningOrb: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(AngularGradient(colors: bannerType.colors + [bannerType.colors.first!], center: .center), lineWidth: 2)
+                .stroke(
+                    AngularGradient(
+                        gradient: Gradient(colors: bannerType.colors + [bannerType.colors.first!]),
+                        center: .center
+                    ),
+                    lineWidth: 2
+                )
                 .frame(width: 160, height: 160)
                 .rotationEffect(.degrees(rotation))
             Circle()
@@ -729,64 +741,103 @@ private struct ResultView: View {
 
     private var sortedResults: [ResultItem] { store.pullResults.sorted { $0.rarity > $1.rarity } }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("召喚結果")
-                    .font(.system(size: 22, weight: .bold)).foregroundColor(.white)
-                Spacer()
-                StoneCountBadge(stones: store.currentStones)
-            }
-            .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 16)
-            .opacity(appeared ? 1 : 0)
-
-            ScrollView(showsIndicators: false) {
-                if store.lastPullCount == 1, let item = sortedResults.first {
-                    SingleResultCard(item: item, revealed: cardsRevealed.contains(0))
-                        .padding(.horizontal, 20).padding(.top, 40)
-                        .onAppear { revealCard(index: 0, delay: 0.3) }
-                } else {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        ForEach(Array(sortedResults.enumerated()), id: \.element.id) { index, item in
-                            MultiResultCard(item: item, revealed: cardsRevealed.contains(index))
-                                .onAppear { revealCard(index: index, delay: 0.15 + Double(index) * 0.08) }
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                }
-
-                // アクションボタン
-                VStack(spacing: 12) {
-                    GlowPullButton(
-                        label: "もう一度召喚する",
-                        cost: store.lastPullCount == 1 ? GachaStore.singleCost : GachaStore.multiCost,
-                        enabled: store.lastPullCount == 1 ? store.canPullSingle : store.canPullMulti,
-                        colors: [Color(red: 0.3, green: 0.6, blue: 1.0), Color(red: 0.5, green: 0.3, blue: 0.9)]
-                    ) {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        store.pullAgain()
-                    }
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        store.backToBannerSelect()
-                    }) {
-                        Text("バナー選択に戻る")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.white.opacity(0.5))
-                            .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    }
-                }
-                .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 120)
-                .opacity(appeared ? 1 : 0)
-            }
-        }
-        .onAppear { withAnimation(.easeOut(duration: 0.4)) { appeared = true } }
-        .onDisappear { appeared = false; cardsRevealed = [] }
+    private var repeatCost: Int {
+        store.lastPullCount == 1 ? GachaStore.singleCost : GachaStore.multiCost
+    }
+    private var canRepeat: Bool {
+        store.lastPullCount == 1 ? store.canPullSingle : store.canPullMulti
     }
 
-    private func revealCard(index: Int, delay: Double) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) { cardsRevealed.insert(index) }
+    var body: some View {
+        VStack(spacing: 0) {
+            resultHeader
+            resultScrollContent
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.4)) { appeared = true }
+        }
+        .onDisappear {
+            appeared = false
+            cardsRevealed = []
+        }
+    }
+
+    private var resultHeader: some View {
+        HStack {
+            Text("召喚結果")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.white)
+            Spacer()
+            StoneCountBadge(stones: store.currentStones)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 16)
+        .opacity(appeared ? 1 : 0)
+    }
+
+    private var resultScrollContent: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 0) {
+                resultCards
+                actionButtons
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var resultCards: some View {
+        if store.lastPullCount == 1, let item = sortedResults.first {
+            SingleResultCard(item: item, revealed: cardsRevealed.contains(0))
+                .padding(.horizontal, 20)
+                .padding(.top, 40)
+                .onAppear { scheduleReveal(index: 0, afterSeconds: 0.3) }
+        } else {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                ForEach(Array(sortedResults.enumerated()), id: \.element.id) { index, item in
+                    MultiResultCard(item: item, revealed: cardsRevealed.contains(index))
+                        .onAppear { scheduleReveal(index: index, afterSeconds: 0.15 + Double(index) * 0.08) }
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    private var actionButtons: some View {
+        VStack(spacing: 12) {
+            GlowPullButton(
+                label: "もう一度召喚する",
+                cost: repeatCost,
+                enabled: canRepeat,
+                colors: [Color(red: 0.3, green: 0.6, blue: 1.0), Color(red: 0.5, green: 0.3, blue: 0.9)]
+            ) {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                store.pullAgain()
+            }
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                store.backToBannerSelect()
+            }) {
+                Text("バナー選択に戻る")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(Color.white.opacity(0.5))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 24)
+        .padding(.bottom, 120)
+        .opacity(appeared ? 1 : 0)
+    }
+
+    private func scheduleReveal(index: Int, afterSeconds: Double) {
+        let deadline: DispatchTime = .now() + afterSeconds
+        DispatchQueue.main.asyncAfter(deadline: deadline) {
+            let anim = Animation.spring(response: 0.5, dampingFraction: 0.7)
+            withAnimation(anim) {
+                _ = cardsRevealed.insert(index)
+            }
         }
     }
 }
@@ -827,8 +878,11 @@ private struct SingleResultCard: View {
         .padding(32).frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.ultraThinMaterial.opacity(0.25))
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(item.rarityColor.opacity(0.4), lineWidth: 1))
+                .fill(Color.white.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(item.rarityColor.opacity(0.4), lineWidth: 1)
         )
         .scaleEffect(revealed ? 1.0 : 0.3).opacity(revealed ? 1.0 : 0)
         .rotation3DEffect(.degrees(revealed ? 0 : 180), axis: (x: 0, y: 1, z: 0))
@@ -866,8 +920,11 @@ private struct MultiResultCard: View {
         .padding(.vertical, 16).padding(.horizontal, 8).frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial.opacity(0.2))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(item.rarityColor.opacity(0.3), lineWidth: 1))
+                .fill(Color.white.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(item.rarityColor.opacity(0.3), lineWidth: 1)
         )
         .scaleEffect(revealed ? 1.0 : 0.4).opacity(revealed ? 1.0 : 0)
     }
@@ -885,7 +942,8 @@ private struct StoneCountBadge: View {
             Text("\(stones)").font(.system(size: 15, weight: .bold, design: .monospaced)).foregroundColor(.white)
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(Capsule().fill(.ultraThinMaterial.opacity(0.3)).overlay(Capsule().stroke(.white.opacity(0.1), lineWidth: 1)))
+        .background(Capsule().fill(Color.white.opacity(0.1)))
+        .overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1))
     }
 }
 
@@ -899,13 +957,19 @@ private struct GlowPullButton: View {
         Button(action: action) {
             ZStack {
                 Capsule().fill(
-                    enabled
-                    ? LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing)
-                    : LinearGradient(colors: [.gray.opacity(0.3), .gray.opacity(0.2)], startPoint: .leading, endPoint: .trailing)
+                    LinearGradient(
+                        gradient: Gradient(colors: enabled ? colors : [Color.gray.opacity(0.3), Color.gray.opacity(0.2)]),
+                        startPoint: .leading, endPoint: .trailing
+                    )
                 )
                 if enabled {
                     Capsule()
-                        .fill(LinearGradient(colors: [.clear, .white.opacity(0.2), .clear], startPoint: .leading, endPoint: .trailing))
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.clear, Color.white.opacity(0.2), Color.clear]),
+                                startPoint: .leading, endPoint: .trailing
+                            )
+                        )
                         .offset(x: shimmerOffset).mask(Capsule())
                 }
                 HStack(spacing: 8) {
@@ -915,9 +979,9 @@ private struct GlowPullButton: View {
                         Text("\(cost)").font(.system(size: isPrimary ? 17 : 15, weight: .bold, design: .monospaced))
                     }
                     .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(Capsule().fill(.white.opacity(enabled ? 0.2 : 0.05)))
+                    .background(Capsule().fill(Color.white.opacity(enabled ? 0.2 : 0.05)))
                 }
-                .foregroundColor(enabled ? .white : .white.opacity(0.3))
+                .foregroundColor(enabled ? Color.white : Color.white.opacity(0.3))
             }
             .frame(height: isPrimary ? 56 : 48)
             .shadow(color: enabled ? colors.first!.opacity(0.4) : .clear, radius: 12, y: 4)

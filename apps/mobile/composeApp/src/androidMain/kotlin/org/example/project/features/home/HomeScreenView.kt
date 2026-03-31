@@ -21,9 +21,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+// ── カラー ────────────────────────────────────
+private val BgColor = Color(0xFFF0F4FF)
+private val CardWhite = Color(0xFFFFFFFF)
+private val TextPrimary = Color(0xFF1E293B)
+private val TextSecondary = Color(0xFF64748B)
+private val AccentBlue = Color(0xFF3B82F6)
+private val AccentIndigo = Color(0xFF6366F1)
+private val GoldYellow = Color(0xFFFFD700)
+private val FireRed = Color(0xFFEF4444)
+private val FireOrange = Color(0xFFF59E0B)
+private val EmeraldGreen = Color(0xFF10B981)
+
 @Composable
 fun HomeScreenView() {
-    // 2: Home (Main Tab)
     var selectedTab by remember { mutableStateOf(2) }
     var showStudySheet by remember { mutableStateOf(false) }
     var studyMinutes by remember { mutableStateOf(25) }
@@ -34,11 +45,8 @@ fun HomeScreenView() {
             onDismiss = { showStudySheet = false }
         )
     } else {
-        Scaffold(
-            containerColor = Color(0xFFF8FAFC)
-        ) { paddingValues ->
+        Scaffold(containerColor = BgColor) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize()) {
-                // Main Content
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -56,8 +64,6 @@ fun HomeScreenView() {
                         4 -> org.example.project.features.record.RecordScreenView()
                     }
                 }
-
-                // Floating Tab Bar
                 Box(modifier = Modifier.align(Alignment.BottomCenter)) {
                     BottomNavigationBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
                 }
@@ -66,69 +72,265 @@ fun HomeScreenView() {
     }
 }
 
-// MARK: - Home Tab
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Home Tab — リッチなキャラクター + 吹き出し + 没入感
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 @Composable
 fun HomeTabContent(
     studyMinutes: Int,
     onStudyMinutesChange: (Int) -> Unit,
     onStartStudy: () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "bounce")
-    val offsetY by infiniteTransition.animateFloat(
-        initialValue = -15f,
-        targetValue = 15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "bounce_anim"
+    // アニメーション
+    val infiniteTransition = rememberInfiniteTransition(label = "home")
+    val bounceY by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = -12f,
+        animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "bounce"
     )
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f, targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(tween(2000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "glow"
+    )
+    val breathScale by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(tween(3000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "breath"
+    )
+
+    // セリフ切り替え
+    val messages = remember {
+        listOf(
+            "今日の特訓も頑張ろうな！",
+            "知識こそ最強の武器だ。",
+            "お前の成長、楽しみにしてるぞ。",
+            "さぁ、冒険の時間だ！",
+            "集中すれば、何でもできる。"
+        )
+    }
+    var messageIndex by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(4000L)
+            messageIndex = (messageIndex + 1) % messages.size
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        HeaderView()
-        Spacer(modifier = Modifier.weight(1f))
-        CharacterView(offsetY = offsetY)
-        Spacer(modifier = Modifier.weight(1f))
-        
-        // 勉強時間の調整
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("今回の冒険時間", fontSize = 12.sp, color = Color.Gray)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+        // ── ヘッダー ──
+        HomeHeader()
+
+        Spacer(modifier = Modifier.weight(0.4f))
+
+        // ── キャラクターエリア ──
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            // 背景オーラ
+            Box(
                 modifier = Modifier
-                    .padding(top = 8.dp)
-                    .background(Color.White, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                IconButton(onClick = { if (studyMinutes > 1) onStudyMinutesChange(studyMinutes - 1) }) {
-                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Decrease", tint = Color.Blue)
+                    .size((240 * breathScale).dp)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                AccentBlue.copy(alpha = glowAlpha * 0.3f),
+                                AccentIndigo.copy(alpha = glowAlpha * 0.15f),
+                                Color.Transparent
+                            )
+                        ),
+                        shape = CircleShape
+                    )
+            )
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // 吹き出し
+                Box(
+                    modifier = Modifier
+                        .shadow(8.dp, RoundedCornerShape(20.dp))
+                        .background(CardWhite, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("💬", fontSize = 16.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "「${messages[messageIndex]}」",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                    }
                 }
-                Text(
-                    text = "$studyMinutes 分",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.width(80.dp),
-                    textAlign = TextAlign.Center
+                // 吹き出し三角
+                Box(
+                    modifier = Modifier
+                        .size(width = 16.dp, height = 10.dp)
+                        .background(CardWhite)
+                        .clip(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
                 )
-                IconButton(onClick = { if (studyMinutes < 120) onStudyMinutesChange(studyMinutes + 1) }) {
-                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Increase", tint = Color.Blue)
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // キャラクター
+                Text(
+                    "🧙‍♂️",
+                    fontSize = 100.sp,
+                    modifier = Modifier.offset(y = bounceY.dp)
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // キャラ名 + Lv
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("マーリン", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Box(
+                        modifier = Modifier
+                            .background(AccentBlue.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text("Lv.24", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AccentBlue)
+                    }
                 }
             }
         }
-        
+
+        Spacer(modifier = Modifier.weight(0.3f))
+
+        // ── 冒険時間設定 ──
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("⏱ 冒険時間", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .shadow(4.dp, RoundedCornerShape(20.dp))
+                    .background(CardWhite, RoundedCornerShape(20.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                // マイナスボタン
+                IconButton(
+                    onClick = { if (studyMinutes > 5) onStudyMinutesChange(studyMinutes - 5) }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(AccentBlue.copy(alpha = 0.1f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Decrease", tint = AccentBlue)
+                    }
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                ) {
+                    Text(
+                        text = "$studyMinutes",
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextPrimary
+                    )
+                    Text("分", fontSize = 14.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                }
+
+                IconButton(
+                    onClick = { if (studyMinutes < 120) onStudyMinutesChange(studyMinutes + 5) }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(AccentBlue.copy(alpha = 0.1f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Increase", tint = AccentBlue)
+                    }
+                }
+            }
+
+            // クイック選択
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(15, 25, 45, 60).forEach { min ->
+                    val isSelected = studyMinutes == min
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (isSelected) AccentBlue else Color(0xFFE2E8F0)
+                            )
+                            .clickable { onStudyMinutesChange(min) }
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            "${min}分",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSelected) Color.White else TextSecondary
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
-        
-        // 勉強開始ボタン
-        StudyStartButton(onClick = onStartStudy)
+
+        // ── 出発ボタン ──
+        Button(
+            onClick = onStartStudy,
+            shape = RoundedCornerShape(24.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+            contentPadding = PaddingValues(0.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp)
+                .height(60.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.linearGradient(listOf(FireRed, FireOrange)),
+                        shape = RoundedCornerShape(24.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("⚔️", fontSize = 22.sp)
+                    Text("冒険に出発する", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White)
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
+// ── ヘッダー ─────────────────────────────────
+
 @Composable
-fun HeaderView() {
+private fun HomeHeader() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -139,97 +341,49 @@ fun HeaderView() {
         // 累計勉強時間
         Row(
             modifier = Modifier
-                .shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp))
-                .background(Color.White)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .shadow(4.dp, RoundedCornerShape(16.dp))
+                .background(CardWhite, RoundedCornerShape(16.dp))
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.DateRange, contentDescription = "Time", tint = Color.Blue)
+            Text("📖", fontSize = 18.sp)
             Spacer(modifier = Modifier.width(8.dp))
             Column {
-                Text("Total Study", fontSize = 10.sp, color = Color.Gray)
-                Text("124h 30m", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("累計勉強", fontSize = 10.sp, color = TextSecondary)
+                Text("124h 30m", fontSize = 15.sp, fontWeight = FontWeight.Black, color = TextPrimary)
             }
         }
 
         // 知識の結晶
         Row(
             modifier = Modifier
-                .shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp))
-                .background(Color.White)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .shadow(4.dp, RoundedCornerShape(16.dp))
+                .background(CardWhite, RoundedCornerShape(16.dp))
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Star, contentDescription = "Crystals", tint = Color(0xFFFFD700))
+            Text("💎", fontSize = 18.sp)
             Spacer(modifier = Modifier.width(8.dp))
             Column {
-                Text("知識の結晶", fontSize = 10.sp, color = Color.Gray)
-                Text("1,250", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("知識の結晶", fontSize = 10.sp, color = TextSecondary)
+                Text("1,250", fontSize = 15.sp, fontWeight = FontWeight.Black, color = TextPrimary)
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Icon(Icons.Default.AddCircle, contentDescription = "Add", tint = Color(0xFF10B981))
-        }
-    }
-}
-
-@Composable
-fun CharacterView(offsetY: Float) {
-    Box(
-        modifier = Modifier.size(300.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(250.dp)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(Color.Blue.copy(alpha = 0.15f), Color.Transparent)
-                    ),
-                    shape = CircleShape
-                )
-        )
-        
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(modifier = Modifier.width(8.dp))
             Box(
                 modifier = Modifier
-                    .shadow(4.dp, RoundedCornerShape(16.dp))
-                    .background(Color.White, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .size(24.dp)
+                    .background(EmeraldGreen, CircleShape),
+                contentAlignment = Alignment.Center
             ) {
-                Text("今日の特訓も頑張ろうな！", fontWeight = FontWeight.Bold, color = Color.Black)
+                Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White, modifier = Modifier.size(16.dp))
             }
-            Spacer(modifier = Modifier.height(20.dp))
-            Text("🧙‍♂️", fontSize = 120.sp, modifier = Modifier.offset(y = offsetY.dp))
         }
     }
 }
 
-@Composable
-fun StudyStartButton(onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        shape = RoundedCornerShape(30.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-        contentPadding = PaddingValues(0.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(Color(0xFFEF4444), Color(0xFFF59E0B))
-                    ),
-                    shape = RoundedCornerShape(30.dp)
-                )
-                .padding(vertical = 16.dp, horizontal = 40.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Default.PlayArrow, contentDescription = "Start", tint = Color.White)
-                Text("特訓スタート", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            }
-        }
-    }
-}
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BottomNavigationBar / NavItem / Placeholder — 変更なし
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 @Composable
 fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
@@ -264,7 +418,7 @@ fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
 
 @Composable
 fun NavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, isSelected: Boolean, isCenter: Boolean = false, onClick: () -> Unit) {
-    val color = if (isSelected) Color(0xFF3B82F6) else Color.Gray
+    val color = if (isSelected) AccentBlue else Color.Gray
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -274,9 +428,7 @@ fun NavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String
             .width(60.dp)
     ) {
         Box(
-            modifier = Modifier
-                .height(40.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.height(40.dp).fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
             if (isCenter) {
@@ -286,7 +438,7 @@ fun NavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String
                         .offset(y = (-16).dp)
                         .shadow(8.dp, CircleShape)
                         .background(
-                            brush = Brush.linearGradient(listOf(Color(0xFF3B82F6), Color(0xFF6366F1))),
+                            brush = Brush.linearGradient(listOf(AccentBlue, AccentIndigo)),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -296,7 +448,7 @@ fun NavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String
             } else {
                 if (isSelected) {
                     Surface(
-                        color = Color(0xFF3B82F6).copy(alpha = 0.12f),
+                        color = AccentBlue.copy(alpha = 0.12f),
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.size(width = 44.dp, height = 32.dp)
                     ) {}
@@ -305,9 +457,9 @@ fun NavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String
             }
         }
         Text(
-            label, 
-            fontSize = 10.sp, 
-            color = if (isCenter) Color.DarkGray else color, 
+            label,
+            fontSize = 10.sp,
+            color = if (isCenter) Color.DarkGray else color,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             modifier = Modifier.padding(top = if (isCenter) 4.dp else 0.dp)
         )

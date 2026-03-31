@@ -1,188 +1,293 @@
 import SwiftUI
 
+// MARK: - Color Helper
+
+private extension Color {
+    init(hex: UInt, alpha: Double = 1.0) {
+        self.init(
+            .sRGB,
+            red: Double((hex >> 16) & 0xFF) / 255,
+            green: Double((hex >> 8) & 0xFF) / 255,
+            blue: Double(hex & 0xFF) / 255,
+            opacity: alpha
+        )
+    }
+}
+
+// MARK: - 定数
+
+private let bgColor = Color(hex: 0xF0F4FF)
+private let cardWhite = Color.white
+private let textPrimary = Color(hex: 0x1E293B)
+private let textSecondary = Color(hex: 0x64748B)
+private let accentBlue = Color(hex: 0x3B82F6)
+private let accentIndigo = Color(hex: 0x6366F1)
+private let fireRed = Color(hex: 0xEF4444)
+private let fireOrange = Color(hex: 0xF59E0B)
+private let emeraldGreen = Color(hex: 0x10B981)
+
 /// ホーム画面（タブ③: 中央）
-/// キャラクター表示 + ステータス + 勉強開始の導線
 struct HomeScreenView: View {
-    @State private var isBouncing = false
     @State private var showStudySheet = false
     @State private var studyMinutes = 25
+    @State private var isBouncing = false
+    @State private var messageIndex = 0
+
+    private let messages = [
+        "今日の特訓も頑張ろうな！",
+        "知識こそ最強の武器だ。",
+        "お前の成長、楽しみにしてるぞ。",
+        "さぁ、冒険の時間だ！",
+        "集中すれば、何でもできる。"
+    ]
+
+    let messageTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 0) {
-            // ヘッダー（累計勉強時間 + ガチャ石）
-            headerView
-
+            homeHeader
             Spacer()
-
-            // キャラクター表示エリア
-            characterView
-
+            characterArea
             Spacer()
-            
-            // 勉強時間の調整
-            VStack(spacing: 8) {
-                Text("今回の冒険時間")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                HStack(spacing: 20) {
-                    Button(action: { if studyMinutes > 1 { studyMinutes -= 1 } }) {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.blue)
-                    }
-                    
-                    Text("\(studyMinutes) 分")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .frame(width: 80)
-                    
-                    Button(action: { if studyMinutes < 120 { studyMinutes += 1 } }) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.blue)
-                    }
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 16)
-                .background(Color(UIColor.secondarySystemGroupedBackground))
-                .cornerRadius(12)
-            }
-            .padding(.bottom, 20)
-
-            // 勉強開始ボタン
-            studyStartButton
-
-            Spacer()
-
-            // タップバー分の余白
+            timeSelector
+            Spacer().frame(height: 24)
+            startButton
+            Spacer().frame(height: 24)
             Spacer().frame(height: 90)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(UIColor.systemGroupedBackground))
+        .background(bgColor)
         .fullScreenCover(isPresented: $showStudySheet) {
             StudyQuestScreenView(initialStudyMinutes: studyMinutes)
+        }
+        .onReceive(messageTimer) { _ in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                messageIndex = (messageIndex + 1) % messages.count
+            }
         }
     }
 
     // MARK: - Header
 
-    private var headerView: some View {
+    private var homeHeader: some View {
         HStack {
-            // 累計勉強時間
             HStack(spacing: 8) {
-                Image(systemName: "clock.fill")
-                    .foregroundColor(.blue)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Total Study")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                Text("📖").font(.system(size: 18))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("累計勉強")
+                        .font(.system(size: 10))
+                        .foregroundColor(textSecondary)
                     Text("124h 30m")
-                        .font(.headline)
-                        .fontWeight(.bold)
+                        .font(.system(size: 15, weight: .heavy))
+                        .foregroundColor(textPrimary)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color(UIColor.secondarySystemGroupedBackground))
-            .cornerRadius(12)
-            .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(cardWhite)
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
 
             Spacer()
 
-            // 知識の結晶（ガチャ石）
             HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .foregroundColor(.yellow)
-                VStack(alignment: .leading, spacing: 2) {
+                Text("💎").font(.system(size: 18))
+                VStack(alignment: .leading, spacing: 1) {
                     Text("知識の結晶")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 10))
+                        .foregroundColor(textSecondary)
                     Text("1,250")
-                        .font(.headline)
-                        .fontWeight(.bold)
+                        .font(.system(size: 15, weight: .heavy))
+                        .foregroundColor(textPrimary)
                 }
-                Button(action: {}) {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundColor(.green)
-                }
+                Circle()
+                    .fill(emeraldGreen)
+                    .frame(width: 24, height: 24)
+                    .overlay(
+                        Image(systemName: "plus")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                    )
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color(UIColor.secondarySystemGroupedBackground))
-            .cornerRadius(12)
-            .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(cardWhite)
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
         }
-        .padding()
+        .padding(16)
     }
 
-    // MARK: - Study Button
+    // MARK: - Character Area
 
-    private var studyStartButton: some View {
-        Button(action: {
-            showStudySheet = true
-        }) {
-            HStack(spacing: 12) {
-                Image(systemName: "flame.fill")
-                    .font(.title2)
-                Text("勉強をスタートする")
-                    .font(.headline)
-                    .fontWeight(.bold)
+    private var characterArea: some View {
+        ZStack {
+            // オーラ
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [accentBlue.opacity(0.12), accentIndigo.opacity(0.06), .clear],
+                        center: .center,
+                        startRadius: 20,
+                        endRadius: 140
+                    )
+                )
+                .frame(width: 280, height: 280)
+
+            VStack(spacing: 0) {
+                // 吹き出し
+                VStack(spacing: 0) {
+                    HStack(spacing: 8) {
+                        Text("💬").font(.system(size: 14))
+                        Text("「\(messages[messageIndex])」")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(textPrimary)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(cardWhite)
+                    .cornerRadius(20)
+                    .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
+
+                    // 三角
+                    Triangle()
+                        .fill(cardWhite)
+                        .frame(width: 16, height: 10)
+                }
+
+                Spacer().frame(height: 6)
+
+                // キャラクター
+                Text("🧙‍♂️")
+                    .font(.system(size: 100))
+                    .offset(y: isBouncing ? -12 : 0)
+                    .animation(
+                        .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+                        value: isBouncing
+                    )
+                    .onAppear { isBouncing = true }
+
+                Spacer().frame(height: 4)
+
+                // 名前 + Lv
+                HStack(spacing: 8) {
+                    Text("マーリン")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(textPrimary)
+                    Text("Lv.24")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(accentBlue)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(accentBlue.opacity(0.12))
+                        .cornerRadius(8)
+                }
+            }
+        }
+    }
+
+    // MARK: - Time Selector
+
+    private var timeSelector: some View {
+        VStack(spacing: 8) {
+            Text("⏱ 冒険時間")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(textSecondary)
+
+            HStack(spacing: 0) {
+                Button(action: { if studyMinutes > 5 { studyMinutes -= 5 } }) {
+                    Circle()
+                        .fill(accentBlue.opacity(0.1))
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(accentBlue)
+                        )
+                }
+
+                VStack(spacing: 0) {
+                    Text("\(studyMinutes)")
+                        .font(.system(size: 40, weight: .black, design: .rounded))
+                        .foregroundColor(textPrimary)
+                    Text("分")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(textSecondary)
+                }
+                .frame(width: 100)
+
+                Button(action: { if studyMinutes < 120 { studyMinutes += 5 } }) {
+                    Circle()
+                        .fill(accentBlue.opacity(0.1))
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(accentBlue)
+                        )
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(cardWhite)
+            .cornerRadius(20)
+            .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
+
+            // クイック選択
+            HStack(spacing: 8) {
+                ForEach([15, 25, 45, 60], id: \.self) { min in
+                    let isSelected = studyMinutes == min
+                    Button(action: { studyMinutes = min }) {
+                        Text("\(min)分")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(isSelected ? .white : textSecondary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(isSelected ? accentBlue : Color(hex: 0xE2E8F0))
+                            .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal, 32)
+    }
+
+    // MARK: - Start Button
+
+    private var startButton: some View {
+        Button(action: { showStudySheet = true }) {
+            HStack(spacing: 10) {
+                Text("⚔️").font(.system(size: 22))
+                Text("冒険に出発する")
+                    .font(.system(size: 18, weight: .heavy))
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
             .background(
                 LinearGradient(
-                    gradient: Gradient(colors: [.red, .orange]),
+                    colors: [fireRed, fireOrange],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
             )
-            .cornerRadius(20)
-            .shadow(color: .orange.opacity(0.3), radius: 10, y: 5)
-            .padding(.horizontal, 40)
+            .cornerRadius(24)
+            .shadow(color: fireOrange.opacity(0.4), radius: 10, y: 5)
         }
+        .padding(.horizontal, 32)
     }
+}
 
-    // MARK: - Character
+// MARK: - 吹き出し三角
 
-    private var characterView: some View {
-        ZStack {
-            // 背景グラデーション円
-            Circle()
-                .fill(
-                    RadialGradient(
-                        gradient: Gradient(colors: [.blue.opacity(0.2), .clear]),
-                        center: .center,
-                        startRadius: 20,
-                        endRadius: 150
-                    )
-                )
-                .frame(width: 300, height: 300)
-
-            VStack(spacing: 8) {
-                // 吹き出し
-                Text("「今日の特訓も頑張ろうな！」")
-                    .font(.subheadline)
-                    .fontWeight(.bold)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(Color.white)
-                    .cornerRadius(20)
-                    .shadow(radius: 4)
-
-                // キャラクター（仮）
-                Text("🧙‍♂️")
-                    .font(.system(size: 130))
-                    .offset(y: isBouncing ? -12 : 0)
-                    .animation(
-                        Animation.easeInOut(duration: 1.5)
-                            .repeatForever(autoreverses: true),
-                        value: isBouncing
-                    )
-                    .onAppear { isBouncing = true }
-            }
+private struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path { p in
+            p.move(to: CGPoint(x: rect.midX - 8, y: 0))
+            p.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+            p.addLine(to: CGPoint(x: rect.midX + 8, y: 0))
+            p.closeSubpath()
         }
     }
 }
