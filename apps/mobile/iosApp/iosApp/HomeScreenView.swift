@@ -1,4 +1,5 @@
 import SwiftUI
+import Shared
 
 // MARK: - Color Helper
 
@@ -35,7 +36,7 @@ struct HomeScreenView: View {
     @State private var messageIndex = 0
 
     // KMP HomeViewModel — Koin から取得
-    private let homeViewModel = KoinHelperKt.doGetHomeViewModel()
+    private let homeViewModel = KoinHelperKt.getHomeViewModel()
     @State private var homeState: HomeUiState?
 
     private let messages = [

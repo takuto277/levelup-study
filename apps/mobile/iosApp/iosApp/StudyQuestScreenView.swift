@@ -41,7 +41,7 @@ struct StudyQuestScreenView: View {
     let initialStudyMinutes: Int
     let genreId: String?
 
-    private let viewModel = StudyQuestViewModel()
+    private let viewModel = KoinHelperKt.getStudyQuestViewModel()
     @State private var uiState: StudyQuestUiState
     @State private var pulsePhase = false
     @State private var walkPhase = false
@@ -58,14 +58,16 @@ struct StudyQuestScreenView: View {
             isOvertime: false,
             currentLog: [],
             displayTime: "\(initialStudyMinutes < 10 ? "0" : "")\(initialStudyMinutes):00",
-            genre: genre,
+            genreId: genreId,
             adventurePhase: .walking,
             enemyName: "スライム",
             enemyEmoji: "🟢",
             enemyHp: 100,
             enemyMaxHp: 100,
             lastDamage: 0,
-            defeatedCount: 0
+            defeatedCount: 0,
+            serverRewards: [],
+            serverSynced: nil
         ))
     }
 
