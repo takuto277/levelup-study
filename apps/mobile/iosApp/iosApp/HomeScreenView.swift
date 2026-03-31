@@ -30,8 +30,13 @@ private let emeraldGreen = Color(hex: 0x10B981)
 struct HomeScreenView: View {
     @State private var showStudySheet = false
     @State private var studyMinutes = 25
+    @State private var selectedGenre = "総合"
     @State private var isBouncing = false
     @State private var messageIndex = 0
+
+    // KMP HomeViewModel — Koin から取得
+    private let homeViewModel = KoinHelperKt.doGetHomeViewModel()
+    @State private var homeState: HomeUiState?
 
     private let messages = [
         "今日の特訓も頑張ろうな！",
@@ -39,6 +44,15 @@ struct HomeScreenView: View {
         "お前の成長、楽しみにしてるぞ。",
         "さぁ、冒険の時間だ！",
         "集中すれば、何でもできる。"
+    ]
+
+    private let genres: [(emoji: String, label: String)] = [
+        ("🔢", "数学"),
+        ("🔬", "理科"),
+        ("📝", "語学"),
+        ("💻", "プログラミング"),
+        ("📚", "総合"),
+        ("🎨", "クリエイティブ")
     ]
 
     let messageTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
@@ -51,6 +65,8 @@ struct HomeScreenView: View {
             Spacer()
             timeSelector
             Spacer().frame(height: 24)
+            genreSelector
+            Spacer().frame(height: 24)
             startButton
             Spacer().frame(height: 24)
             Spacer().frame(height: 90)
@@ -58,12 +74,18 @@ struct HomeScreenView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(bgColor)
         .fullScreenCover(isPresented: $showStudySheet) {
-            StudyQuestScreenView(initialStudyMinutes: studyMinutes)
+            StudyQuestScreenView(initialStudyMinutes: studyMinutes, genre: selectedGenre)
         }
         .onReceive(messageTimer) { _ in
             withAnimation(.easeInOut(duration: 0.3)) {
                 messageIndex = (messageIndex + 1) % messages.count
             }
+        }
+        .onAppear {
+            homeViewModel.onIntent(intent: HomeIntentRefresh())
+        }
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+            self.homeState = homeViewModel.uiState.value as? HomeUiState
         }
     }
 
@@ -77,7 +99,7 @@ struct HomeScreenView: View {
                     Text("累計勉強")
                         .font(.system(size: 10))
                         .foregroundColor(textSecondary)
-                    Text("124h 30m")
+                    Text(homeState?.formattedStudyTime ?? "0h 0m")
                         .font(.system(size: 15, weight: .heavy))
                         .foregroundColor(textPrimary)
                 }
@@ -96,7 +118,7 @@ struct HomeScreenView: View {
                     Text("知識の結晶")
                         .font(.system(size: 10))
                         .foregroundColor(textSecondary)
-                    Text("1,250")
+                    Text("\(homeState?.stones ?? 0)")
                         .font(.system(size: 15, weight: .heavy))
                         .foregroundColor(textPrimary)
                 }
@@ -247,6 +269,45 @@ struct HomeScreenView: View {
                             .cornerRadius(12)
                     }
                     .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal, 32)
+    }
+
+    // MARK: - Genre Selector
+
+    private var genreSelector: some View {
+        VStack(spacing: 8) {
+            Text("📖 ジャンル")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(textSecondary)
+
+            // 3列×2行
+            VStack(spacing: 8) {
+                ForEach(0..<2, id: \.self) { row in
+                    HStack(spacing: 8) {
+                        ForEach(0..<3, id: \.self) { col in
+                            let index = row * 3 + col
+                            if index < genres.count {
+                                let genre = genres[index]
+                                let isSelected = selectedGenre == genre.label
+                                Button(action: { selectedGenre = genre.label }) {
+                                    HStack(spacing: 4) {
+                                        Text(genre.emoji).font(.system(size: 14))
+                                        Text(genre.label)
+                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundColor(isSelected ? .white : textSecondary)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(isSelected ? accentIndigo : Color(hex: 0xE2E8F0))
+                                    .cornerRadius(12)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
                 }
             }
         }

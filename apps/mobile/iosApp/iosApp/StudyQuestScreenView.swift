@@ -21,12 +21,14 @@ private let darkBg = Color(hex: 0x0F172A)
 private let darkCard = Color(hex: 0x1E293B)
 private let darkSurface = Color(hex: 0x334155)
 private let accentBlue = Color(hex: 0x3B82F6)
+private let accentIndigo = Color(hex: 0x6366F1)
 private let fireRed = Color(hex: 0xEF4444)
 private let fireOrange = Color(hex: 0xF59E0B)
 private let emeraldGreen = Color(hex: 0x10B981)
 private let purpleGlow = Color(hex: 0x8B5CF6)
 private let textWhite = Color(hex: 0xF8FAFC)
 private let textMuted = Color(hex: 0x94A3B8)
+private let damageRed = Color(hex: 0xFF4444)
 private let breakBg = Color(hex: 0x0C1E0C)
 private let breakCard = Color(hex: 0x1A2E1A)
 private let breakAccent = Color(hex: 0x34D399)
@@ -37,13 +39,16 @@ private let breakGlow = Color(hex: 0x10B981)
 struct StudyQuestScreenView: View {
     @Environment(\.dismiss) var dismiss
     let initialStudyMinutes: Int
+    let genre: String
 
     private let viewModel = StudyQuestViewModel()
     @State private var uiState: StudyQuestUiState
     @State private var pulsePhase = false
+    @State private var walkPhase = false
 
-    init(initialStudyMinutes: Int) {
+    init(initialStudyMinutes: Int, genre: String = "総合") {
         self.initialStudyMinutes = initialStudyMinutes
+        self.genre = genre
         _uiState = State(initialValue: StudyQuestUiState(
             type: .study,
             status: .ready,
@@ -52,7 +57,15 @@ struct StudyQuestScreenView: View {
             elapsedSeconds: 0,
             isOvertime: false,
             currentLog: [],
-            displayTime: "\(initialStudyMinutes < 10 ? "0" : "")\(initialStudyMinutes):00"
+            displayTime: "\(initialStudyMinutes < 10 ? "0" : "")\(initialStudyMinutes):00",
+            genre: genre,
+            adventurePhase: .walking,
+            enemyName: "スライム",
+            enemyEmoji: "🟢",
+            enemyHp: 100,
+            enemyMaxHp: 100,
+            lastDamage: 0,
+            defeatedCount: 0
         ))
     }
 
@@ -70,9 +83,12 @@ struct StudyQuestScreenView: View {
             }
         }
         .onAppear {
-            viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes)))
+            viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genre: genre))
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 pulsePhase = true
+            }
+            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                walkPhase = true
             }
         }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
@@ -80,13 +96,12 @@ struct StudyQuestScreenView: View {
         }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // メインクエスト — 没入感のあるダークUI
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // MARK: - メインクエストビュー
 
     private var mainQuestView: some View {
         let isBreak = uiState.type == .break_
         let isOvertime = uiState.isOvertime
+        let phase = uiState.adventurePhase
         let targetSec = isBreak ? Int(uiState.targetBreakMinutes) * 60 : Int(uiState.targetStudyMinutes) * 60
         let progress: Double = targetSec > 0 && !isOvertime
             ? min(Double(uiState.elapsedSeconds) / Double(targetSec), 1.0)
@@ -94,177 +109,157 @@ struct StudyQuestScreenView: View {
         let glowColor: Color = isOvertime ? purpleGlow : (isBreak ? breakGlow : accentBlue)
 
         return VStack(spacing: 0) {
-            // ── トップバー ──
+            // トップバー
             Spacer().frame(height: 56)
             HStack {
-                Button(action: {
-                    viewModel.onIntent(intent: StudyQuestIntentStopQuest())
-                    dismiss()
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(textMuted)
-                        .frame(width: 40, height: 40)
-                }
+                // ジャンルバッジ
+                Text("📖 \(uiState.genre)")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(accentIndigo)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(accentIndigo.opacity(0.15))
+                    .cornerRadius(12)
 
                 Spacer()
 
                 // ステータスバッジ
                 HStack(spacing: 6) {
-                    Text(isOvertime ? "⚡" : (uiState.status == .paused ? "⏸" : (isBreak ? "🌿" : "⚔️")))
+                    Text(phaseStatusEmoji(phase: phase, isOvertime: isOvertime, isPaused: uiState.status == .paused, isBreak: isBreak))
                         .font(.system(size: 12))
-                    Text(isOvertime ? "限界突破中" : (uiState.status == .paused ? "一時停止" : (isBreak ? "休憩中" : "冒険中")))
+                    Text(phaseStatusText(phase: phase, isOvertime: isOvertime, isPaused: uiState.status == .paused, isBreak: isBreak))
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(glowColor)
+                        .foregroundColor(phaseStatusColor(phase: phase, isOvertime: isOvertime, isBreak: isBreak))
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
-                .background(glowColor.opacity(0.15))
+                .background(phaseStatusColor(phase: phase, isOvertime: isOvertime, isBreak: isBreak).opacity(0.15))
                 .cornerRadius(12)
 
                 Spacer()
-                Spacer().frame(width: 40)
+
+                // 撃破数
+                Text("💀 \(uiState.defeatedCount)")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(emeraldGreen)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(emeraldGreen.opacity(0.15))
+                    .cornerRadius(12)
             }
             .padding(.horizontal, 24)
 
             Spacer()
 
-            // ── サークルタイマー ──
+            // 冒険シーン
             ZStack {
-                // リング
-                Circle()
-                    .stroke(glowColor.opacity(0.15), lineWidth: 10)
-                    .frame(width: 220, height: 220)
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(
-                        glowColor.opacity(pulsePhase ? 0.9 : 0.5),
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(
+                        isBreak
+                            ? LinearGradient(colors: [Color(hex: 0x0A1F0A), Color(hex: 0x132613)], startPoint: .top, endPoint: .bottom)
+                            : LinearGradient(colors: [Color(hex: 0x0A0F1E), Color(hex: 0x141C2F)], startPoint: .top, endPoint: .bottom)
                     )
-                    .frame(width: 220, height: 220)
-                    .rotationEffect(.degrees(-90))
+                    .frame(height: 220)
 
-                VStack(spacing: 8) {
-                    // キャラ & 敵
-                    if isBreak {
-                        Text("🏕️").font(.system(size: 48))
-                    } else {
-                        HStack(spacing: 16) {
-                            Text("🧙‍♂️").font(.system(size: 40))
-                            Text("⚔️")
-                                .font(.system(size: 20))
-                                .foregroundColor(fireRed.opacity(pulsePhase ? 0.9 : 0.4))
-                            Text("👾").font(.system(size: 40))
-                        }
-                    }
-
-                    // タイマー
-                    Text(uiState.displayTime)
-                        .font(.system(size: 52, weight: .heavy, design: .monospaced))
-                        .foregroundColor(isOvertime ? purpleGlow : (isBreak ? breakAccent : textWhite))
-
-                    if isOvertime {
-                        Text("延長戦！")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(purpleGlow.opacity(pulsePhase ? 0.9 : 0.4))
-                    }
+                if isBreak {
+                    breakScene
+                } else {
+                    adventureScene
                 }
             }
-            .scaleEffect(pulsePhase ? 1.03 : 1.0)
+            .padding(.horizontal, 24)
 
-            Spacer().frame(height: 24)
+            Spacer().frame(height: 16)
 
-            // ── バトルログ ──
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text(isBreak ? "🌙 キャンプログ" : "📜 冒険ログ")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(textWhite)
-                    Spacer()
-                    if isOvertime {
-                        Text("超集中")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(purpleGlow)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(purpleGlow.opacity(0.2))
-                            .cornerRadius(8)
-                    }
+            // タイマー
+            HStack(spacing: 16) {
+                // 進捗リング（小型）
+                ZStack {
+                    Circle()
+                        .stroke(glowColor.opacity(0.15), lineWidth: 4)
+                        .frame(width: 48, height: 48)
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(glowColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .frame(width: 48, height: 48)
+                        .rotationEffect(.degrees(-90))
                 }
 
+                Text(uiState.displayTime)
+                    .font(.system(size: 48, weight: .heavy, design: .monospaced))
+                    .foregroundColor(isOvertime ? purpleGlow : (isBreak ? breakAccent : textWhite))
+            }
+
+            if isOvertime {
+                Text("延長戦！")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(purpleGlow.opacity(pulsePhase ? 0.9 : 0.4))
+            }
+
+            Spacer().frame(height: 12)
+
+            // 冒険ログ（コンパクト）
+            VStack(alignment: .leading, spacing: 6) {
+                Text(isBreak ? "🌙 キャンプログ" : "📜 冒険ログ")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(textWhite)
+
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(Array(uiState.currentLog.enumerated()), id: \.offset) { idx, log in
-                            let isLatest = idx == uiState.currentLog.count - 1
-                            HStack(alignment: .top, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        let logs = Array(uiState.currentLog.suffix(3))
+                        ForEach(Array(logs.enumerated()), id: \.offset) { idx, log in
+                            let isLatest = idx == logs.count - 1
+                            HStack(alignment: .top, spacing: 8) {
                                 Circle()
-                                    .fill(isLatest ? glowColor : textMuted)
-                                    .frame(width: 6, height: 6)
-                                    .padding(.top, 6)
+                                    .fill(isLatest ? (isBreak ? breakAccent : accentBlue) : textMuted)
+                                    .frame(width: 4, height: 4)
+                                    .padding(.top, 5)
                                 Text(log)
-                                    .font(.system(size: 13, weight: isLatest ? .semibold : .regular))
+                                    .font(.system(size: 11, weight: isLatest ? .semibold : .regular))
                                     .foregroundColor(isLatest ? textWhite : textMuted)
-                                    .lineSpacing(4)
+                                    .lineSpacing(2)
                             }
                         }
                     }
                 }
             }
-            .padding(16)
+            .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 100)
             .background(isBreak ? breakCard : darkCard)
-            .cornerRadius(24)
+            .cornerRadius(16)
             .padding(.horizontal, 24)
 
             Spacer()
 
-            // ── ボタン ──
-            VStack(spacing: 12) {
-                if !isBreak {
-                    Button(action: {
-                        viewModel.onIntent(intent: StudyQuestIntentFinishSession())
-                    }) {
-                        Text("🏁 クエスト完了")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(emeraldGreen)
-                            .cornerRadius(16)
+            // ボタン（一時停止 + 終了のみ）
+            HStack(spacing: 12) {
+                Button(action: {
+                    viewModel.onIntent(intent: StudyQuestIntentTogglePause())
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: uiState.status == .running ? "pause.fill" : "play.fill")
+                            .font(.system(size: 14))
+                        Text(uiState.status == .running ? "一時停止" : "再開")
+                            .font(.system(size: 14, weight: .bold))
                     }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(uiState.status == .running ? darkSurface : accentBlue)
+                    .cornerRadius(16)
                 }
 
-                HStack(spacing: 12) {
-                    Button(action: {
-                        viewModel.onIntent(intent: StudyQuestIntentTogglePause())
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: uiState.status == .running ? "pause.fill" : "play.fill")
-                                .font(.system(size: 14))
-                            Text(uiState.status == .running ? "一時停止" : "再開")
-                                .font(.system(size: 14, weight: .bold))
-                        }
+                Button(action: {
+                    viewModel.onIntent(intent: StudyQuestIntentEndQuest())
+                }) {
+                    Text("🏁 終了する")
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(uiState.status == .running ? darkSurface : accentBlue)
+                        .background(emeraldGreen)
                         .cornerRadius(16)
-                    }
-
-                    Button(action: {
-                        viewModel.onIntent(intent: StudyQuestIntentStopQuest())
-                        dismiss()
-                    }) {
-                        Text("中止")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(fireRed)
-                            .padding(.vertical, 16)
-                            .padding(.horizontal, 24)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(fireRed.opacity(0.3), lineWidth: 1)
-                            )
-                    }
                 }
             }
             .padding(.horizontal, 24)
@@ -272,18 +267,178 @@ struct StudyQuestScreenView: View {
         }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // リザルト画面 — 達成感のある演出
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // MARK: - 冒険シーン
+
+    private var adventureScene: some View {
+        let phase = uiState.adventurePhase
+
+        return ZStack {
+            // 地面
+            VStack {
+                Spacer()
+                Rectangle()
+                    .fill(textMuted.opacity(0.2))
+                    .frame(height: 2)
+                    .padding(.bottom, 40)
+            }
+
+            switch phase {
+            case .walking:
+                VStack(spacing: 4) {
+                    Text("…")
+                        .font(.system(size: 16))
+                        .foregroundColor(textMuted.opacity(0.5))
+                    Text("🧙‍♂️")
+                        .font(.system(size: 64))
+                        .offset(x: walkPhase ? 8 : -8, y: walkPhase ? -6 : 0)
+                    Spacer().frame(height: 8)
+                    Text("探索中…")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(textMuted)
+                }
+
+            case .encounter:
+                ZStack {
+                    Color(hex: 0xEF4444, alpha: pulsePhase ? 0.15 : 0.0)
+                        .cornerRadius(24)
+                    VStack(spacing: 4) {
+                        Text("⚠️").font(.system(size: 32))
+                        Text("\(uiState.enemyName)が現れた！")
+                            .font(.system(size: 16, weight: .heavy))
+                            .foregroundColor(fireOrange)
+                        Spacer().frame(height: 12)
+                        Text(uiState.enemyEmoji).font(.system(size: 72))
+                    }
+                }
+
+            case .attacking:
+                HStack(spacing: 0) {
+                    Spacer()
+                    Text("🧙‍♂️")
+                        .font(.system(size: 56))
+                        .offset(x: pulsePhase ? 4 : -4)
+                    Spacer()
+
+                    Text("⚔️")
+                        .font(.system(size: 28))
+                        .foregroundColor(fireRed.opacity(pulsePhase ? 0.9 : 0.4))
+                        .offset(y: -8)
+
+                    Spacer()
+
+                    VStack(spacing: 4) {
+                        if uiState.lastDamage > 0 {
+                            Text("-\(uiState.lastDamage)")
+                                .font(.system(size: 20, weight: .heavy))
+                                .foregroundColor(damageRed)
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+
+                        Text(uiState.enemyEmoji)
+                            .font(.system(size: 56))
+                            .offset(x: uiState.lastDamage > 0 ? (pulsePhase ? 4 : -4) : 0)
+
+                        // 敵HPバー
+                        VStack(spacing: 2) {
+                            Text(uiState.enemyName)
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(textMuted)
+
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(darkSurface)
+                                    .frame(width: 80, height: 6)
+                                let hpRatio = uiState.enemyMaxHp > 0
+                                    ? CGFloat(uiState.enemyHp) / CGFloat(uiState.enemyMaxHp)
+                                    : 0
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(hpRatio > 0.5 ? emeraldGreen : (hpRatio > 0.25 ? fireOrange : fireRed))
+                                    .frame(width: 80 * hpRatio, height: 6)
+                            }
+
+                            Text("\(uiState.enemyHp)/\(uiState.enemyMaxHp)")
+                                .font(.system(size: 9))
+                                .foregroundColor(textMuted)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+
+            case .enemyDefeated:
+                VStack(spacing: 4) {
+                    Text("🎉").font(.system(size: 40))
+                    Text("\(uiState.enemyName)を倒した！")
+                        .font(.system(size: 18, weight: .heavy))
+                        .foregroundColor(emeraldGreen)
+                    Spacer().frame(height: 8)
+                    HStack(spacing: 8) {
+                        ForEach(0..<5, id: \.self) { i in
+                            Text("✨")
+                                .font(.system(size: CGFloat(16 + i * 4)))
+                                .offset(y: walkPhase ? CGFloat(-3 * (i + 1)) : 0)
+                        }
+                    }
+                    Spacer().frame(height: 8)
+                    Text("経験値を獲得！")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(fireOrange)
+                }
+
+            case .resting:
+                breakSceneContent
+
+            default:
+                EmptyView()
+            }
+        }
+        .frame(height: 220)
+    }
+
+    // MARK: - 休憩シーン
+
+    private var breakScene: some View {
+        breakSceneContent
+            .frame(height: 220)
+    }
+
+    private var breakSceneContent: some View {
+        ZStack {
+            // 星
+            ForEach(0..<10, id: \.self) { i in
+                Text("✦")
+                    .font(.system(size: CGFloat(8 + i % 4 * 3)))
+                    .foregroundColor(.white.opacity(pulsePhase ? 0.3 : 0.1))
+                    .offset(
+                        x: CGFloat(-120 + i * 28),
+                        y: CGFloat(-60 + (i % 3) * 25)
+                    )
+            }
+
+            VStack(spacing: 0) {
+                Text("🧙‍♂️")
+                    .font(.system(size: 48))
+                    .offset(x: -20)
+                Text("🔥")
+                    .font(.system(size: pulsePhase ? 32 : 28))
+                Spacer().frame(height: 8)
+                Text("休憩中… 体力を回復しています")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(breakAccent)
+            }
+        }
+    }
+
+    // MARK: - リザルト画面
 
     private var resultScreen: some View {
         let isStudy = uiState.type == .study
+        let actualMinutes = max(1, Int(uiState.elapsedSeconds / 60))
 
         return ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 0) {
                 Spacer().frame(height: 80)
 
-                // タイトル
                 Text(isStudy ? "⚔️ QUEST CLEAR!" : "🌿 REST COMPLETE!")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(isStudy ? fireOrange.opacity(0.8) : breakAccent.opacity(0.8))
@@ -293,9 +448,8 @@ struct StudyQuestScreenView: View {
                     .font(.system(size: 36, weight: .heavy))
                     .foregroundColor(textWhite)
 
-                Spacer().frame(height: 32)
+                Spacer().frame(height: 24)
 
-                // トロフィー
                 ZStack {
                     Circle()
                         .fill(
@@ -306,16 +460,16 @@ struct StudyQuestScreenView: View {
                                 ],
                                 center: .center,
                                 startRadius: 20,
-                                endRadius: 80
+                                endRadius: 70
                             )
                         )
-                        .frame(width: 160, height: 160)
+                        .frame(width: 140, height: 140)
                     Text(isStudy ? "🏆" : "✨")
-                        .font(.system(size: 80))
+                        .font(.system(size: 72))
                         .offset(y: pulsePhase ? -6 : 0)
                 }
 
-                Spacer().frame(height: 24)
+                Spacer().frame(height: 20)
 
                 // 報酬カード
                 VStack(spacing: 16) {
@@ -326,11 +480,13 @@ struct StudyQuestScreenView: View {
 
                         HStack {
                             Spacer()
-                            rewardItem(emoji: "⏱", label: "集中時間", value: "\(uiState.targetStudyMinutes)分")
+                            rewardItem(emoji: "⏱", label: "集中時間", value: "\(actualMinutes)分")
                             Spacer()
-                            rewardItem(emoji: "⭐", label: "経験値", value: "+\(uiState.targetStudyMinutes * 10)")
+                            rewardItem(emoji: "⭐", label: "経験値", value: "+\(actualMinutes * 10)")
                             Spacer()
-                            rewardItem(emoji: "💎", label: "結晶", value: "+\(uiState.targetStudyMinutes / 5)")
+                            rewardItem(emoji: "💀", label: "討伐数", value: "\(uiState.defeatedCount)体")
+                            Spacer()
+                            rewardItem(emoji: "💎", label: "結晶", value: "+\(actualMinutes / 5 + Int(uiState.defeatedCount))")
                             Spacer()
                         }
                     } else {
@@ -339,7 +495,6 @@ struct StudyQuestScreenView: View {
                             .foregroundColor(textMuted)
                     }
 
-                    // キャラ吹き出し
                     HStack(spacing: 10) {
                         Text("🧙‍♂️").font(.system(size: 28))
                         Text(isStudy
@@ -359,32 +514,38 @@ struct StudyQuestScreenView: View {
                 .cornerRadius(24)
                 .padding(.horizontal, 32)
 
-                Spacer().frame(height: 32)
+                Spacer().frame(height: 28)
 
                 // ボタン
-                Button(action: {
-                    viewModel.onIntent(intent: StudyQuestIntentNextSession())
-                }) {
-                    Text(isStudy ? "🌿 休憩を開始する" : "⚔️ 次の冒険へ")
-                        .font(.system(size: 16, weight: .heavy))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .background(isStudy ? emeraldGreen : accentBlue)
-                        .cornerRadius(18)
+                HStack(spacing: 12) {
+                    Button(action: {
+                        viewModel.onIntent(intent: StudyQuestIntentStopQuest())
+                        dismiss()
+                    }) {
+                        Text("🏠 街に戻る")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(textMuted)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(textMuted.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+
+                    Button(action: {
+                        viewModel.onIntent(intent: StudyQuestIntentNextSession())
+                    }) {
+                        Text(isStudy ? "🌿 休憩へ" : "⚔️ 冒険へ")
+                            .font(.system(size: 14, weight: .heavy))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(isStudy ? emeraldGreen : accentBlue)
+                            .cornerRadius(16)
+                    }
                 }
                 .padding(.horizontal, 32)
-
-                Spacer().frame(height: 12)
-
-                Button(action: {
-                    viewModel.onIntent(intent: StudyQuestIntentStopQuest())
-                    dismiss()
-                }) {
-                    Text("🏠 街に戻る")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(textMuted)
-                }
 
                 Spacer().frame(height: 60)
             }
@@ -401,14 +562,54 @@ struct StudyQuestScreenView: View {
         )
     }
 
+    // MARK: - ヘルパー
+
+    private func phaseStatusEmoji(phase: AdventurePhase, isOvertime: Bool, isPaused: Bool, isBreak: Bool) -> String {
+        if isOvertime { return "⚡" }
+        if isPaused { return "⏸" }
+        if isBreak { return "🏕️" }
+        switch phase {
+        case .walking: return "🚶"
+        case .encounter: return "⚠️"
+        case .attacking: return "⚔️"
+        case .enemyDefeated: return "🎉"
+        case .resting: return "🏕️"
+        default: return "⚔️"
+        }
+    }
+
+    private func phaseStatusText(phase: AdventurePhase, isOvertime: Bool, isPaused: Bool, isBreak: Bool) -> String {
+        if isOvertime { return "限界突破中" }
+        if isPaused { return "一時停止" }
+        if isBreak { return "休憩中" }
+        switch phase {
+        case .walking: return "探索中"
+        case .encounter: return "エンカウント！"
+        case .attacking: return "戦闘中"
+        case .enemyDefeated: return "討伐完了！"
+        case .resting: return "休憩中"
+        default: return "冒険中"
+        }
+    }
+
+    private func phaseStatusColor(phase: AdventurePhase, isOvertime: Bool, isBreak: Bool) -> Color {
+        if isOvertime { return purpleGlow }
+        if isBreak { return breakAccent }
+        switch phase {
+        case .attacking: return fireRed
+        case .encounter: return fireOrange
+        default: return accentBlue
+        }
+    }
+
     private func rewardItem(emoji: String, label: String, value: String) -> some View {
         VStack(spacing: 4) {
-            Text(emoji).font(.system(size: 28))
+            Text(emoji).font(.system(size: 24))
             Text(label)
-                .font(.system(size: 11))
+                .font(.system(size: 10))
                 .foregroundColor(textMuted)
             Text(value)
-                .font(.system(size: 16, weight: .heavy))
+                .font(.system(size: 14, weight: .heavy))
                 .foregroundColor(textWhite)
         }
     }
