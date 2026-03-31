@@ -31,15 +31,15 @@ type GachaPullResult struct {
 	ItemID     uuid.UUID `json:"item_id"`     // マスタID
 	Name       string    `json:"name"`
 	Rarity     int       `json:"rarity"`
-	IsNew      bool      `json:"is_new"`      // 新規入手か
-	PityCount  int       `json:"pity_count"`  // 天井カウント
+	IsNew      bool      `json:"is_new"`     // 新規入手か
+	PityCount  int       `json:"pity_count"` // 天井カウント
 }
 
 // GachaPullResponse — ガチャ実行レスポンス
 type GachaPullResponse struct {
-	Results       []GachaPullResult `json:"results"`
-	StonesSpent   int               `json:"stones_spent"`
-	RemainingStones int             `json:"remaining_stones"`
+	Results         []GachaPullResult `json:"results"`
+	StonesSpent     int               `json:"stones_spent"`
+	RemainingStones int               `json:"remaining_stones"`
 }
 
 // RateTableEntry — 排出テーブルの1エントリ

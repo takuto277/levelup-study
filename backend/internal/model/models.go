@@ -82,18 +82,18 @@ func (r *StudyReward) BeforeCreate(tx *gorm.DB) error { ensureUUID(&r.ID); retur
 type MasterCharacter struct {
 	ID               uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	Name             string    `gorm:"type:varchar(100);not null"                      json:"name"`
-	Rarity           int       `gorm:"not null"                                       json:"rarity"`              // 星1〜5
-	BaseHP           int       `gorm:"not null"                                       json:"base_hp"`             // 基本HP
-	BaseATK          int       `gorm:"not null"                                       json:"base_atk"`            // 基本攻撃力
-	BaseDEF          int       `gorm:"not null"                                       json:"base_def"`            // 基本防御力
-	ImageURL         string    `gorm:"type:text;not null"                              json:"image_url"`           // 立ち絵URL
-	IdleAnimationURL *string   `gorm:"type:text"                                      json:"idle_animation_url"`  // ホーム画面用アニメーション
+	Rarity           int       `gorm:"not null"                                       json:"rarity"`             // 星1〜5
+	BaseHP           int       `gorm:"not null"                                       json:"base_hp"`            // 基本HP
+	BaseATK          int       `gorm:"not null"                                       json:"base_atk"`           // 基本攻撃力
+	BaseDEF          int       `gorm:"not null"                                       json:"base_def"`           // 基本防御力
+	ImageURL         string    `gorm:"type:text;not null"                              json:"image_url"`         // 立ち絵URL
+	IdleAnimationURL *string   `gorm:"type:text"                                      json:"idle_animation_url"` // ホーム画面用アニメーション
 	IsActive         bool      `gorm:"not null;default:true"                           json:"is_active"`
 	CreatedAt        time.Time `gorm:"autoCreateTime"                                  json:"created_at"`
 }
 
 // TableName — GORMにテーブル名を明示
-func (MasterCharacter) TableName() string { return "m_characters" }
+func (MasterCharacter) TableName() string                 { return "m_characters" }
 func (c *MasterCharacter) BeforeCreate(tx *gorm.DB) error { ensureUUID(&c.ID); return nil }
 
 // ============================================================
@@ -110,7 +110,7 @@ type MasterWeapon struct {
 	CreatedAt time.Time `gorm:"autoCreateTime"                                  json:"created_at"`
 }
 
-func (MasterWeapon) TableName() string { return "m_weapons" }
+func (MasterWeapon) TableName() string                 { return "m_weapons" }
 func (w *MasterWeapon) BeforeCreate(tx *gorm.DB) error { ensureUUID(&w.ID); return nil }
 
 // ============================================================
@@ -130,7 +130,7 @@ type MasterDungeon struct {
 	Stages []MasterDungeonStage `gorm:"foreignKey:DungeonID" json:"stages,omitempty"`
 }
 
-func (MasterDungeon) TableName() string { return "m_dungeons" }
+func (MasterDungeon) TableName() string                 { return "m_dungeons" }
 func (d *MasterDungeon) BeforeCreate(tx *gorm.DB) error { ensureUUID(&d.ID); return nil }
 
 // ============================================================
@@ -142,12 +142,12 @@ type MasterDungeonStage struct {
 	ID               uuid.UUID       `gorm:"type:uuid;primaryKey" json:"id"`
 	DungeonID        uuid.UUID       `gorm:"type:uuid;not null;index"                       json:"dungeon_id"`
 	StageNumber      int             `gorm:"not null"                                       json:"stage_number"`
-	RecommendedPower int             `gorm:"not null"                                       json:"recommended_power"`  // 推奨戦力
+	RecommendedPower int             `gorm:"not null"                                       json:"recommended_power"` // 推奨戦力
 	EnemyComposition json.RawMessage `gorm:"type:jsonb;not null"                            json:"enemy_composition"` // [{name, hp, atk}]
 	DropTable        json.RawMessage `gorm:"type:jsonb;not null"                            json:"drop_table"`        // [{item_id, rate}]
 }
 
-func (MasterDungeonStage) TableName() string { return "m_dungeon_stages" }
+func (MasterDungeonStage) TableName() string                 { return "m_dungeon_stages" }
 func (s *MasterDungeonStage) BeforeCreate(tx *gorm.DB) error { ensureUUID(&s.ID); return nil }
 
 // ============================================================
@@ -155,17 +155,17 @@ func (s *MasterDungeonStage) BeforeCreate(tx *gorm.DB) error { ensureUUID(&s.ID)
 // ============================================================
 
 type MasterGachaBanner struct {
-	ID             uuid.UUID       `gorm:"type:uuid;primaryKey" json:"id"`
-	Name           string          `gorm:"type:varchar(100);not null"                      json:"name"`
-	BannerType     string          `gorm:"type:varchar(30);not null"                       json:"banner_type"`     // character / weapon / mixed
-	StartAt        time.Time       `gorm:"not null"                                       json:"start_at"`
-	EndAt          time.Time       `gorm:"not null"                                       json:"end_at"`
-	PityThreshold  *int            `gorm:""                                               json:"pity_threshold"` // 天井回数（nullなら天井なし）
-	RateTable      json.RawMessage `gorm:"type:jsonb;not null"                            json:"rate_table"`     // [{item_id, rarity, rate}]
-	IsActive       bool            `gorm:"not null;default:true"                           json:"is_active"`
+	ID            uuid.UUID       `gorm:"type:uuid;primaryKey" json:"id"`
+	Name          string          `gorm:"type:varchar(100);not null"                      json:"name"`
+	BannerType    string          `gorm:"type:varchar(30);not null"                       json:"banner_type"` // character / weapon / mixed
+	StartAt       time.Time       `gorm:"not null"                                       json:"start_at"`
+	EndAt         time.Time       `gorm:"not null"                                       json:"end_at"`
+	PityThreshold *int            `gorm:""                                               json:"pity_threshold"` // 天井回数（nullなら天井なし）
+	RateTable     json.RawMessage `gorm:"type:jsonb;not null"                            json:"rate_table"`     // [{item_id, rarity, rate}]
+	IsActive      bool            `gorm:"not null;default:true"                           json:"is_active"`
 }
 
-func (MasterGachaBanner) TableName() string { return "m_gacha_banners" }
+func (MasterGachaBanner) TableName() string                 { return "m_gacha_banners" }
 func (b *MasterGachaBanner) BeforeCreate(tx *gorm.DB) error { ensureUUID(&b.ID); return nil }
 
 // ============================================================
@@ -174,13 +174,13 @@ func (b *MasterGachaBanner) BeforeCreate(tx *gorm.DB) error { ensureUUID(&b.ID);
 // ============================================================
 
 type UserCharacter struct {
-	ID              uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	UserID          uuid.UUID  `gorm:"type:uuid;not null;index"                       json:"user_id"`
-	CharacterID     uuid.UUID  `gorm:"type:uuid;not null"                             json:"character_id"`       // → m_characters
-	Level           int        `gorm:"not null;default:1"                              json:"level"`
-	CurrentXP       int        `gorm:"not null;default:0"                              json:"current_xp"`         // 累積経験値
+	ID               uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	UserID           uuid.UUID  `gorm:"type:uuid;not null;index"                       json:"user_id"`
+	CharacterID      uuid.UUID  `gorm:"type:uuid;not null"                             json:"character_id"` // → m_characters
+	Level            int        `gorm:"not null;default:1"                              json:"level"`
+	CurrentXP        int        `gorm:"not null;default:0"                              json:"current_xp"`       // 累積経験値
 	EquippedWeaponID *uuid.UUID `gorm:"type:uuid"                                     json:"equipped_weapon_id"` // → user_weapons（null = なし）
-	ObtainedAt      time.Time  `gorm:"not null"                                       json:"obtained_at"`
+	ObtainedAt       time.Time  `gorm:"not null"                                       json:"obtained_at"`
 
 	// リレーション（読み取り用）
 	Character *MasterCharacter `gorm:"foreignKey:CharacterID"     json:"character,omitempty"`
@@ -213,8 +213,8 @@ func (uw *UserWeapon) BeforeCreate(tx *gorm.DB) error { ensureUUID(&uw.ID); retu
 type UserPartySlot struct {
 	ID              uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	UserID          uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_slot"   json:"user_id"`
-	SlotPosition    int       `gorm:"not null;uniqueIndex:idx_user_slot"             json:"slot_position"`      // 1〜4
-	UserCharacterID uuid.UUID `gorm:"type:uuid;not null"                             json:"user_character_id"`  // → user_characters
+	SlotPosition    int       `gorm:"not null;uniqueIndex:idx_user_slot"             json:"slot_position"`     // 1〜4
+	UserCharacterID uuid.UUID `gorm:"type:uuid;not null"                             json:"user_character_id"` // → user_characters
 
 	// リレーション
 	UserCharacter *UserCharacter `gorm:"foreignKey:UserCharacterID" json:"user_character,omitempty"`
@@ -231,8 +231,8 @@ type UserDungeonProgress struct {
 	ID              uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	UserID          uuid.UUID `gorm:"type:uuid;not null"                             json:"user_id"`
 	DungeonID       uuid.UUID `gorm:"type:uuid;not null"                             json:"dungeon_id"`         // → m_dungeons
-	CurrentStage    int       `gorm:"not null;default:1"                              json:"current_stage"`      // 現在挑戦中
-	MaxClearedStage int       `gorm:"not null;default:0"                              json:"max_cleared_stage"`  // 最高クリア済み
+	CurrentStage    int       `gorm:"not null;default:1"                              json:"current_stage"`     // 現在挑戦中
+	MaxClearedStage int       `gorm:"not null;default:0"                              json:"max_cleared_stage"` // 最高クリア済み
 	UpdatedAt       time.Time `gorm:"autoUpdateTime"                                  json:"updated_at"`
 
 	// リレーション
@@ -249,10 +249,10 @@ func (dp *UserDungeonProgress) BeforeCreate(tx *gorm.DB) error { ensureUUID(&dp.
 type GachaHistory struct {
 	ID           uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	UserID       uuid.UUID `gorm:"type:uuid;not null"                             json:"user_id"`
-	BannerID     uuid.UUID `gorm:"type:uuid;not null"                             json:"banner_id"`       // → m_gacha_banners
-	ResultType   string    `gorm:"type:varchar(20);not null"                      json:"result_type"`     // character / weapon
-	ResultItemID uuid.UUID `gorm:"type:uuid;not null"                             json:"result_item_id"`  // 排出されたマスタID
-	PityCount    int       `gorm:"not null"                                       json:"pity_count"`      // バナー内累計回数
+	BannerID     uuid.UUID `gorm:"type:uuid;not null"                             json:"banner_id"`      // → m_gacha_banners
+	ResultType   string    `gorm:"type:varchar(20);not null"                      json:"result_type"`    // character / weapon
+	ResultItemID uuid.UUID `gorm:"type:uuid;not null"                             json:"result_item_id"` // 排出されたマスタID
+	PityCount    int       `gorm:"not null"                                       json:"pity_count"`     // バナー内累計回数
 	CreatedAt    time.Time `gorm:"autoCreateTime"                                 json:"created_at"`
 }
 

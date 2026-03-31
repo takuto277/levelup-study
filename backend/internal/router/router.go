@@ -17,6 +17,7 @@ type SecurityConfig struct {
 	JWTSecret      string   // Supabase JWT Secret
 	APIKey         string   // クライアント識別用 API Key
 	AllowedOrigins []string // CORS 許可オリジン
+	DevMode        bool     // true: JWT/APIKey 検証をスキップ（ローカル開発用）
 }
 
 // ============================================================
@@ -73,8 +74,8 @@ func NewRouter(
 	r.Use(chimw.RealIP)
 	r.Use(chimw.Logger)
 	r.Use(chimw.Recoverer)
-	r.Use(mw.CORSConfig(sec.AllowedOrigins))        // CORS
-	r.Use(mw.RateLimiter(100, 200))                  // グローバル: 100 rps / burst 200
+	r.Use(mw.CORSConfig(sec.AllowedOrigins)) // CORS
+	r.Use(mw.RateLimiter(100, 200))          // グローバル: 100 rps / burst 200
 
 	// --- ヘルスチェック（認証不要） ---
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -83,19 +84,25 @@ func NewRouter(
 
 	// --- API v1 ---
 	r.Route("/api/v1", func(r chi.Router) {
-		// API Key を全 API に適用
-		r.Use(mw.APIKeyAuth(sec.APIKey))
+		// API Key を全 API に適用（dev mode ではスキップ）
+		if !sec.DevMode {
+			r.Use(mw.APIKeyAuth(sec.APIKey))
+		}
 
 		// ===== ユーザー作成（JWT なしで呼べる — サインアップ直後） =====
 		r.Post("/users", userH.CreateUser)
 
 		// ===== 認証が必要なエンドポイント =====
 		r.Group(func(r chi.Router) {
-			r.Use(mw.JWTAuth(sec.JWTSecret))
+			if !sec.DevMode {
+				r.Use(mw.JWTAuth(sec.JWTSecret))
+			}
 
 			r.Route("/users/{userID}", func(r chi.Router) {
-				// Owner Guard: トークンの sub == {userID} を強制
-				r.Use(mw.OwnerGuard)
+				// Owner Guard: トークンの sub == {userID} を強制（dev mode ではスキップ）
+				if !sec.DevMode {
+					r.Use(mw.OwnerGuard)
+				}
 
 				r.Get("/", userH.GetUser)
 				r.Put("/", userH.UpdateUser)

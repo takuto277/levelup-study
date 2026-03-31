@@ -20,13 +20,19 @@ func main() {
 		log.Println("ℹ️  .env ファイルが見つかりません（本番環境では環境変数を直接設定してください）")
 	}
 
+	// --- 開発モード判定 ---
+	devMode := os.Getenv("DEV_MODE") == "true"
+	if devMode {
+		log.Println("⚠️  DEV_MODE が有効です — JWT / API Key 認証をスキップします")
+	}
+
 	// --- 環境変数からセキュリティ設定を読み込む ---
 	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
+	if jwtSecret == "" && !devMode {
 		log.Fatal("❌ 環境変数 JWT_SECRET が未設定です")
 	}
 	apiKey := os.Getenv("API_KEY")
-	if apiKey == "" {
+	if apiKey == "" && !devMode {
 		log.Fatal("❌ 環境変数 API_KEY が未設定です")
 	}
 	allowedOrigins := []string{}
@@ -71,6 +77,7 @@ func main() {
 		JWTSecret:      jwtSecret,
 		APIKey:         apiKey,
 		AllowedOrigins: allowedOrigins,
+		DevMode:        devMode,
 	}
 
 	// --- ルーター構築 ---

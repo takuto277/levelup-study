@@ -34,16 +34,9 @@ type CompleteStudyRequest struct {
 
 // CompleteStudyResponse — 勉強完了レスポンス
 type CompleteStudyResponse struct {
-	SessionID   uuid.UUID            `json:"session_id"`
-	Rewards     []model.StudyReward  `json:"rewards"`
-	UpdatedUser UserSummary          `json:"updated_user"`
-}
-
-// UserSummary — 更新後のユーザー通貨サマリー
-type UserSummary struct {
-	Stones            int   `json:"stones"`
-	Gold              int   `json:"gold"`
-	TotalStudySeconds int64 `json:"total_study_seconds"`
+	SessionID   uuid.UUID           `json:"session_id"`
+	Rewards     []model.StudyReward `json:"rewards"`
+	UpdatedUser model.User          `json:"updated_user"`
 }
 
 type StudyService struct {
@@ -129,11 +122,7 @@ func (s *StudyService) CompleteStudy(userID uuid.UUID, req CompleteStudyRequest)
 	if err != nil {
 		return nil, fmt.Errorf("ユーザー取得に失敗: %w", err)
 	}
-	resp.UpdatedUser = UserSummary{
-		Stones:            user.Stones,
-		Gold:              user.Gold,
-		TotalStudySeconds: user.TotalStudySeconds,
-	}
+	resp.UpdatedUser = *user
 
 	return &resp, nil
 }
