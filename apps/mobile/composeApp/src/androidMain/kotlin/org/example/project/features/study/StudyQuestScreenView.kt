@@ -22,10 +22,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.example.project.StudyQuestViewModel
-import org.example.project.StudyQuestState
-import org.example.project.StudySessionStatus
-import org.example.project.StudySessionType
+import org.example.project.features.study.StudyQuestViewModel
+import org.example.project.features.study.StudyQuestUiState
+import org.example.project.features.study.StudySessionStatus
+import org.example.project.features.study.StudySessionType
+import org.example.project.features.study.StudyQuestIntent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +38,7 @@ fun StudyQuestScreenView(
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.startQuest(initialStudyMinutes)
+        viewModel.onIntent(StudyQuestIntent.StartQuest(initialStudyMinutes))
     }
 
     Scaffold(
@@ -45,7 +46,10 @@ fun StudyQuestScreenView(
             TopAppBar(
                 title = { Text(if (uiState.type == StudySessionType.STUDY) "冒険中" else "休憩中", fontSize = 18.sp, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = {
+                        viewModel.onIntent(StudyQuestIntent.StopQuest)
+                        onDismiss()
+                    }) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
@@ -60,15 +64,24 @@ fun StudyQuestScreenView(
             label = "screen_transition"
         ) { isFinished ->
             if (isFinished) {
-                // 結果画面
-                ResultScreen(uiState = uiState, onNext = { viewModel.nextSession() }, onExit = onDismiss)
+                ResultScreen(
+                    uiState = uiState,
+                    onNext = { viewModel.onIntent(StudyQuestIntent.NextSession) },
+                    onExit = {
+                        viewModel.onIntent(StudyQuestIntent.StopQuest)
+                        onDismiss()
+                    }
+                )
             } else {
-                // クエスト中・休憩中画面
                 MainQuestView(
                     paddingValues = paddingValues,
                     uiState = uiState,
-                    viewModel = viewModel,
-                    onExit = onDismiss
+                    onTogglePause = { viewModel.onIntent(StudyQuestIntent.TogglePause) },
+                    onFinishSession = { viewModel.onIntent(StudyQuestIntent.FinishSession) },
+                    onExit = {
+                        viewModel.onIntent(StudyQuestIntent.StopQuest)
+                        onDismiss()
+                    }
                 )
             }
         }
@@ -78,8 +91,9 @@ fun StudyQuestScreenView(
 @Composable
 fun MainQuestView(
     paddingValues: PaddingValues,
-    uiState: StudyQuestState,
-    viewModel: StudyQuestViewModel,
+    uiState: StudyQuestUiState,
+    onTogglePause: () -> Unit,
+    onFinishSession: () -> Unit,
     onExit: () -> Unit
 ) {
     Column(
@@ -98,7 +112,7 @@ fun MainQuestView(
                 color = if (uiState.isOvertime) Color(0xFF9333EA) else Color.Gray
             )
             Text(
-                text = viewModel.formatTime(viewModel.getDisplaySeconds(uiState)),
+                text = uiState.displayTime,
                 fontSize = 80.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
@@ -176,7 +190,7 @@ fun MainQuestView(
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 40.dp)) {
             if (uiState.type == StudySessionType.STUDY) {
                 Button(
-                    onClick = { viewModel.finishSession() },
+                    onClick = onFinishSession,
                     modifier = Modifier.fillMaxWidth().height(56.dp).padding(bottom = 12.dp),
                     shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
@@ -190,7 +204,7 @@ fun MainQuestView(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
-                    onClick = { viewModel.togglePause() },
+                    onClick = onTogglePause,
                     modifier = Modifier.weight(1f).height(56.dp),
                     shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -217,7 +231,7 @@ fun MainQuestView(
 
 @Composable
 fun ResultScreen(
-    uiState: StudyQuestState,
+    uiState: StudyQuestUiState,
     onNext: () -> Unit,
     onExit: () -> Unit
 ) {

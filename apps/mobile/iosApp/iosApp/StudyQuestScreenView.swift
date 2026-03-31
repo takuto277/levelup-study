@@ -4,17 +4,32 @@ import Shared
 struct StudyQuestScreenView: View {
     @Environment(\.dismiss) var dismiss
     let initialStudyMinutes: Int
-    @State private var viewModel = StudyQuestViewModel()
-    @State private var uiState = StudyQuestState(type: .study, status: .ready, targetStudyMinutes: 25, targetBreakMinutes: 5, elapsedSeconds: 0, isOvertime: false, currentLog: [])
+
+    /// ViewModel は KMP 側で状態をすべて管理する。View はポーリングで取得するだけ。
+    private let viewModel = StudyQuestViewModel()
+    @State private var uiState: StudyQuestUiState
+
+    init(initialStudyMinutes: Int) {
+        self.initialStudyMinutes = initialStudyMinutes
+        // 初期値は ViewModel のデフォルトに合わせる（onAppear で即上書きされる）
+        _uiState = State(initialValue: StudyQuestUiState(
+            type: .study,
+            status: .ready,
+            targetStudyMinutes: Int32(initialStudyMinutes),
+            targetBreakMinutes: 5,
+            elapsedSeconds: 0,
+            isOvertime: false,
+            currentLog: [],
+            displayTime: "25:00"
+        ))
+    }
     
     var body: some View {
         NavigationView {
             Group {
                 if uiState.status == .finished {
-                    // 冒険終了（結果）画面
                     resultScreen
                 } else {
-                    // 冒険中 / 休憩中 画面
                     mainQuestView
                 }
             }
@@ -23,16 +38,16 @@ struct StudyQuestScreenView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("離脱") {
-                        viewModel.stopQuest()
+                        viewModel.onIntent(intent: StudyQuestIntentStopQuest())
                         dismiss()
                     }
                 }
             }
             .onAppear {
-                viewModel.startQuest(initialStudyMinutes: KotlinInt(value: Int32(initialStudyMinutes)))
+                viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes)))
             }
             .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
-                self.uiState = viewModel.uiState.value as! StudyQuestState
+                self.uiState = viewModel.uiState.value as! StudyQuestUiState
             }
         }
     }
@@ -46,7 +61,7 @@ struct StudyQuestScreenView: View {
                     .font(.headline)
                     .foregroundColor(uiState.isOvertime ? .purple : .secondary)
                 
-                Text(viewModel.formatTime(seconds: viewModel.getDisplaySeconds(state: uiState)))
+                Text(uiState.displayTime)
                     .font(.system(size: 80, weight: .bold, design: .monospaced))
                     .foregroundColor(uiState.isOvertime ? .pink : (uiState.type == .study ? .primary : .green))
                     .shadow(color: uiState.isOvertime ? .pink.opacity(0.4) : .clear, radius: 10)
@@ -113,7 +128,7 @@ struct StudyQuestScreenView: View {
             VStack(spacing: 16) {
                 if uiState.type == .study {
                     Button(action: {
-                        viewModel.finishSession()
+                        viewModel.onIntent(intent: StudyQuestIntentFinishSession())
                     }) {
                         Text("休憩する (結果を見る)")
                             .font(.headline)
@@ -128,7 +143,7 @@ struct StudyQuestScreenView: View {
                 
                 HStack(spacing: 30) {
                     Button(action: {
-                        viewModel.togglePause()
+                        viewModel.onIntent(intent: StudyQuestIntentTogglePause())
                     }) {
                         HStack {
                             Image(systemName: uiState.status == .running ? "pause.fill" : "play.fill")
@@ -143,7 +158,7 @@ struct StudyQuestScreenView: View {
                     }
                     
                     Button(action: {
-                        viewModel.stopQuest()
+                        viewModel.onIntent(intent: StudyQuestIntentStopQuest())
                         dismiss()
                     }) {
                         Text("中止する")
@@ -182,7 +197,7 @@ struct StudyQuestScreenView: View {
             
             Button(action: {
                 withAnimation {
-                    viewModel.nextSession()
+                    viewModel.onIntent(intent: StudyQuestIntentNextSession())
                 }
             }) {
                 Text(uiState.type == .study ? "休憩を開始する" : "次の冒険へ出発する")
@@ -196,7 +211,7 @@ struct StudyQuestScreenView: View {
             .padding(.horizontal, 40)
             
             Button(action: {
-                viewModel.stopQuest()
+                viewModel.onIntent(intent: StudyQuestIntentStopQuest())
                 dismiss()
             }) {
                 Text("街に戻る")

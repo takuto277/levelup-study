@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -34,32 +35,35 @@ fun HomeScreenView() {
         )
     } else {
         Scaffold(
-        containerColor = Color(0xFFF8FAFC)
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Main Content
-            Box(modifier = Modifier.fillMaxSize().padding(bottom = paddingValues.calculateBottomPadding())) {
-                when (selectedTab) {
-                    0 -> PlaceholderScreen("冒険", Icons.Default.Place)
-                    1 -> PlaceholderScreen("編成", Icons.Default.Person)
-                    2 -> HomeTabContent(
-                        studyMinutes = studyMinutes,
-                        onStudyMinutesChange = { studyMinutes = it },
-                        onStartStudy = { showStudySheet = true }
-                    )
-                    3 -> PlaceholderScreen("召喚", Icons.Default.Star)
-                    4 -> PlaceholderScreen("記録", Icons.Default.Info)
+            containerColor = Color(0xFFF8FAFC)
+        ) { paddingValues ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Main Content
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = paddingValues.calculateBottomPadding())
+                ) {
+                    when (selectedTab) {
+                        0 -> org.example.project.features.quest.QuestScreenView()
+                        1 -> org.example.project.features.party.PartyScreenView()
+                        2 -> HomeTabContent(
+                            studyMinutes = studyMinutes,
+                            onStudyMinutesChange = { studyMinutes = it },
+                            onStartStudy = { showStudySheet = true }
+                        )
+                        3 -> org.example.project.features.gacha.GachaScreenView()
+                        4 -> org.example.project.features.record.RecordScreenView()
+                    }
                 }
-            }
-            
-            // Floating Tab Bar
-            Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-                BottomNavigationBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+
+                // Floating Tab Bar
+                Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                    BottomNavigationBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+                }
             }
         }
     }
-}
-}
 }
 
 // MARK: - Home Tab
@@ -219,7 +223,7 @@ fun StudyStartButton(onClick: () -> Unit) {
                 .padding(vertical = 16.dp, horizontal = 40.dp),
             contentAlignment = Alignment.Center
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, spacing = 8.dp) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.PlayArrow, contentDescription = "Start", tint = Color.White)
                 Text("特訓スタート", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
@@ -276,15 +280,18 @@ fun NavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String
             contentAlignment = Alignment.Center
         ) {
             if (isCenter) {
-                Surface(
-                    shape = CircleShape,
-                    shadowElevation = 8.dp,
-                    modifier = Modifier.size(56.dp).offset(y = (-16).dp),
-                    brush = Brush.linearGradient(listOf(Color(0xFF3B82F6), Color(0xFF6366F1)))
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .offset(y = (-16).dp)
+                        .shadow(8.dp, CircleShape)
+                        .background(
+                            brush = Brush.linearGradient(listOf(Color(0xFF3B82F6), Color(0xFF6366F1))),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(28.dp))
-                    }
+                    Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(28.dp))
                 }
             } else {
                 if (isSelected) {
