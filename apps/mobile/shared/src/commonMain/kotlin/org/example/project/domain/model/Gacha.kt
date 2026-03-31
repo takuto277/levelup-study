@@ -19,8 +19,20 @@ data class GachaBanner(
 enum class BannerType {
     CHARACTER,
     WEAPON,
+    COSTUME,
     MIXED
 }
+
+/**
+ * ガチャピックアップ対象
+ */
+data class GachaBannerFeatured(
+    val id: String,
+    val bannerId: String,
+    val itemId: String,
+    val itemType: GachaResultType,
+    val rateUp: Float
+)
 
 /**
  * ガチャ結果（履歴）
@@ -32,11 +44,13 @@ data class GachaResult(
     val resultType: GachaResultType,
     val resultItemId: String,
     val pityCount: Int,
+    val isNew: Boolean = true,
     val createdAt: String
 )
 
 /** ガチャ排出タイプ */
 enum class GachaResultType {
     CHARACTER,
-    WEAPON
+    WEAPON,
+    COSTUME
 }

@@ -3,15 +3,14 @@ package org.example.project.data.remote.gateway
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
-import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import org.example.project.core.network.ApiRoutes
 import org.example.project.core.network.NetworkResult
+import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.dto.EquipWeaponRequest
 import org.example.project.data.remote.dto.MasterWeaponListResponse
 import org.example.project.data.remote.dto.UserWeaponListResponse
-import org.example.project.data.remote.dto.UserWeaponResponse
 
 /**
  * 武器 API Gateway
@@ -19,7 +18,7 @@ import org.example.project.data.remote.dto.UserWeaponResponse
  */
 class WeaponGateway(private val client: HttpClient) {
 
-    /** GET /api/master/weapons — 武器マスタ一覧 */
+    /** GET /api/v1/master/weapons — 武器マスタ一覧 */
     suspend fun getMasterWeapons(): NetworkResult<MasterWeaponListResponse> = runCatching {
         val response: MasterWeaponListResponse = client.get(ApiRoutes.MASTER_WEAPONS).body()
         NetworkResult.Success(response)
@@ -27,30 +26,23 @@ class WeaponGateway(private val client: HttpClient) {
         NetworkResult.Error(message = e.message ?: "武器マスタの取得に失敗しました")
     }
 
-    /** GET /api/user/weapons — ユーザー所持武器一覧 */
+    /** GET /api/v1/users/{userId}/weapons — ユーザー所持武器一覧 */
     suspend fun getUserWeapons(): NetworkResult<UserWeaponListResponse> = runCatching {
-        val response: UserWeaponListResponse = client.get(ApiRoutes.USER_WEAPONS).body()
+        val userId = UserSessionStore.requireUserId()
+        val response: UserWeaponListResponse =
+            client.get(ApiRoutes.userWeapons(userId)).body()
         NetworkResult.Success(response)
     }.getOrElse { e ->
         NetworkResult.Error(message = e.message ?: "所持武器の取得に失敗しました")
     }
 
-    /** POST /api/user/weapons/{id}/levelup — 武器レベルアップ */
-    suspend fun levelUpWeapon(userWeaponId: String): NetworkResult<UserWeaponResponse> =
-        runCatching {
-            val response: UserWeaponResponse =
-                client.post(ApiRoutes.userWeaponLevelUp(userWeaponId)).body()
-            NetworkResult.Success(response)
-        }.getOrElse { e ->
-            NetworkResult.Error(message = e.message ?: "武器のレベルアップに失敗しました")
-        }
-
-    /** PUT /api/user/characters/{characterId}/equip — 武器装備 */
+    /** PUT /api/v1/users/{userId}/characters/{characterId}/equip — 武器装備 */
     suspend fun equipWeapon(
         userCharacterId: String,
         request: EquipWeaponRequest
     ): NetworkResult<Unit> = runCatching {
-        client.put(ApiRoutes.equipWeapon(userCharacterId)) {
+        val userId = UserSessionStore.requireUserId()
+        client.put(ApiRoutes.equipWeapon(userId, userCharacterId)) {
             setBody(request)
         }
         NetworkResult.Success(Unit)

@@ -33,7 +33,7 @@ class WeaponRepositoryImpl(
     }
 
     override suspend fun levelUpWeapon(userWeaponId: String): UserWeapon {
-        return gateway.levelUpWeapon(userWeaponId).getOrThrow().toDomain()
+        TODO("武器レベルアップ API は未実装です")
     }
 
     override suspend fun equipWeapon(userCharacterId: String, userWeaponId: String?) {

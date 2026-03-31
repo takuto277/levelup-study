@@ -24,11 +24,10 @@ class GachaRepositoryImpl(
     }
 
     override suspend fun getGachaHistory(bannerId: String?, limit: Int): List<GachaResult> {
-        return gateway.getHistory(bannerId, limit).getOrThrow()
-            .history.map { it.toDomain() }
+        TODO("ガチャ履歴 API は未実装です")
     }
 
     override suspend fun getPityCount(bannerId: String): Int {
-        return gateway.getPityCount(bannerId).getOrThrow().pityCount
+        TODO("天井カウント API は未実装です")
     }
 }

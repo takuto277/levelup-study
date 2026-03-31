@@ -20,6 +20,11 @@ data class UserResponse(
 // ── Request ─────────────────────────────────────
 
 @Serializable
+data class CreateUserRequest(
+    @SerialName("display_name") val displayName: String
+)
+
+@Serializable
 data class UpdateUserRequest(
     @SerialName("display_name") val displayName: String
 )

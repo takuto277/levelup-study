@@ -1,7 +1,6 @@
 package org.example.project.data.repository
 
 import org.example.project.core.network.getOrThrow
-import org.example.project.data.remote.dto.RemovePartySlotRequest
 import org.example.project.data.remote.dto.UpdatePartySlotRequest
 import org.example.project.data.remote.dto.toDomain
 import org.example.project.data.remote.gateway.PartyGateway
@@ -26,6 +25,6 @@ class PartyRepositoryImpl(
     }
 
     override suspend fun removeFromSlot(slotPosition: Int) {
-        gateway.removeFromSlot(RemovePartySlotRequest(slotPosition)).getOrThrow()
+        gateway.removeFromSlot(slotPosition).getOrThrow()
     }
 }

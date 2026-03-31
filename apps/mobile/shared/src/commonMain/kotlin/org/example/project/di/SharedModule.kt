@@ -32,6 +32,7 @@ import org.example.project.features.party.PartyUseCase
 import org.example.project.features.party.PartyViewModel
 import org.example.project.features.quest.QuestUseCase
 import org.example.project.features.quest.QuestViewModel
+import org.example.project.features.study.StudyQuestViewModel
 import org.example.project.features.study.StudyUseCase
 import org.example.project.features.study.StudyViewModel
 import org.koin.core.module.dsl.factoryOf
@@ -84,4 +85,5 @@ val sharedModule = module {
     factoryOf(::GachaViewModel)
     factoryOf(::AnalyticsViewModel)
     factoryOf(::StudyViewModel)
+    factoryOf(::StudyQuestViewModel)
 }

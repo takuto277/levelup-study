@@ -9,6 +9,8 @@ data class MasterWeapon(
     val name: String,
     val rarity: Int,
     val baseAtk: Int,
+    val skillName: String? = null,
+    val skillDescription: String? = null,
     val imageUrl: String,
     val isActive: Boolean
 )
@@ -16,6 +18,10 @@ data class MasterWeapon(
 /**
  * ユーザー所持武器
  * Source of Truth: サーバー
+ *
+ * refinement_level: 精錬段階 0〜4
+ *   ガチャで重複入手するたびに +1。精錬MAX(4) 済みでさらに重複した場合は
+ *   ★5: stones+15 / ★4以下: gold 変換される（サーバー側で処理）。
  */
 data class UserWeapon(
     val id: String,
@@ -23,5 +29,9 @@ data class UserWeapon(
     val weaponId: String,
     val weapon: MasterWeapon? = null,
     val level: Int,
+    val refinementLevel: Int = 0,
     val obtainedAt: String
-)
+) {
+    /** 精錬MAX かどうか */
+    val isMaxRefinement: Boolean get() = refinementLevel >= 4
+}

@@ -1,52 +1,71 @@
 package org.example.project.core.network
 
 /**
- * Go バックエンド (Vercel) の API エンドポイント定義
+ * Go バックエンドの API エンドポイント定義
+ *
+ * パスは Go 側の router.go と 1:1 で対応する:
+ *   /api/v1/users                              → ユーザー作成
+ *   /api/v1/users/{userID}                     → ユーザー取得/更新/削除
+ *   /api/v1/users/{userID}/study/complete      → 勉強完了
+ *   /api/v1/users/{userID}/characters          → 所持キャラ一覧
+ *   /api/v1/master/characters                  → マスタデータ
+ *   etc.
  */
 object ApiRoutes {
 
     /**
      * ベースURL
-     * Vercel デプロイ先に合わせて変更する
-     * TODO: BuildConfigまたは環境変数から読み込むように変更
+     * iOS シミュレータからは localhost でアクセス可能
+     * TODO: BuildConfig または環境変数から読み込むように変更
      */
-    const val BASE_URL = "https://levelup-study.vercel.app"
+    const val BASE_URL = "http://localhost:8080"
 
     // ── User ────────────────────────────────────
-    const val USER_ME = "/api/user/me"
+    /** POST: ユーザー作成 */
+    const val USERS = "/api/v1/users"
+
+    /** GET/PUT/DELETE: ユーザー取得・更新・削除 */
+    fun user(userId: String) = "/api/v1/users/$userId"
 
     // ── Study ───────────────────────────────────
-    const val STUDY_COMPLETE = "/api/study/complete"
-    const val STUDY_SESSIONS = "/api/study/sessions"
-
-    // ── Master Data (Characters) ────────────────
-    const val MASTER_CHARACTERS = "/api/master/characters"
+    /** POST: 勉強セッション完了 & 報酬確定 */
+    fun studyComplete(userId: String) = "/api/v1/users/$userId/study/complete"
 
     // ── User Characters ─────────────────────────
-    const val USER_CHARACTERS = "/api/user/characters"
-    fun userCharacterLevelUp(id: String) = "/api/user/characters/$id/levelup"
+    /** GET: 所持キャラ一覧 */
+    fun userCharacters(userId: String) = "/api/v1/users/$userId/characters"
 
-    // ── Master Data (Weapons) ───────────────────
-    const val MASTER_WEAPONS = "/api/master/weapons"
+    /** GET: 所持キャラ詳細 */
+    fun userCharacter(userId: String, characterId: String) =
+        "/api/v1/users/$userId/characters/$characterId"
+
+    /** PUT: 武器装備 */
+    fun equipWeapon(userId: String, characterId: String) =
+        "/api/v1/users/$userId/characters/$characterId/equip"
 
     // ── User Weapons ────────────────────────────
-    const val USER_WEAPONS = "/api/user/weapons"
-    fun userWeaponLevelUp(id: String) = "/api/user/weapons/$id/levelup"
-    fun equipWeapon(characterId: String) = "/api/user/characters/$characterId/equip"
+    /** GET: 所持武器一覧 */
+    fun userWeapons(userId: String) = "/api/v1/users/$userId/weapons"
 
     // ── Party ───────────────────────────────────
-    const val PARTY = "/api/user/party"
-    const val PARTY_SLOT = "/api/user/party/slot"
+    /** GET: パーティ取得 */
+    fun party(userId: String) = "/api/v1/users/$userId/party"
 
-    // ── Master Data (Dungeons) ──────────────────
-    const val DUNGEONS = "/api/master/dungeons"
-    fun dungeonStages(dungeonId: String) = "/api/master/dungeons/$dungeonId/stages"
+    /** PUT/DELETE: パーティスロット操作 */
+    fun partySlot(userId: String, slot: Int) = "/api/v1/users/$userId/party/$slot"
 
     // ── Dungeon Progress ────────────────────────
-    const val DUNGEON_PROGRESS = "/api/user/dungeon-progress"
+    /** GET: ダンジョン進行状況一覧 */
+    fun dungeonProgress(userId: String) = "/api/v1/users/$userId/dungeons"
 
     // ── Gacha ───────────────────────────────────
-    const val GACHA_BANNERS = "/api/gacha/banners"
-    const val GACHA_PULL = "/api/gacha/pull"
-    const val GACHA_HISTORY = "/api/gacha/history"
+    /** POST: ガチャ実行 */
+    fun gachaPull(userId: String) = "/api/v1/users/$userId/gacha/pull"
+
+    // ── Master Data（認証不要） ─────────────────
+    const val MASTER_CHARACTERS = "/api/v1/master/characters"
+    const val MASTER_WEAPONS = "/api/v1/master/weapons"
+    const val MASTER_DUNGEONS = "/api/v1/master/dungeons"
+    fun masterDungeon(dungeonId: String) = "/api/v1/master/dungeons/$dungeonId"
+    const val MASTER_GACHA_BANNERS = "/api/v1/master/gacha/banners"
 }

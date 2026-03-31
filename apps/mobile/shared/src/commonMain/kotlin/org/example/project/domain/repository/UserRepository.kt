@@ -8,6 +8,9 @@ import org.example.project.domain.model.User
  */
 interface UserRepository {
 
+    /** 新規ユーザーを作成（初回起動時） */
+    suspend fun createUser(displayName: String): User
+
     /** 現在のユーザー情報を取得 */
     suspend fun getCurrentUser(): User
 

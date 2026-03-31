@@ -1,6 +1,7 @@
 package org.example.project.data.repository
 
 import org.example.project.core.network.getOrThrow
+import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.dto.StudyCompleteRequest
 import org.example.project.data.remote.dto.toDomain
 import org.example.project.data.remote.gateway.StudyGateway
@@ -19,6 +20,7 @@ class StudyRepositoryImpl(
         durationSeconds: Int,
         isCompleted: Boolean
     ): StudyCompleteResult {
+        val userId = UserSessionStore.requireUserId()
         val request = StudyCompleteRequest(
             category = category,
             startedAt = startedAt,
@@ -26,12 +28,12 @@ class StudyRepositoryImpl(
             durationSeconds = durationSeconds,
             isCompleted = isCompleted
         )
-        return gateway.completeSession(request).getOrThrow().toDomain()
+        return gateway.completeSession(userId, request).getOrThrow().toDomain()
     }
 
     override suspend fun getSessionHistory(limit: Int, offset: Int): List<StudySession> {
-        return gateway.getSessions(limit, offset).getOrThrow()
-            .sessions.map { it.toDomain() }
+        // TODO: 実装（Go 側の ListSessions も未完成）
+        return emptyList()
     }
 
     override suspend fun savePendingSession(session: StudySession) {
@@ -40,6 +42,5 @@ class StudyRepositoryImpl(
 
     override suspend fun syncPendingSessions() {
         // TODO: ローカルの pending セッションを順次 completeSession で送信
-        // 成功したら pending から削除、3回失敗で failed マーク
     }
 }

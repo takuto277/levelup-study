@@ -32,6 +32,6 @@ class CharacterRepositoryImpl(
     }
 
     override suspend fun levelUpCharacter(userCharacterId: String): UserCharacter {
-        return gateway.levelUpCharacter(userCharacterId).getOrThrow().toDomain()
+        TODO("レベルアップ API は未実装です")
     }
 }

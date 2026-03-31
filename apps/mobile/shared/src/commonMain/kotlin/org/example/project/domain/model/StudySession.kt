@@ -2,7 +2,7 @@ package org.example.project.domain.model
 
 /**
  * 勉強セッション
- * Source of Truth: サーバー（ローカルに未同期バッファあり）
+ * Source of Truth: サーバー（Go backend model.StudySession に対応）
  */
 data class StudySession(
     val id: String,

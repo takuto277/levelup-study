@@ -6,6 +6,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import org.example.project.core.network.ApiRoutes
 import org.example.project.core.network.NetworkResult
+import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.dto.DungeonProgressListResponse
 import org.example.project.data.remote.dto.DungeonStageListResponse
 import org.example.project.data.remote.dto.MasterDungeonListResponse
@@ -16,38 +17,41 @@ import org.example.project.data.remote.dto.MasterDungeonListResponse
  */
 class DungeonGateway(private val client: HttpClient) {
 
-    /** GET /api/master/dungeons — ダンジョンマスタ一覧 */
+    /** GET /api/v1/master/dungeons — ダンジョンマスタ一覧 */
     suspend fun getDungeons(): NetworkResult<MasterDungeonListResponse> = runCatching {
-        val response: MasterDungeonListResponse = client.get(ApiRoutes.DUNGEONS).body()
+        val response: MasterDungeonListResponse =
+            client.get(ApiRoutes.MASTER_DUNGEONS).body()
         NetworkResult.Success(response)
     }.getOrElse { e ->
         NetworkResult.Error(message = e.message ?: "ダンジョン情報の取得に失敗しました")
     }
 
-    /** GET /api/master/dungeons/{id}/stages — ステージ一覧 */
+    /** GET /api/v1/master/dungeons/{dungeonId} — ダンジョン詳細（ステージ含む） */
     suspend fun getDungeonStages(dungeonId: String): NetworkResult<DungeonStageListResponse> =
         runCatching {
             val response: DungeonStageListResponse =
-                client.get(ApiRoutes.dungeonStages(dungeonId)).body()
+                client.get(ApiRoutes.masterDungeon(dungeonId)).body()
             NetworkResult.Success(response)
         }.getOrElse { e ->
             NetworkResult.Error(message = e.message ?: "ステージ情報の取得に失敗しました")
         }
 
-    /** GET /api/user/dungeon-progress — 全ダンジョン進行状況 */
+    /** GET /api/v1/users/{userId}/dungeons — 全ダンジョン進行状況 */
     suspend fun getAllProgress(): NetworkResult<DungeonProgressListResponse> = runCatching {
+        val userId = UserSessionStore.requireUserId()
         val response: DungeonProgressListResponse =
-            client.get(ApiRoutes.DUNGEON_PROGRESS).body()
+            client.get(ApiRoutes.dungeonProgress(userId)).body()
         NetworkResult.Success(response)
     }.getOrElse { e ->
         NetworkResult.Error(message = e.message ?: "ダンジョン進行状況の取得に失敗しました")
     }
 
-    /** GET /api/user/dungeon-progress?dungeon_id={id} — 特定ダンジョンの進行状況 */
+    /** GET /api/v1/users/{userId}/dungeons?dungeon_id={id} — 特定ダンジョンの進行状況 */
     suspend fun getProgress(dungeonId: String): NetworkResult<DungeonProgressListResponse> =
         runCatching {
+            val userId = UserSessionStore.requireUserId()
             val response: DungeonProgressListResponse =
-                client.get(ApiRoutes.DUNGEON_PROGRESS) {
+                client.get(ApiRoutes.dungeonProgress(userId)) {
                     parameter("dungeon_id", dungeonId)
                 }.body()
             NetworkResult.Success(response)
