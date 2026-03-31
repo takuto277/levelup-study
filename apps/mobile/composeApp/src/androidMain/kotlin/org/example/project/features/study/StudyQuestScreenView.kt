@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -27,11 +26,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// ── カラー ─────────────────────────────
 private val DarkBg = Color(0xFF0F172A)
 private val DarkCard = Color(0xFF1E293B)
 private val DarkSurface = Color(0xFF334155)
@@ -43,23 +40,23 @@ private val EmeraldGreen = Color(0xFF10B981)
 private val PurpleGlow = Color(0xFF8B5CF6)
 private val TextWhite = Color(0xFFF8FAFC)
 private val TextMuted = Color(0xFF94A3B8)
-// 休憩
+private val DamageRed = Color(0xFFFF4444)
 private val BreakBg = Color(0xFF0C1E0C)
 private val BreakCard = Color(0xFF1A2E1A)
 private val BreakAccent = Color(0xFF34D399)
 private val BreakGlow = Color(0xFF10B981)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudyQuestScreenView(
     initialStudyMinutes: Int,
+    genre: String = "総合",
     onDismiss: () -> Unit
 ) {
     val viewModel = remember { StudyQuestViewModel() }
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.onIntent(StudyQuestIntent.StartQuest(initialStudyMinutes))
+        viewModel.onIntent(StudyQuestIntent.StartQuest(initialStudyMinutes, genre))
     }
 
     val isBreak = uiState.type == StudySessionType.BREAK
@@ -88,42 +85,49 @@ fun StudyQuestScreenView(
                 MainQuestView(
                     uiState = uiState,
                     onTogglePause = { viewModel.onIntent(StudyQuestIntent.TogglePause) },
-                    onFinishSession = { viewModel.onIntent(StudyQuestIntent.FinishSession) },
-                    onExit = {
-                        viewModel.onIntent(StudyQuestIntent.StopQuest)
-                        onDismiss()
-                    }
+                    onEndQuest = { viewModel.onIntent(StudyQuestIntent.EndQuest) }
                 )
             }
         }
     }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// メインクエスト — 没入感のある暗めUI
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 @Composable
 private fun MainQuestView(
     uiState: StudyQuestUiState,
     onTogglePause: () -> Unit,
-    onFinishSession: () -> Unit,
-    onExit: () -> Unit
+    onEndQuest: () -> Unit
 ) {
     val isBreak = uiState.type == StudySessionType.BREAK
     val isOvertime = uiState.isOvertime
+    val phase = uiState.adventurePhase
 
     val infiniteTransition = rememberInfiniteTransition(label = "quest")
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.4f, targetValue = 0.9f,
         animationSpec = infiniteRepeatable(tween(1500), RepeatMode.Reverse), label = "pulse"
     )
-    val glowScale by infiniteTransition.animateFloat(
-        initialValue = 1f, targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(tween(2000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "glow"
+    val walkOffset by infiniteTransition.animateFloat(
+        initialValue = -8f, targetValue = 8f,
+        animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "walk"
+    )
+    val walkBounce by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = -6f,
+        animationSpec = infiniteRepeatable(tween(300), RepeatMode.Reverse), label = "walkBounce"
+    )
+    val attackShake by infiniteTransition.animateFloat(
+        initialValue = -4f, targetValue = 4f,
+        animationSpec = infiniteRepeatable(tween(80), RepeatMode.Reverse), label = "shake"
+    )
+    val damageFlash by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(200), RepeatMode.Reverse), label = "flash"
+    )
+    val restFlicker by infiniteTransition.animateFloat(
+        initialValue = 0.6f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "flicker"
     )
 
-    // タイマー進捗の計算
     val targetSeconds = if (isBreak) uiState.targetBreakMinutes * 60 else uiState.targetStudyMinutes * 60
     val progress = if (targetSeconds > 0 && !isOvertime) {
         (uiState.elapsedSeconds.toFloat() / targetSeconds).coerceIn(0f, 1f)
@@ -135,24 +139,34 @@ private fun MainQuestView(
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // ── トップバー ──
         Spacer(modifier = Modifier.height(48.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 離脱
-            IconButton(onClick = onExit) {
-                Icon(Icons.Default.Close, contentDescription = "Exit", tint = TextMuted, modifier = Modifier.size(24.dp))
+            Box(
+                modifier = Modifier
+                    .background(AccentIndigo.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "📖 " + uiState.genre,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AccentIndigo
+                )
             }
-            // ステータスバッジ
             Box(
                 modifier = Modifier
                     .background(
-                        if (isOvertime) PurpleGlow.copy(alpha = 0.2f)
-                        else if (isBreak) BreakAccent.copy(alpha = 0.15f)
-                        else AccentBlue.copy(alpha = 0.15f),
+                        when {
+                            isOvertime -> PurpleGlow.copy(alpha = 0.2f)
+                            isBreak -> BreakAccent.copy(alpha = 0.15f)
+                            phase == AdventurePhase.ATTACKING -> FireRed.copy(alpha = 0.2f)
+                            phase == AdventurePhase.ENCOUNTER -> FireOrange.copy(alpha = 0.2f)
+                            else -> AccentBlue.copy(alpha = 0.15f)
+                        },
                         RoundedCornerShape(12.dp)
                     )
                     .padding(horizontal = 14.dp, vertical = 6.dp)
@@ -161,7 +175,11 @@ private fun MainQuestView(
                     text = when {
                         isOvertime -> "⚡ 限界突破中"
                         uiState.status == StudySessionStatus.PAUSED -> "⏸ 一時停止"
-                        isBreak -> "🌿 休憩中"
+                        isBreak -> "🏕️ 休憩中"
+                        phase == AdventurePhase.WALKING -> "🚶 探索中"
+                        phase == AdventurePhase.ENCOUNTER -> "⚠️ エンカウント！"
+                        phase == AdventurePhase.ATTACKING -> "⚔️ 戦闘中"
+                        phase == AdventurePhase.ENEMY_DEFEATED -> "🎉 討伐完了！"
                         else -> "⚔️ 冒険中"
                     },
                     fontSize = 13.sp,
@@ -169,73 +187,100 @@ private fun MainQuestView(
                     color = when {
                         isOvertime -> PurpleGlow
                         isBreak -> BreakAccent
+                        phase == AdventurePhase.ATTACKING -> FireRed
+                        phase == AdventurePhase.ENCOUNTER -> FireOrange
                         else -> AccentBlue
                     }
                 )
             }
-            // ダミースペーサー
-            Spacer(modifier = Modifier.width(48.dp))
+            Box(
+                modifier = Modifier
+                    .background(EmeraldGreen.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "💀 ${uiState.defeatedCount}",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = EmeraldGreen
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.weight(0.15f))
+        Spacer(modifier = Modifier.weight(0.1f))
 
-        // ── サークルタイマー ──
         Box(
-            modifier = Modifier.size((220 * glowScale).dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(
+                    if (isBreak) Brush.verticalGradient(listOf(Color(0xFF0A1F0A), Color(0xFF132613)))
+                    else Brush.verticalGradient(listOf(Color(0xFF0A0F1E), Color(0xFF141C2F)))
+                ),
             contentAlignment = Alignment.Center
         ) {
-            // 外側グロー
-            val glowColor = when {
-                isOvertime -> PurpleGlow
-                isBreak -> BreakGlow
-                else -> AccentBlue
-            }
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val strokeW = 10f
-                val r = (size.minDimension - strokeW) / 2
-                val c = Offset(size.width / 2, size.height / 2)
-                val tl = Offset(c.x - r, c.y - r)
-                val arcSize = Size(r * 2, r * 2)
-
-                // 背景リング
-                drawArc(
-                    color = glowColor.copy(alpha = 0.15f),
-                    startAngle = 0f, sweepAngle = 360f,
-                    useCenter = false, topLeft = tl, size = arcSize,
-                    style = Stroke(strokeW, cap = StrokeCap.Round)
-                )
-                // 進捗リング
-                drawArc(
-                    brush = Brush.sweepGradient(
-                        listOf(glowColor.copy(alpha = pulseAlpha), glowColor)
-                    ),
-                    startAngle = -90f, sweepAngle = 360f * progress,
-                    useCenter = false, topLeft = tl, size = arcSize,
-                    style = Stroke(strokeW, cap = StrokeCap.Round)
+            if (isBreak) {
+                BreakScene(restFlicker)
+            } else {
+                AdventureScene(
+                    phase = phase,
+                    enemyEmoji = uiState.enemyEmoji,
+                    enemyName = uiState.enemyName,
+                    enemyHp = uiState.enemyHp,
+                    enemyMaxHp = uiState.enemyMaxHp,
+                    lastDamage = uiState.lastDamage,
+                    walkOffset = walkOffset,
+                    walkBounce = walkBounce,
+                    attackShake = attackShake,
+                    damageFlash = damageFlash,
+                    pulseAlpha = pulseAlpha
                 )
             }
+        }
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // キャラ & 敵
-                if (isBreak) {
-                    Text("🏕️", fontSize = 48.sp)
-                } else {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("🧙‍♂️", fontSize = 40.sp)
-                        Text("⚔️", fontSize = 20.sp, color = FireRed.copy(alpha = pulseAlpha))
-                        Text("👾", fontSize = 40.sp)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    val glowColor = when {
+                        isOvertime -> PurpleGlow
+                        isBreak -> BreakGlow
+                        else -> AccentBlue
+                    }
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val strokeW = 4f
+                        val r = (size.minDimension - strokeW) / 2
+                        val c = Offset(size.width / 2, size.height / 2)
+                        val tl = Offset(c.x - r, c.y - r)
+                        val arcSize = Size(r * 2, r * 2)
+                        drawArc(
+                            color = glowColor.copy(alpha = 0.15f),
+                            startAngle = 0f, sweepAngle = 360f,
+                            useCenter = false, topLeft = tl, size = arcSize,
+                            style = Stroke(strokeW, cap = StrokeCap.Round)
+                        )
+                        drawArc(
+                            color = glowColor,
+                            startAngle = -90f, sweepAngle = 360f * progress,
+                            useCenter = false, topLeft = tl, size = arcSize,
+                            style = Stroke(strokeW, cap = StrokeCap.Round)
+                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.width(16.dp))
 
-                // タイマー
                 Text(
                     text = uiState.displayTime,
-                    fontSize = 52.sp,
+                    fontSize = 48.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
                     color = when {
@@ -244,74 +289,67 @@ private fun MainQuestView(
                         else -> TextWhite
                     }
                 )
+            }
 
-                if (isOvertime) {
-                    Text(
-                        "延長戦！",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PurpleGlow.copy(alpha = pulseAlpha)
-                    )
-                }
+            if (isOvertime) {
+                Text(
+                    "延長戦！",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PurpleGlow.copy(alpha = pulseAlpha),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset(y = 4.dp)
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // ── バトルログ ──
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .clip(RoundedCornerShape(24.dp))
+                .height(100.dp)
+                .clip(RoundedCornerShape(16.dp))
                 .background(if (isBreak) BreakCard else DarkCard)
-                .padding(16.dp)
+                .padding(12.dp)
         ) {
             Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        if (isBreak) "🌙 キャンプログ" else "📜 冒険ログ",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextWhite
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    if (isOvertime) {
-                        Box(
-                            modifier = Modifier
-                                .background(PurpleGlow.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
-                            Text("超集中", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = PurpleGlow)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    uiState.currentLog.forEachIndexed { idx, log ->
-                        val isLatest = idx == uiState.currentLog.lastIndex
+                Text(
+                    if (isBreak) "🌙 キャンプログ" else "📜 冒険ログ",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextWhite
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    val logs = uiState.currentLog.takeLast(3)
+                    logs.forEachIndexed { idx, log ->
+                        val isLatest = idx == logs.lastIndex
                         Row(
-                            modifier = Modifier.padding(bottom = 8.dp),
+                            modifier = Modifier.padding(bottom = 4.dp),
                             verticalAlignment = Alignment.Top
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .padding(top = 6.dp)
-                                    .size(6.dp)
+                                    .padding(top = 5.dp)
+                                    .size(4.dp)
                                     .background(
                                         if (isLatest) (if (isBreak) BreakAccent else AccentBlue) else TextMuted,
                                         CircleShape
                                     )
                             )
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = log,
-                                fontSize = 13.sp,
+                                fontSize = 11.sp,
                                 color = if (isLatest) TextWhite else TextMuted,
                                 fontWeight = if (isLatest) FontWeight.SemiBold else FontWeight.Normal,
-                                lineHeight = 18.sp
+                                lineHeight = 15.sp
                             )
                         }
                     }
@@ -319,71 +357,274 @@ private fun MainQuestView(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.weight(0.1f))
 
-        // ── 操作ボタン ──
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 完了ボタン（勉強中のみ）
-            if (!isBreak) {
-                Button(
-                    onClick = onFinishSession,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen)
-                ) {
-                    Text("🏁 クエスト完了", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Button(
+                onClick = onTogglePause,
+                modifier = Modifier.weight(1f).height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (uiState.status == StudySessionStatus.RUNNING)
+                        DarkSurface else AccentBlue
+                )
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(
+                        if (uiState.status == StudySessionStatus.RUNNING) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = "Toggle",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        if (uiState.status == StudySessionStatus.RUNNING) "一時停止" else "再開",
+                        fontWeight = FontWeight.Bold, fontSize = 14.sp
+                    )
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Button(
+                onClick = onEndQuest,
+                modifier = Modifier.weight(1f).height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen)
             ) {
-                // 一時停止 / 再開
-                Button(
-                    onClick = onTogglePause,
-                    modifier = Modifier.weight(1f).height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (uiState.status == StudySessionStatus.RUNNING)
-                            DarkSurface else AccentBlue
-                    )
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Icon(
-                            if (uiState.status == StudySessionStatus.RUNNING) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = "Toggle",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            if (uiState.status == StudySessionStatus.RUNNING) "一時停止" else "再開",
-                            fontWeight = FontWeight.Bold, fontSize = 14.sp
-                        )
-                    }
-                }
-
-                // 中止
-                OutlinedButton(
-                    onClick = onExit,
-                    modifier = Modifier.height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = FireRed)
-                ) {
-                    Text("中止", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = FireRed)
-                }
+                Text("🏁 終了する", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
         }
     }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// リザルト画面 — 達成感のある演出
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@Composable
+private fun AdventureScene(
+    phase: AdventurePhase,
+    enemyEmoji: String,
+    enemyName: String,
+    enemyHp: Int,
+    enemyMaxHp: Int,
+    lastDamage: Int,
+    walkOffset: Float,
+    walkBounce: Float,
+    attackShake: Float,
+    damageFlash: Float,
+    pulseAlpha: Float
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .align(Alignment.BottomCenter)
+                .offset(y = (-40).dp)
+                .background(TextMuted.copy(alpha = 0.2f))
+        )
+
+        if (phase == AdventurePhase.WALKING) {
+            for (i in 0..4) {
+                Box(
+                    modifier = Modifier
+                        .size(3.dp)
+                        .align(Alignment.BottomCenter)
+                        .offset(
+                            x = ((i * 70 - 140) + walkOffset * 3).dp,
+                            y = (-38).dp
+                        )
+                        .background(TextMuted.copy(alpha = 0.3f), CircleShape)
+                )
+            }
+        }
+
+        when (phase) {
+            AdventurePhase.WALKING -> {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("…", fontSize = 16.sp, color = TextMuted.copy(alpha = 0.5f))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "🧙‍♂️",
+                        fontSize = 64.sp,
+                        modifier = Modifier.offset(x = walkOffset.dp, y = walkBounce.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("探索中…", fontSize = 12.sp, color = TextMuted, fontWeight = FontWeight.Medium)
+                }
+            }
+
+            AdventurePhase.ENCOUNTER -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(FireRed.copy(alpha = damageFlash * 0.15f))
+                )
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("⚠️", fontSize = 32.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "${enemyName}が現れた！",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Black,
+                        color = FireOrange
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(enemyEmoji, fontSize = 72.sp)
+                }
+            }
+
+            AdventurePhase.ATTACKING -> {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .align(Alignment.Center),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "🧙‍♂️",
+                        fontSize = 56.sp,
+                        modifier = Modifier.offset(x = attackShake.dp)
+                    )
+
+                    Text(
+                        "⚔️",
+                        fontSize = 28.sp,
+                        color = FireRed.copy(alpha = pulseAlpha),
+                        modifier = Modifier.offset(y = (-8).dp)
+                    )
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        AnimatedVisibility(
+                            visible = lastDamage > 0,
+                            enter = fadeIn(tween(100)) + slideInVertically { -20 },
+                            exit = fadeOut(tween(500))
+                        ) {
+                            Text(
+                                "-${lastDamage}",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Black,
+                                color = DamageRed
+                            )
+                        }
+
+                        Text(
+                            enemyEmoji,
+                            fontSize = 56.sp,
+                            modifier = Modifier.offset(
+                                x = if (lastDamage > 0) attackShake.dp else 0.dp
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(enemyName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(80.dp)
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(DarkSurface)
+                            ) {
+                                val hpRatio = if (enemyMaxHp > 0) enemyHp.toFloat() / enemyMaxHp else 0f
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .fillMaxWidth(hpRatio)
+                                        .background(
+                                            when {
+                                                hpRatio > 0.5f -> EmeraldGreen
+                                                hpRatio > 0.25f -> FireOrange
+                                                else -> FireRed
+                                            },
+                                            RoundedCornerShape(3.dp)
+                                        )
+                                )
+                            }
+                            Text("${enemyHp}/${enemyMaxHp}", fontSize = 9.sp, color = TextMuted)
+                        }
+                    }
+                }
+            }
+
+            AdventurePhase.ENEMY_DEFEATED -> {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("🎉", fontSize = 40.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "${enemyName}を倒した！",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        color = EmeraldGreen
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (i in 0..4) {
+                            Text(
+                                "✨",
+                                fontSize = (16 + (i * 4)).sp,
+                                modifier = Modifier.offset(y = (walkBounce * (i + 1) * 0.5f).dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("経験値を獲得！", fontSize = 13.sp, color = FireOrange, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            AdventurePhase.RESTING -> {
+                BreakScene(pulseAlpha)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BreakScene(flickerAlpha: Float) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        val stars = remember {
+            (0..12).map {
+                Triple(
+                    (-0.45f + (Math.random().toFloat() * 0.9f)),
+                    (-0.4f + (Math.random().toFloat() * 0.5f)),
+                    8 + (Math.random() * 8).toInt()
+                )
+            }
+        }
+        stars.forEach { (xRatio, yRatio, size) ->
+            Text(
+                "✦",
+                fontSize = size.sp,
+                color = Color.White.copy(alpha = flickerAlpha * 0.4f),
+                modifier = Modifier.offset(x = (xRatio * 160).dp, y = (yRatio * 100).dp)
+            )
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("🧙‍♂️", fontSize = 48.sp, modifier = Modifier.offset(x = (-20).dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Text("🔥", fontSize = (32 * flickerAlpha).sp)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("休憩中… 体力を回復しています", fontSize = 12.sp, color = BreakAccent, fontWeight = FontWeight.Medium)
+        }
+    }
+}
 
 @Composable
 private fun ResultScreen(
@@ -401,6 +642,8 @@ private fun ResultScreen(
         initialValue = 0f, targetValue = -8f,
         animationSpec = infiniteRepeatable(tween(1000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "bounce"
     )
+
+    val actualMinutes = (uiState.elapsedSeconds / 60).toInt().coerceAtLeast(1)
 
     val bgGradient = if (isStudy) {
         Brush.verticalGradient(listOf(Color(0xFF1A0A2E), Color(0xFF0F172A)))
@@ -420,7 +663,6 @@ private fun ResultScreen(
                 .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // タイトル
             Text(
                 if (isStudy) "⚔️ QUEST CLEAR!" else "🌿 REST COMPLETE!",
                 fontSize = 14.sp,
@@ -436,17 +678,15 @@ private fun ResultScreen(
                 color = TextWhite
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // 報酬キャラ
             Box(
-                modifier = Modifier.size(160.dp),
+                modifier = Modifier.size(140.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // グロー
                 Box(
                     modifier = Modifier
-                        .size(160.dp)
+                        .size(140.dp)
                         .background(
                             brush = Brush.radialGradient(
                                 listOf(
@@ -459,14 +699,13 @@ private fun ResultScreen(
                 )
                 Text(
                     if (isStudy) "🏆" else "✨",
-                    fontSize = 80.sp,
+                    fontSize = 72.sp,
                     modifier = Modifier.offset(y = bounceY.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // 報酬カード
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -485,12 +724,12 @@ private fun ResultScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            RewardItem("⏱", "集中時間", "${uiState.targetStudyMinutes}分")
-                            RewardItem("⭐", "経験値", "+${uiState.targetStudyMinutes * 10}")
-                            RewardItem("💎", "結晶", "+${uiState.targetStudyMinutes / 5}")
+                            RewardItem("⏱", "集中時間", "${actualMinutes}分")
+                            RewardItem("⭐", "経験値", "+${actualMinutes * 10}")
+                            RewardItem("💀", "討伐数", "${uiState.defeatedCount}体")
+                            RewardItem("💎", "結晶", "+${actualMinutes / 5 + uiState.defeatedCount}")
                         }
                         Spacer(modifier = Modifier.height(16.dp))
-                        // キャラ一言
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -534,27 +773,34 @@ private fun ResultScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            // ボタン
-            Button(
-                onClick = onNext,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isStudy) EmeraldGreen else AccentBlue
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    if (isStudy) "🌿 休憩を開始する" else "⚔️ 次の冒険へ",
-                    fontWeight = FontWeight.Black, fontSize = 16.sp
-                )
-            }
+                OutlinedButton(
+                    onClick = onExit,
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted)
+                ) {
+                    Text("🏠 街に戻る", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextMuted)
+                }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            TextButton(onClick = onExit) {
-                Text("🏠 街に戻る", color = TextMuted, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Button(
+                    onClick = onNext,
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isStudy) EmeraldGreen else AccentBlue
+                    )
+                ) {
+                    Text(
+                        if (isStudy) "🌿 休憩へ" else "⚔️ 冒険へ",
+                        fontWeight = FontWeight.Black, fontSize = 14.sp
+                    )
+                }
             }
         }
     }
@@ -563,9 +809,9 @@ private fun ResultScreen(
 @Composable
 private fun RewardItem(emoji: String, label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(emoji, fontSize = 28.sp)
+        Text(emoji, fontSize = 24.sp)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(label, fontSize = 11.sp, color = TextMuted)
-        Text(value, fontSize = 16.sp, fontWeight = FontWeight.Black, color = TextWhite)
+        Text(label, fontSize = 10.sp, color = TextMuted)
+        Text(value, fontSize = 14.sp, fontWeight = FontWeight.Black, color = TextWhite)
     }
 }

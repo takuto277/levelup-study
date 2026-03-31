@@ -38,10 +38,12 @@ fun HomeScreenView() {
     var selectedTab by remember { mutableStateOf(2) }
     var showStudySheet by remember { mutableStateOf(false) }
     var studyMinutes by remember { mutableStateOf(25) }
+    var selectedGenre by remember { mutableStateOf("総合") }
 
     if (showStudySheet) {
         org.example.project.features.study.StudyQuestScreenView(
             initialStudyMinutes = studyMinutes,
+            genre = selectedGenre,
             onDismiss = { showStudySheet = false }
         )
     } else {
@@ -58,6 +60,8 @@ fun HomeScreenView() {
                         2 -> HomeTabContent(
                             studyMinutes = studyMinutes,
                             onStudyMinutesChange = { studyMinutes = it },
+                            selectedGenre = selectedGenre,
+                            onGenreChange = { selectedGenre = it },
                             onStartStudy = { showStudySheet = true }
                         )
                         3 -> org.example.project.features.gacha.GachaScreenView()
@@ -80,8 +84,21 @@ fun HomeScreenView() {
 fun HomeTabContent(
     studyMinutes: Int,
     onStudyMinutesChange: (Int) -> Unit,
+    selectedGenre: String,
+    onGenreChange: (String) -> Unit,
     onStartStudy: () -> Unit
 ) {
+    // ジャンルデータ
+    val genres = remember {
+        listOf(
+            "🔢" to "数学",
+            "🔬" to "理科",
+            "📝" to "語学",
+            "💻" to "プログラミング",
+            "📚" to "総合",
+            "🎨" to "クリエイティブ"
+        )
+    }
     // アニメーション
     val infiniteTransition = rememberInfiniteTransition(label = "home")
     val bounceY by infiniteTransition.animateFloat(
@@ -286,6 +303,54 @@ fun HomeTabContent(
                             fontWeight = FontWeight.Bold,
                             color = if (isSelected) Color.White else TextSecondary
                         )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // ── ジャンル選択 ──
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("📖 ジャンル", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+            Spacer(modifier = Modifier.height(8.dp))
+            // 3列×2行でグリッド風に
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (row in genres.chunked(3)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                    ) {
+                        row.forEach { (emoji, label) ->
+                            val isSelected = selectedGenre == label
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        if (isSelected) AccentIndigo else Color(0xFFE2E8F0)
+                                    )
+                                    .clickable { onGenreChange(label) }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(emoji, fontSize = 14.sp)
+                                    Text(
+                                        label,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) Color.White else TextSecondary
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
