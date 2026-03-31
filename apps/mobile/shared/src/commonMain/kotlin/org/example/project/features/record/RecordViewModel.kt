@@ -87,7 +87,7 @@ class RecordViewModel {
         val periodTotal = bars.sumOf { it.minutes }
 
         // ジャンル別集計
-        val genreTotals = mutableMapOf<StudyGenre, Int>()
+        val genreTotals = mutableMapOf<GenreInfo, Int>()
         for (record in filteredRecords) {
             for ((g, min) in record.genreMinutes) {
                 genreTotals[g] = (genreTotals[g] ?: 0) + min
@@ -133,7 +133,7 @@ class RecordViewModel {
      */
     data class DailyRecord(
         val label: String,
-        val genreMinutes: Map<StudyGenre, Int>
+        val genreMinutes: Map<GenreInfo, Int>
     ) {
         fun totalMinutes(): Int = genreMinutes.values.sum()
     }
@@ -151,21 +151,21 @@ class RecordViewModel {
 
             // 各日のジャンル別データ（擬似ランダム風に決め打ち）
             val patterns = listOf(
-                mapOf(StudyGenre.MATH to 25, StudyGenre.LANGUAGE to 30),
-                mapOf(StudyGenre.PROGRAMMING to 45, StudyGenre.GENERAL to 15),
-                mapOf(StudyGenre.SCIENCE to 30, StudyGenre.MATH to 20, StudyGenre.CREATIVE to 10),
-                mapOf(StudyGenre.LANGUAGE to 40, StudyGenre.PROGRAMMING to 20),
-                mapOf(StudyGenre.MATH to 35, StudyGenre.SCIENCE to 25, StudyGenre.GENERAL to 15),
-                mapOf(StudyGenre.PROGRAMMING to 50, StudyGenre.CREATIVE to 20),
-                mapOf(StudyGenre.GENERAL to 20, StudyGenre.LANGUAGE to 25),
-                mapOf(StudyGenre.MATH to 30, StudyGenre.SCIENCE to 35, StudyGenre.PROGRAMMING to 25),
-                mapOf(StudyGenre.LANGUAGE to 45, StudyGenre.CREATIVE to 15),
-                mapOf(StudyGenre.MATH to 40, StudyGenre.GENERAL to 25, StudyGenre.SCIENCE to 20),
-                mapOf(StudyGenre.PROGRAMMING to 55, StudyGenre.MATH to 15),
-                mapOf(StudyGenre.SCIENCE to 30, StudyGenre.LANGUAGE to 35),
-                mapOf(StudyGenre.GENERAL to 25, StudyGenre.CREATIVE to 30, StudyGenre.MATH to 20),
-                mapOf(StudyGenre.PROGRAMMING to 40, StudyGenre.SCIENCE to 20),
-                mapOf(StudyGenre.MATH to 50, StudyGenre.LANGUAGE to 30, StudyGenre.GENERAL to 10),
+                mapOf(GenreInfo.MATH to 25, GenreInfo.LANGUAGE to 30),
+                mapOf(GenreInfo.PROGRAMMING to 45, GenreInfo.GENERAL to 15),
+                mapOf(GenreInfo.SCIENCE to 30, GenreInfo.MATH to 20, GenreInfo.CREATIVE to 10),
+                mapOf(GenreInfo.LANGUAGE to 40, GenreInfo.PROGRAMMING to 20),
+                mapOf(GenreInfo.MATH to 35, GenreInfo.SCIENCE to 25, GenreInfo.GENERAL to 15),
+                mapOf(GenreInfo.PROGRAMMING to 50, GenreInfo.CREATIVE to 20),
+                mapOf(GenreInfo.GENERAL to 20, GenreInfo.LANGUAGE to 25),
+                mapOf(GenreInfo.MATH to 30, GenreInfo.SCIENCE to 35, GenreInfo.PROGRAMMING to 25),
+                mapOf(GenreInfo.LANGUAGE to 45, GenreInfo.CREATIVE to 15),
+                mapOf(GenreInfo.MATH to 40, GenreInfo.GENERAL to 25, GenreInfo.SCIENCE to 20),
+                mapOf(GenreInfo.PROGRAMMING to 55, GenreInfo.MATH to 15),
+                mapOf(GenreInfo.SCIENCE to 30, GenreInfo.LANGUAGE to 35),
+                mapOf(GenreInfo.GENERAL to 25, GenreInfo.CREATIVE to 30, GenreInfo.MATH to 20),
+                mapOf(GenreInfo.PROGRAMMING to 40, GenreInfo.SCIENCE to 20),
+                mapOf(GenreInfo.MATH to 50, GenreInfo.LANGUAGE to 30, GenreInfo.GENERAL to 10),
             )
 
             return dayLabels30.mapIndexed { idx, label ->

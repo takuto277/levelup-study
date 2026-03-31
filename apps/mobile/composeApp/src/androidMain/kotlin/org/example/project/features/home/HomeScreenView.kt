@@ -43,7 +43,7 @@ fun HomeScreenView() {
     if (showStudySheet) {
         org.example.project.features.study.StudyQuestScreenView(
             initialStudyMinutes = studyMinutes,
-            genre = selectedGenre,
+            genreId = selectedGenre,
             onDismiss = { showStudySheet = false }
         )
     } else {

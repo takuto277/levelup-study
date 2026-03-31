@@ -13,6 +13,8 @@ data class MasterWeaponResponse(
     val name: String,
     val rarity: Int,
     @SerialName("base_atk") val baseAtk: Int,
+    @SerialName("skill_name") val skillName: String? = null,
+    @SerialName("skill_description") val skillDescription: String? = null,
     @SerialName("image_url") val imageUrl: String,
     @SerialName("is_active") val isActive: Boolean
 )
@@ -29,6 +31,7 @@ data class UserWeaponResponse(
     @SerialName("weapon_id") val weaponId: String,
     val weapon: MasterWeaponResponse? = null,
     val level: Int,
+    @SerialName("refinement_level") val refinementLevel: Int = 0,
     @SerialName("obtained_at") val obtainedAt: String
 )
 
@@ -51,6 +54,8 @@ fun MasterWeaponResponse.toDomain(): MasterWeapon = MasterWeapon(
     name = name,
     rarity = rarity,
     baseAtk = baseAtk,
+    skillName = skillName,
+    skillDescription = skillDescription,
     imageUrl = imageUrl,
     isActive = isActive
 )
@@ -61,5 +66,6 @@ fun UserWeaponResponse.toDomain(): UserWeapon = UserWeapon(
     weaponId = weaponId,
     weapon = weapon?.toDomain(),
     level = level,
+    refinementLevel = refinementLevel,
     obtainedAt = obtainedAt
 )

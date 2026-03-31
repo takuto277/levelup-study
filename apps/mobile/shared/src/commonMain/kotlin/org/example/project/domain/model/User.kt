@@ -7,6 +7,8 @@ package org.example.project.domain.model
 data class User(
     val id: String,
     val displayName: String,
+    val level: Int = 1,
+    val currentXp: Int = 0,
     val totalStudySeconds: Long,
     val stones: Int,
     val gold: Int,

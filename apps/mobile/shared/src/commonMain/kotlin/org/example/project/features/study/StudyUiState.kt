@@ -8,7 +8,7 @@ import org.example.project.domain.model.StudyCompleteResult
 data class StudyUiState(
     val sessionType: StudySessionType = StudySessionType.STUDY,
     val sessionStatus: StudySessionStatus = StudySessionStatus.READY,
-    val category: String? = null,
+    val genreId: String? = null,
     val targetSeconds: Int = 25 * 60,
     val elapsedSeconds: Int = 0,
     val isOvertime: Boolean = false,

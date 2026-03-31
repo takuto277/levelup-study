@@ -46,7 +46,7 @@ class StudyViewModel(
 
     fun onIntent(intent: StudyIntent) {
         when (intent) {
-            is StudyIntent.SetCategory -> _uiState.update { it.copy(category = intent.category) }
+            is StudyIntent.SetGenreId -> _uiState.update { it.copy(genreId = intent.genreId) }
             is StudyIntent.SetTargetSeconds -> _uiState.update { it.copy(targetSeconds = intent.seconds) }
             is StudyIntent.StartTimer -> startTimer()
             is StudyIntent.TogglePause -> togglePause()
@@ -94,7 +94,7 @@ class StudyViewModel(
             val endedAt = kotlinx.datetime.Clock.System.now().toString()
             try {
                 val result = studyUseCase.completeSession(
-                    category = state.category,
+                    category = state.genreId,
                     startedAt = sessionStartedAt ?: endedAt,
                     endedAt = endedAt,
                     durationSeconds = state.elapsedSeconds,
@@ -104,7 +104,7 @@ class StudyViewModel(
             } catch (e: Exception) {
                 // オフライン時はローカルに保存
                 studyUseCase.saveOfflineSession(
-                    category = state.category,
+                    category = state.genreId,
                     startedAt = sessionStartedAt ?: endedAt,
                     endedAt = endedAt,
                     durationSeconds = state.elapsedSeconds,
@@ -121,7 +121,7 @@ class StudyViewModel(
         _uiState.update {
             StudyUiState(
                 targetSeconds = DEFAULT_STUDY_SECONDS,
-                category = it.category
+                genreId = it.genreId
             )
         }
     }

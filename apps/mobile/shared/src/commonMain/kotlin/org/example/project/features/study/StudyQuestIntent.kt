@@ -6,8 +6,8 @@ package org.example.project.features.study
  * View → ViewModel への入力はすべて Intent 経由。
  */
 sealed interface StudyQuestIntent {
-    /** クエスト開始（勉強時間 + ジャンルを指定） */
-    data class StartQuest(val studyMinutes: Int, val genre: String = "総合") : StudyQuestIntent
+    /** クエスト開始（勉強時間 + ジャンルIDを指定） */
+    data class StartQuest(val studyMinutes: Int, val genreId: String? = null) : StudyQuestIntent
 
     /** 一時停止 / 再開のトグル */
     data object TogglePause : StudyQuestIntent

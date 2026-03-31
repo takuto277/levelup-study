@@ -22,7 +22,7 @@ private let textSecondary = Color(hex: 0x64748B)
 private let textTertiary = Color(hex: 0x94A3B8)
 private let accentBlue = Color(hex: 0x3B82F6)
 
-private func genreColor(_ genre: StudyGenre) -> Color {
+private func genreColor(_ genre: GenreInfo) -> Color {
     Color(hex: UInt(genre.colorHex))
 }
 
@@ -295,7 +295,7 @@ struct AnalyticsScreenView: View {
         .padding(.horizontal, 16)
     }
 
-    private func barItem(bar: ChartBar, maxMin: Int, selectedGenre: StudyGenre?, barCount: Int) -> some View {
+    private func barItem(bar: ChartBar, maxMin: Int, selectedGenre: GenreInfo?, barCount: Int) -> some View {
         let fraction = CGFloat(bar.minutes) / CGFloat(max(maxMin, 1))
         let barHeight = max(130.0 * fraction, 4.0)
         let barWidth: CGFloat = barCount <= 7 ? 36 : (barCount <= 14 ? 28 : 22)
@@ -329,7 +329,7 @@ struct AnalyticsScreenView: View {
     }
 
     private func stackedBar(bar: ChartBar, barHeight: CGFloat) -> some View {
-        let genreMinutes = bar.genreMinutes as! [StudyGenre: KotlinInt]
+        let genreMinutes = bar.genreMinutes as! [GenreInfo: KotlinInt]
         let total = genreMinutes.values.reduce(0) { $0 + $1.intValue }
         let safeTot = max(total, 1)
 

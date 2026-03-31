@@ -74,7 +74,7 @@ class StudyQuestViewModel(
     // ── Intent ハンドラ ─────────────────────────────
     fun onIntent(intent: StudyQuestIntent) {
         when (intent) {
-            is StudyQuestIntent.StartQuest -> startQuest(intent.studyMinutes, intent.genre)
+            is StudyQuestIntent.StartQuest -> startQuest(intent.studyMinutes, intent.genreId)
             is StudyQuestIntent.TogglePause -> togglePause()
             is StudyQuestIntent.EndQuest -> endQuest()
             is StudyQuestIntent.NextSession -> nextSession()
@@ -109,7 +109,7 @@ class StudyQuestViewModel(
 
     // ── 内部ロジック ────────────────────────────────
 
-    private fun startQuest(studyMinutes: Int, genre: String) {
+    private fun startQuest(studyMinutes: Int, genreId: String?) {
         if (_uiState.value.status == StudySessionStatus.RUNNING) return
 
         sessionStartedAt = Clock.System.now().toString()
@@ -125,7 +125,7 @@ class StudyQuestViewModel(
                 isOvertime = false,
                 currentLog = listOf("冒険を開始した！"),
                 displayTime = formatTime(studyMinutes.toLong() * 60),
-                genre = genre,
+                genreId = genreId,
                 adventurePhase = AdventurePhase.WALKING,
                 enemyName = firstEnemy.name,
                 enemyEmoji = firstEnemy.emoji,
@@ -165,7 +165,7 @@ class StudyQuestViewModel(
         viewModelScope.launch {
             try {
                 val result = useCase.completeSession(
-                    category = state.genre.ifEmpty { null },
+                    category = state.genreId,
                     startedAt = sessionStartedAt ?: endedAt,
                     endedAt = endedAt,
                     durationSeconds = state.elapsedSeconds.toInt(),

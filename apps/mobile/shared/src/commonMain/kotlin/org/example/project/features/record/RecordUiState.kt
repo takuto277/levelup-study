@@ -20,7 +20,7 @@ data class RecordUiState(
     val genreBreakdown: List<GenreStudyTime> = emptyList(),
 
     /** 選択中のジャンルフィルター（null = 全ジャンル表示） */
-    val selectedGenre: StudyGenre? = null,
+    val selectedGenre: GenreInfo? = null,
 
     /** 連続学習日数 */
     val streakDays: Int = 0,
@@ -48,15 +48,30 @@ enum class RecordPeriod(val label: String) {
 }
 
 /**
- * 勉強ジャンル
+ * ジャンル表示情報（データ駆動）
+ *
+ * 旧 StudyGenre enum を置き換え。サーバーの m_study_genres / user_genres から
+ * 動的に生成されるので enum ではなく data class にしている。
+ * id は MasterStudyGenre.id (UUID) または UserGenre.id に対応。
  */
-enum class StudyGenre(val label: String, val emoji: String, val colorHex: Long) {
-    MATH("数学", "🔢", 0xFF3B82F6),
-    SCIENCE("理科", "🔬", 0xFF10B981),
-    LANGUAGE("語学", "📝", 0xFFF59E0B),
-    PROGRAMMING("プログラミング", "💻", 0xFF8B5CF6),
-    GENERAL("総合", "📚", 0xFFEF4444),
-    CREATIVE("クリエイティブ", "🎨", 0xFFEC4899)
+data class GenreInfo(
+    val id: String,
+    val label: String,
+    val emoji: String,
+    val colorHex: Long
+) {
+    companion object {
+        // デフォルトジャンル（サーバー未接続時のフォールバック / モックデータ用）
+        val MATH = GenreInfo("math", "数学", "🔢", 0xFF3B82F6)
+        val SCIENCE = GenreInfo("science", "理科", "🔬", 0xFF10B981)
+        val LANGUAGE = GenreInfo("language", "語学", "📝", 0xFFF59E0B)
+        val PROGRAMMING = GenreInfo("programming", "プログラミング", "💻", 0xFF8B5CF6)
+        val GENERAL = GenreInfo("general", "総合", "📚", 0xFFEF4444)
+        val CREATIVE = GenreInfo("creative", "クリエイティブ", "🎨", 0xFFEC4899)
+
+        /** 全デフォルトジャンル */
+        val defaults: List<GenreInfo> = listOf(MATH, SCIENCE, LANGUAGE, PROGRAMMING, GENERAL, CREATIVE)
+    }
 }
 
 /**
@@ -68,14 +83,14 @@ data class ChartBar(
     /** 勉強時間（分） */
     val minutes: Int,
     /** ジャンル別内訳（積み上げ用） */
-    val genreMinutes: Map<StudyGenre, Int> = emptyMap()
+    val genreMinutes: Map<GenreInfo, Int> = emptyMap()
 )
 
 /**
  * ジャンル別の勉強時間
  */
 data class GenreStudyTime(
-    val genre: StudyGenre,
+    val genre: GenreInfo,
     /** そのジャンルの合計時間（分） */
     val minutes: Int,
     /** 全体に対する割合 (0.0 ~ 1.0) */

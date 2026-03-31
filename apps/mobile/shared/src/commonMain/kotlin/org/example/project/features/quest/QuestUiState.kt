@@ -1,30 +1,10 @@
 package org.example.project.features.quest
 
-/**
- * ダンジョンの難易度
- */
-enum class DungeonDifficulty(val label: String, val stars: Int) {
-    BEGINNER("初級", 1),
-    INTERMEDIATE("中級", 2),
-    ADVANCED("上級", 3),
-    EXPERT("超級", 4),
-    LEGENDARY("伝説", 5)
-}
+import org.example.project.domain.model.DungeonCategory
+import org.example.project.domain.model.DungeonDifficulty
 
 /**
- * ダンジョンのカテゴリー（勉強ジャンル）
- */
-enum class DungeonCategory(val label: String, val emoji: String) {
-    GENERAL("総合", "📚"),
-    MATH("数学", "🔢"),
-    SCIENCE("理科", "🔬"),
-    LANGUAGE("語学", "🌍"),
-    PROGRAMMING("プログラミング", "💻"),
-    CREATIVE("クリエイティブ", "🎨")
-}
-
-/**
- * ダンジョンクリア時の報酬
+ * ダンジョンクリア時の報酬（UI 表示用）
  */
 data class DungeonReward(
     val gold: Int,
@@ -35,8 +15,11 @@ data class DungeonReward(
 )
 
 /**
- * ダンジョン
- * サーバーから取得するものとローカルに持つものの両方をこのモデルで表現する
+ * ダンジョン（UI 表示用ビューモデル）
+ *
+ * ドメインモデル MasterDungeon + DungeonProgress をフラットに統合し
+ * 画面表示に必要な情報をすべて持たせる。
+ * DungeonDifficulty / DungeonCategory は domain.model から import。
  */
 data class Dungeon(
     val id: String,

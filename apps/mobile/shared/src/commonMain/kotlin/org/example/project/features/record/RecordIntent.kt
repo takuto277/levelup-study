@@ -8,7 +8,7 @@ sealed interface RecordIntent {
     data class SelectPeriod(val period: RecordPeriod) : RecordIntent
 
     /** ジャンルフィルターを選択（null で全ジャンル表示） */
-    data class SelectGenre(val genre: StudyGenre?) : RecordIntent
+    data class SelectGenre(val genre: GenreInfo?) : RecordIntent
 
     /** データをリフレッシュ */
     data object Refresh : RecordIntent

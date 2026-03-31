@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.example.project.domain.model.DungeonDifficulty
 
 // ── カラーパレット ───────────────────────────────────
 private val BgColor = Color(0xFFF8FAFC)

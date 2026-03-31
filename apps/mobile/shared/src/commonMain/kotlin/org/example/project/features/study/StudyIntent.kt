@@ -4,8 +4,8 @@ package org.example.project.features.study
  * 勉強タイマー画面のユーザー操作
  */
 sealed interface StudyIntent {
-    /** 勉強カテゴリを設定 */
-    data class SetCategory(val category: String?) : StudyIntent
+    /** 勉強ジャンルを設定 */
+    data class SetGenreId(val genreId: String?) : StudyIntent
 
     /** 目標時間を設定（秒） */
     data class SetTargetSeconds(val seconds: Int) : StudyIntent

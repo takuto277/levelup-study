@@ -4,6 +4,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import org.example.project.domain.model.DungeonCategory
+import org.example.project.domain.model.DungeonDifficulty
 
 /**
  * 冒険（ダンジョン選択）画面のViewModel

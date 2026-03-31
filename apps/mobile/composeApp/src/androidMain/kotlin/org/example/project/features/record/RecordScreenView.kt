@@ -38,7 +38,7 @@ private val TextTertiary = Color(0xFF94A3B8)
 private val AccentBlue = Color(0xFF3B82F6)
 private val AccentIndigo = Color(0xFF6366F1)
 
-private fun genreColor(genre: StudyGenre): Color = Color(genre.colorHex)
+private fun genreColor(genre: GenreInfo): Color = Color(genre.colorHex)
 
 private fun formatMinutes(minutes: Int): String {
     val h = minutes / 60
@@ -399,7 +399,7 @@ private fun BarChartCard(uiState: RecordUiState) {
 private fun BarItem(
     bar: ChartBar,
     maxMinutes: Int,
-    selectedGenre: StudyGenre?,
+    selectedGenre: GenreInfo?,
     barCount: Int
 ) {
     val fraction = bar.minutes.toFloat() / maxMinutes
@@ -481,7 +481,7 @@ private fun BarItem(
 @Composable
 private fun GenreBreakdownCard(
     uiState: RecordUiState,
-    onGenreSelect: (StudyGenre?) -> Unit
+    onGenreSelect: (GenreInfo?) -> Unit
 ) {
     val breakdown = uiState.genreBreakdown
     if (breakdown.isEmpty()) return

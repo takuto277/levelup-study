@@ -74,7 +74,7 @@ struct HomeScreenView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(bgColor)
         .fullScreenCover(isPresented: $showStudySheet) {
-            StudyQuestScreenView(initialStudyMinutes: studyMinutes, genre: selectedGenre)
+            StudyQuestScreenView(initialStudyMinutes: studyMinutes, genreId: selectedGenre)
         }
         .onReceive(messageTimer) { _ in
             withAnimation(.easeInOut(duration: 0.3)) {

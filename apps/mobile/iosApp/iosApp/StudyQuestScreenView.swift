@@ -39,16 +39,16 @@ private let breakGlow = Color(hex: 0x10B981)
 struct StudyQuestScreenView: View {
     @Environment(\.dismiss) var dismiss
     let initialStudyMinutes: Int
-    let genre: String
+    let genreId: String?
 
     private let viewModel = StudyQuestViewModel()
     @State private var uiState: StudyQuestUiState
     @State private var pulsePhase = false
     @State private var walkPhase = false
 
-    init(initialStudyMinutes: Int, genre: String = "総合") {
+    init(initialStudyMinutes: Int, genreId: String? = nil) {
         self.initialStudyMinutes = initialStudyMinutes
-        self.genre = genre
+        self.genreId = genreId
         _uiState = State(initialValue: StudyQuestUiState(
             type: .study,
             status: .ready,
@@ -83,7 +83,7 @@ struct StudyQuestScreenView: View {
             }
         }
         .onAppear {
-            viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genre: genre))
+            viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId))
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 pulsePhase = true
             }
@@ -113,7 +113,7 @@ struct StudyQuestScreenView: View {
             Spacer().frame(height: 56)
             HStack {
                 // ジャンルバッジ
-                Text("📖 \(uiState.genre)")
+                Text("📖 \(uiState.genreId ?? "総合")")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(accentIndigo)
                     .padding(.horizontal, 12)

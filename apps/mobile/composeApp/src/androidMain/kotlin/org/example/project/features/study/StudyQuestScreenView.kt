@@ -49,14 +49,14 @@ private val BreakGlow = Color(0xFF10B981)
 @Composable
 fun StudyQuestScreenView(
     initialStudyMinutes: Int,
-    genre: String = "総合",
+    genreId: String? = null,
     onDismiss: () -> Unit
 ) {
     val viewModel = remember { StudyQuestViewModel() }
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.onIntent(StudyQuestIntent.StartQuest(initialStudyMinutes, genre))
+        viewModel.onIntent(StudyQuestIntent.StartQuest(initialStudyMinutes, genreId))
     }
 
     val isBreak = uiState.type == StudySessionType.BREAK
@@ -151,7 +151,7 @@ private fun MainQuestView(
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = "📖 " + uiState.genre,
+                    text = "📖 " + (uiState.genreId ?: "総合"),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = AccentIndigo

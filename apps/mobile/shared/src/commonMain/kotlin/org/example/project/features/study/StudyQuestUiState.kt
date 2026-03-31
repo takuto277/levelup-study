@@ -34,8 +34,8 @@ data class StudyQuestUiState(
     val currentLog: List<String> = listOf("冒険の準備が整った！"),
     /** タイマー表示用（ViewModel が毎秒計算して反映） */
     val displayTime: String = "25:00",
-    /** ジャンル（ホーム画面で選択） */
-    val genre: String = "総合",
+    /** ジャンルID（ホーム画面で選択） */
+    val genreId: String? = null,
     /** 冒険フェーズ */
     val adventurePhase: AdventurePhase = AdventurePhase.WALKING,
     /** 敵の名前 */

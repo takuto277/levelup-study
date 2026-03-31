@@ -10,6 +10,8 @@ import org.example.project.domain.model.User
 data class UserResponse(
     val id: String,
     @SerialName("display_name") val displayName: String,
+    val level: Int = 1,
+    @SerialName("current_xp") val currentXp: Int = 0,
     @SerialName("total_study_seconds") val totalStudySeconds: Long,
     val stones: Int,
     val gold: Int,
@@ -34,6 +36,8 @@ data class UpdateUserRequest(
 fun UserResponse.toDomain(): User = User(
     id = id,
     displayName = displayName,
+    level = level,
+    currentXp = currentXp,
     totalStudySeconds = totalStudySeconds,
     stones = stones,
     gold = gold,

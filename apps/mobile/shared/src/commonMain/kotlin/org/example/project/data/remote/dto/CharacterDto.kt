@@ -12,9 +12,12 @@ data class MasterCharacterResponse(
     val id: String,
     val name: String,
     val rarity: Int,
+    val element: String? = null,
     @SerialName("base_hp") val baseHp: Int,
     @SerialName("base_atk") val baseAtk: Int,
     @SerialName("base_def") val baseDef: Int,
+    @SerialName("skill_name") val skillName: String? = null,
+    @SerialName("skill_description") val skillDescription: String? = null,
     @SerialName("image_url") val imageUrl: String,
     @SerialName("idle_animation_url") val idleAnimationUrl: String? = null,
     @SerialName("is_active") val isActive: Boolean
@@ -33,7 +36,9 @@ data class UserCharacterResponse(
     val character: MasterCharacterResponse? = null,
     val level: Int,
     @SerialName("current_xp") val currentXp: Int,
+    @SerialName("breakthrough_level") val breakthroughLevel: Int = 0,
     @SerialName("equipped_weapon_id") val equippedWeaponId: String? = null,
+    @SerialName("equipped_costume_id") val equippedCostumeId: String? = null,
     @SerialName("obtained_at") val obtainedAt: String
 )
 
@@ -48,9 +53,12 @@ fun MasterCharacterResponse.toDomain(): MasterCharacter = MasterCharacter(
     id = id,
     name = name,
     rarity = rarity,
+    element = element,
     baseHp = baseHp,
     baseAtk = baseAtk,
     baseDef = baseDef,
+    skillName = skillName,
+    skillDescription = skillDescription,
     imageUrl = imageUrl,
     idleAnimationUrl = idleAnimationUrl,
     isActive = isActive
@@ -63,6 +71,8 @@ fun UserCharacterResponse.toDomain(): UserCharacter = UserCharacter(
     character = character?.toDomain(),
     level = level,
     currentXp = currentXp,
+    breakthroughLevel = breakthroughLevel,
     equippedWeaponId = equippedWeaponId,
+    equippedCostumeId = equippedCostumeId,
     obtainedAt = obtainedAt
 )
