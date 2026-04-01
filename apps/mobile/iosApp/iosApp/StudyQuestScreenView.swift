@@ -41,10 +41,18 @@ struct StudyQuestScreenView: View {
     let initialStudyMinutes: Int
     let genreId: String?
 
-    private let viewModel = KoinHelperKt.getStudyQuestViewModel()
+    private final class ViewModelHolder: ObservableObject {
+        let viewModel: StudyQuestViewModel
+        init() {
+            self.viewModel = KoinHelperKt.getStudyQuestViewModel()
+        }
+    }
+
+    @StateObject private var holder = ViewModelHolder()
     @State private var uiState: StudyQuestUiState
     @State private var pulsePhase = false
     @State private var walkPhase = false
+    @State private var didStartQuest = false
 
     init(initialStudyMinutes: Int, genreId: String? = nil) {
         self.initialStudyMinutes = initialStudyMinutes
@@ -85,7 +93,10 @@ struct StudyQuestScreenView: View {
             }
         }
         .onAppear {
-            viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId))
+            if !didStartQuest {
+                didStartQuest = true
+                holder.viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId))
+            }
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 pulsePhase = true
             }
@@ -94,7 +105,7 @@ struct StudyQuestScreenView: View {
             }
         }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
-            self.uiState = viewModel.uiState.value as! StudyQuestUiState
+            self.uiState = holder.viewModel.uiState.value as! StudyQuestUiState
         }
     }
 
@@ -237,7 +248,7 @@ struct StudyQuestScreenView: View {
             // ボタン（一時停止 + 終了のみ）
             HStack(spacing: 12) {
                 Button(action: {
-                    viewModel.onIntent(intent: StudyQuestIntentTogglePause())
+                    holder.viewModel.onIntent(intent: StudyQuestIntentTogglePause())
                 }) {
                     HStack(spacing: 6) {
                         Image(systemName: uiState.status == .running ? "pause.fill" : "play.fill")
@@ -253,7 +264,7 @@ struct StudyQuestScreenView: View {
                 }
 
                 Button(action: {
-                    viewModel.onIntent(intent: StudyQuestIntentEndQuest())
+                    holder.viewModel.onIntent(intent: StudyQuestIntentEndQuest())
                 }) {
                     Text("🏁 終了する")
                         .font(.system(size: 14, weight: .bold))
@@ -521,7 +532,7 @@ struct StudyQuestScreenView: View {
                 // ボタン
                 HStack(spacing: 12) {
                     Button(action: {
-                        viewModel.onIntent(intent: StudyQuestIntentStopQuest())
+                        holder.viewModel.onIntent(intent: StudyQuestIntentStopQuest())
                         dismiss()
                     }) {
                         Text("🏠 街に戻る")
@@ -536,7 +547,7 @@ struct StudyQuestScreenView: View {
                     }
 
                     Button(action: {
-                        viewModel.onIntent(intent: StudyQuestIntentNextSession())
+                        holder.viewModel.onIntent(intent: StudyQuestIntentNextSession())
                     }) {
                         Text(isStudy ? "🌿 休憩へ" : "⚔️ 冒険へ")
                             .font(.system(size: 14, weight: .heavy))

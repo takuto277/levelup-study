@@ -23,7 +23,8 @@ class StudyQuestViewModel(
     val uiState: StateFlow<StudyQuestUiState> = _uiState.asStateFlow()
 
     private var timerJob: Job? = null
-    private val viewModelScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    // タイマー進行はUIスレッド依存にしない（KMP環境でMain dispatcher未設定でも動くようにする）
+    private val viewModelScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var sessionStartedAt: String? = null
 
     // ── 敵データ ──────────────────────────────
