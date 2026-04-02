@@ -1,0 +1,11 @@
+---
+trigger: always_on
+---
+# Backend Rules (Go)
+
+`backend/` ディレクトリ配下の Go 実装に関するルール。
+
+## 原則
+- **Idiomatic Go**: Go の標準的な慣習に従う。
+- **アーキテクチャ**: `internal/` 配下にビジネスロジックを隠蔽し、`cmd/` をエントリーポイントとする。
+- **API**: OpenAPI または Protocol Buffers を使用して定義する。

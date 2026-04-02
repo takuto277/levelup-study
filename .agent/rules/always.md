@@ -1,3 +1,6 @@
+---
+trigger: always_on
+---
 # Always Rules (Core Guidelines)
 
 このファイルは、すべての AI アシスタントが常に従うべき最上位の原則を定義します。
