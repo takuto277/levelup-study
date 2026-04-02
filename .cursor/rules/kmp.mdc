@@ -103,7 +103,27 @@ apps/mobile/
 
 ---
 
-## 6. 補足（SHOULD）
+## 6. KMP ライブラリ追加時の注意（MUST）
+
+KMP サードパーティライブラリを `commonMain.dependencies` に追加する際、以下を確認すること。
+
+1. **Kotlin バージョン互換性**: ライブラリがビルドされた Kotlin バージョンと、プロジェクトの Kotlin バージョンを確認する。KMP の klib メタデータはメジャーバージョン間（例: 2.1 → 2.3）で非互換になることがある。
+2. **解決策の優先順位**:
+   - まず `expect/actual` パターンで自前実装できないか検討する（特に Key-Value 保存のような単純な機能）。
+   - `expect/actual` で `commonMain` にインターフェースを、`androidMain`/`iosMain` に OS ネイティブ実装を配置する。
+   - 外部ライブラリを使う場合は、プロジェクトの Kotlin バージョンをサポートしているか最新の Release Notes で確認する。
+3. **ビルド確認**: 新しい依存を追加したら、`./gradlew clean` → Android と iOS **両方**のコンパイルタスクを実行して通ることを確認する。
+
+```bash
+cd apps/mobile
+./gradlew clean
+./gradlew :shared:compileDebugKotlinAndroid --no-configuration-cache
+./gradlew :shared:compileKotlinIosSimulatorArm64 --no-configuration-cache
+```
+
+---
+
+## 7. 補足（SHOULD）
 - 1ファイルが肥大化する場合は `UiState` / `Intent` を分離
 - 画面ロジックが増えたら `Reducer` パターンへ段階移行
 - テストはまず ViewModel の状態遷移テストから書く
