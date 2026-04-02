@@ -63,7 +63,7 @@ val sharedModule = module {
 
     // ── Repository ──────────────────────────────
     singleOf(::UserRepositoryImpl) bind UserRepository::class
-    singleOf(::StudyRepositoryImpl) bind StudyRepository::class
+    single<StudyRepository> { StudyRepositoryImpl(get(), get()) }
     singleOf(::CharacterRepositoryImpl) bind CharacterRepository::class
     singleOf(::WeaponRepositoryImpl) bind WeaponRepository::class
     singleOf(::PartyRepositoryImpl) bind PartyRepository::class

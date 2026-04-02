@@ -19,4 +19,7 @@ interface UserRepository {
 
     /** サーバーから最新のユーザー情報を同期 */
     suspend fun syncFromServer(): User
+
+    /** メモリキャッシュを外部から更新する（他機能のレスポンスに含まれる最新 User を反映） */
+    fun updateCachedUser(user: User)
 }

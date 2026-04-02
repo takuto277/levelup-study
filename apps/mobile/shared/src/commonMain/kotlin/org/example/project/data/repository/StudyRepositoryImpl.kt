@@ -8,9 +8,11 @@ import org.example.project.data.remote.gateway.StudyGateway
 import org.example.project.domain.model.StudyCompleteResult
 import org.example.project.domain.model.StudySession
 import org.example.project.domain.repository.StudyRepository
+import org.example.project.domain.repository.UserRepository
 
 class StudyRepositoryImpl(
-    private val gateway: StudyGateway
+    private val gateway: StudyGateway,
+    private val userRepository: UserRepository
 ) : StudyRepository {
 
     override suspend fun completeSession(
@@ -28,7 +30,9 @@ class StudyRepositoryImpl(
             durationSeconds = durationSeconds,
             isCompleted = isCompleted
         )
-        return gateway.completeSession(userId, request).getOrThrow().toDomain()
+        val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
+        userRepository.updateCachedUser(result.updatedUser)
+        return result
     }
 
     override suspend fun getSessionHistory(limit: Int, offset: Int): List<StudySession> {

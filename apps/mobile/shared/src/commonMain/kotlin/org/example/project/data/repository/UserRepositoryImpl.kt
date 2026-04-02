@@ -44,4 +44,8 @@ class UserRepositoryImpl(
         cachedUser = user
         return user
     }
+
+    override fun updateCachedUser(user: User) {
+        cachedUser = user
+    }
 }
