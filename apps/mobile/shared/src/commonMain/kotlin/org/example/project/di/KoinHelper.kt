@@ -1,6 +1,10 @@
 package org.example.project.di
 
+import org.example.project.core.session.UserSessionStore
+import org.example.project.features.gacha.GachaViewModel
 import org.example.project.features.home.HomeViewModel
+import org.example.project.features.party.PartyViewModel
+import org.example.project.features.quest.QuestViewModel
 import org.example.project.features.study.StudyQuestViewModel
 import org.koin.core.context.startKoin
 import org.koin.mp.KoinPlatform
@@ -17,6 +21,16 @@ import org.koin.mp.KoinPlatform
 fun initKoin() {
     startKoin {
         modules(sharedModule)
+    }
+}
+
+/**
+ * 開発用: シードデータのテストユーザーでセッションを設定する
+ * seed.sql の user1 UUID をセットし、API 接続テストを可能にする
+ */
+fun setDevSession() {
+    if (!UserSessionStore.hasSession()) {
+        UserSessionStore.setSession(userId = "00000000-0000-0000-0000-000000000001")
     }
 }
 

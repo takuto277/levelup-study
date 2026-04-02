@@ -36,6 +36,18 @@ db-reset: ## PostgreSQL を停止 + データ削除して再起動
 	docker compose up -d
 	@echo "🔄 データベースをリセットしました"
 
+seed: ## シードデータを投入（マスタ + テストユーザー）
+	@echo "🌱 シードデータを投入中..."
+	docker exec -i levelup-study-db psql -U postgres -d levelup_study < db/seed.sql
+	@echo "✅ シードデータの投入が完了しました"
+
+db-fresh: db-reset ## DB完全リセット → マイグレーション → シード投入
+	@echo "⏳ マイグレーション実行のためサーバーを一時起動..."
+	@timeout 5 $(MAKE) run || true
+	@sleep 3
+	$(MAKE) seed
+	@echo "✅ DB完全リフレッシュ完了"
+
 # --- アプリケーション ---
 run: ## サーバーを起動（ホットリロードなし）
 	go run ./cmd/api

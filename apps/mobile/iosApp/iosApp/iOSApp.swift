@@ -5,8 +5,8 @@ import Shared
 struct iOSApp: App {
 
     init() {
-        // KMP 共有モジュールの DI コンテナを初期化
         KoinHelperKt.doInitKoin()
+        KoinHelperKt.setDevSession()
     }
 
     var body: some Scene {

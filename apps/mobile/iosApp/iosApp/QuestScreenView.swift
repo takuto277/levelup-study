@@ -1,4 +1,5 @@
 import SwiftUI
+import Shared
 
 // MARK: - データモデル（KMP QuestUiState のミラー）
 
