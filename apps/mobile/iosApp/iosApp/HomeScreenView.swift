@@ -61,6 +61,9 @@ struct HomeScreenView: View {
     var body: some View {
         VStack(spacing: 0) {
             homeHeader
+            if let dungeonName = homeState?.selectedDungeonName {
+                destinationBanner(name: dungeonName)
+            }
             Spacer()
             characterArea
             Spacer()
@@ -284,35 +287,45 @@ struct HomeScreenView: View {
                 .font(.system(size: 13, weight: .bold))
                 .foregroundColor(textSecondary)
 
-            // 3列×2行
-            VStack(spacing: 8) {
-                ForEach(0..<2, id: \.self) { row in
-                    HStack(spacing: 8) {
-                        ForEach(0..<3, id: \.self) { col in
-                            let index = row * 3 + col
-                            if index < genres.count {
-                                let genre = genres[index]
-                                let isSelected = selectedGenre == genre.label
-                                Button(action: { selectedGenre = genre.label }) {
-                                    HStack(spacing: 4) {
-                                        Text(genre.emoji).font(.system(size: 14))
-                                        Text(genre.label)
-                                            .font(.system(size: 12, weight: .bold))
-                                            .foregroundColor(isSelected ? .white : textSecondary)
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(isSelected ? accentIndigo : Color(hex: 0xE2E8F0))
-                                    .cornerRadius(12)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
+            HStack {
+                Picker("ジャンル", selection: $selectedGenre) {
+                    ForEach(genres, id: \.label) { genre in
+                        Text("\(genre.emoji) \(genre.label)").tag(genre.label)
                     }
                 }
+                .pickerStyle(.menu)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                .background(cardWhite)
+                .cornerRadius(12)
+                .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
             }
         }
         .padding(.horizontal, 32)
+    }
+
+    private func destinationBanner(name: String) -> some View {
+        HStack(spacing: 12) {
+            Text("📍 次の目的地:")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(accentIndigo)
+            
+            Text(name)
+                .font(.system(size: 14, weight: .heavy))
+                .foregroundColor(textPrimary)
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(textSecondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(accentIndigo.opacity(0.08))
+        .cornerRadius(12)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 
     // MARK: - Start Button

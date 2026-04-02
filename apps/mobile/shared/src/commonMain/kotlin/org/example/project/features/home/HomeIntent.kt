@@ -12,4 +12,7 @@ sealed interface HomeIntent {
 
     /** メインキャラクターをタップ */
     data object TapMainCharacter : HomeIntent
+
+    /** ダンジョンを選択 */
+    data class SelectDungeon(val name: String) : HomeIntent
 }

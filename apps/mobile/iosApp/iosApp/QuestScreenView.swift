@@ -167,6 +167,9 @@ struct QuestScreenView: View {
     @State private var selectedDungeon: Dungeon? = nil
     @State private var showDetail = false
 
+    // KMP HomeViewModel
+    private let homeViewModel = KoinHelperKt.getHomeViewModel()
+
     private var inProgressDungeons: [Dungeon] {
         defaultDungeons.filter { !$0.isLocked && !$0.isCleared && $0.clearedStages > 0 }
     }
@@ -227,6 +230,11 @@ struct QuestScreenView: View {
             // 詳細シート
             if showDetail, let dungeon = selectedDungeon {
                 DungeonDetailOverlay(dungeon: dungeon) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        showDetail = false
+                    }
+                } onSelect: {
+                    homeViewModel.onIntent(intent: HomeIntentSelectDungeon(name: dungeon.name))
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                         showDetail = false
                     }
@@ -412,6 +420,7 @@ private struct DungeonCardView: View {
 private struct DungeonDetailOverlay: View {
     let dungeon: Dungeon
     let onDismiss: () -> Void
+    let onSelect: () -> Void
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -530,8 +539,7 @@ private struct DungeonDetailOverlay: View {
 
                         // 出発ボタン
                         Button(action: {
-                            // TODO: ダンジョン選択 → 勉強開始画面へ遷移
-                            onDismiss()
+                            onSelect()
                         }) {
                             HStack(spacing: 8) {
                                 Image(systemName: "play.fill")
@@ -553,12 +561,12 @@ private struct DungeonDetailOverlay: View {
                         }
                         .padding(.horizontal, 16)
 
-                        Spacer().frame(height: 40)
+                        Spacer().frame(height: 120) // タブバーとの重なりを防ぐための余白
                     }
                     .padding(.top, 8)
                 }
             }
-            .frame(maxHeight: UIScreen.main.bounds.height * 0.75)
+            .frame(maxHeight: UIScreen.main.bounds.height * 0.85) // 少し高くして内容を見やすくする
             .background(Color(UIColor.secondarySystemGroupedBackground))
             .cornerRadius(28, corners: [.topLeft, .topRight])
             .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: -5)

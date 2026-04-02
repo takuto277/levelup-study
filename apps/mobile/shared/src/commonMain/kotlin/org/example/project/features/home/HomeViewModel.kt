@@ -28,6 +28,9 @@ class HomeViewModel(
             is HomeIntent.Refresh -> loadHome()
             is HomeIntent.StartStudy -> { /* ナビゲーションはネイティブ側で処理 */ }
             is HomeIntent.TapMainCharacter -> { /* キャラタップ演出はネイティブ側 */ }
+            is HomeIntent.SelectDungeon -> {
+                _uiState.update { it.copy(selectedDungeonName = intent.name) }
+            }
         }
     }
 

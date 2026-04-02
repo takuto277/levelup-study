@@ -11,6 +11,7 @@ data class HomeUiState(
     val gold: Int = 0,
     val mainCharacter: UserCharacter? = null,
     val displayName: String = "",
+    val selectedDungeonName: String? = null,
     val isLoading: Boolean = false,
     val error: String? = null
 ) {
