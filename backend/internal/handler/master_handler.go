@@ -28,7 +28,7 @@ func (h *MasterHandler) ListCharacters(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "キャラクターマスタ取得に失敗しました")
 		return
 	}
-	respondJSON(w, http.StatusOK, list)
+	respondJSON(w, http.StatusOK, map[string]interface{}{"characters": list})
 }
 
 // ListWeapons — GET /api/v1/master/weapons
@@ -39,7 +39,7 @@ func (h *MasterHandler) ListWeapons(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "武器マスタ取得に失敗しました")
 		return
 	}
-	respondJSON(w, http.StatusOK, list)
+	respondJSON(w, http.StatusOK, map[string]interface{}{"weapons": list})
 }
 
 // ListDungeons — GET /api/v1/master/dungeons
@@ -50,7 +50,7 @@ func (h *MasterHandler) ListDungeons(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "ダンジョンマスタ取得に失敗しました")
 		return
 	}
-	respondJSON(w, http.StatusOK, list)
+	respondJSON(w, http.StatusOK, map[string]interface{}{"dungeons": list})
 }
 
 // ListActiveBanners — GET /api/v1/master/gacha/banners
@@ -61,7 +61,7 @@ func (h *MasterHandler) ListActiveBanners(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusInternalServerError, "バナー取得に失敗しました")
 		return
 	}
-	respondJSON(w, http.StatusOK, list)
+	respondJSON(w, http.StatusOK, map[string]interface{}{"banners": list})
 }
 
 // GetDungeon — GET /api/v1/master/dungeons/{dungeonID}

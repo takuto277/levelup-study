@@ -72,7 +72,7 @@ private fun weaponEmoji(weaponId: String?): String = when (weaponId) {
 // ── メイン画面 ──────────────────────────────────────
 @Composable
 fun PartyScreenView() {
-    val viewModel = remember { PartyViewModel() }
+    val viewModel = remember { org.example.project.di.getPartyViewModel() }
     val uiState by viewModel.uiState.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize().background(BgColor)) {

@@ -211,6 +211,11 @@ func (s *StudyService) calculateRewards(sessionID uuid.UUID, durationSec int, us
 	return rewards, totalStones, totalGold, totalXP
 }
 
+// ListSessions — ユーザーの勉強セッション一覧を取得する
+func (s *StudyService) ListSessions(userID uuid.UUID, limit, offset int) ([]model.StudySession, error) {
+	return s.studyRepo.ListSessionsByUser(userID, limit, offset)
+}
+
 // addXPToParty — パーティメンバー全員に経験値を分配する
 func (s *StudyService) addXPToParty(tx *gorm.DB, userID uuid.UUID, totalXP int) error {
 	slots, err := s.partyRepo.GetByUser(userID)

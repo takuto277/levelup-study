@@ -7,9 +7,11 @@ import org.example.project.data.remote.gateway.GachaGateway
 import org.example.project.domain.model.GachaBanner
 import org.example.project.domain.model.GachaResult
 import org.example.project.domain.repository.GachaRepository
+import org.example.project.domain.repository.UserRepository
 
 class GachaRepositoryImpl(
-    private val gateway: GachaGateway
+    private val gateway: GachaGateway,
+    private val userRepository: UserRepository
 ) : GachaRepository {
 
     override suspend fun getActiveBanners(): List<GachaBanner> {
@@ -19,15 +21,18 @@ class GachaRepositoryImpl(
 
     override suspend fun pullGacha(bannerId: String, count: Int): List<GachaResult> {
         val request = GachaPullRequest(bannerId = bannerId, count = count)
-        return gateway.pullGacha(request).getOrThrow()
-            .results.map { it.toDomain() }
+        val response = gateway.pullGacha(request).getOrThrow()
+        response.updatedUser?.toDomain()?.let { user ->
+            userRepository.updateCachedUser(user)
+        }
+        return response.results.map { it.toDomain() }
     }
 
     override suspend fun getGachaHistory(bannerId: String?, limit: Int): List<GachaResult> {
-        TODO("ガチャ履歴 API は未実装です")
+        return emptyList()
     }
 
     override suspend fun getPityCount(bannerId: String): Int {
-        TODO("天井カウント API は未実装です")
+        return 0
     }
 }

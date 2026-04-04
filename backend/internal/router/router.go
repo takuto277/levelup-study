@@ -108,8 +108,9 @@ func NewRouter(
 				r.Put("/", userH.UpdateUser)
 				r.Delete("/", userH.DeleteUser)
 
-				// 勉強
-				r.Post("/study/complete", studyH.CompleteStudy)
+			// 勉強
+			r.Post("/study/complete", studyH.CompleteStudy)
+			r.Get("/study/sessions", studyH.ListSessions)
 
 				// 所持キャラ
 				r.Route("/characters", func(r chi.Router) {

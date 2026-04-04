@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.datetime.Clock
+import org.example.project.domain.repository.PartyRepository
 
 /**
  * 勉強クエスト画面の ViewModel
@@ -16,7 +17,8 @@ import kotlinx.datetime.Clock
  * - セッション完了時に StudyUseCase 経由で Go API に報酬リクエスト送信
  */
 class StudyQuestViewModel(
-    private val studyUseCase: StudyUseCase? = null
+    private val studyUseCase: StudyUseCase? = null,
+    private val partyRepository: PartyRepository? = null
 ) {
 
     private val _uiState = MutableStateFlow(StudyQuestUiState())
@@ -26,6 +28,31 @@ class StudyQuestViewModel(
     // タイマー進行はUIスレッド依存にしない（KMP環境でMain dispatcher未設定でも動くようにする）
     private val viewModelScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var sessionStartedAt: String? = null
+
+    init {
+        loadPartyLead()
+    }
+
+    private fun loadPartyLead() {
+        val repo = partyRepository ?: return
+        viewModelScope.launch {
+            try {
+                val party = repo.getParty()
+                val lead = party.mainCharacter
+                    ?: party.slots.minByOrNull { it.slotPosition }?.userCharacter
+                if (lead != null) {
+                    _uiState.update {
+                        it.copy(
+                            partyLeadName = lead.character?.name ?: "冒険者",
+                            partyLeadImageUrl = lead.character?.imageUrl ?: ""
+                        )
+                    }
+                }
+            } catch (_: Exception) {
+                // パーティ未編成時はデフォルト値のまま
+            }
+        }
+    }
 
     // ── 敵データ ──────────────────────────────
     private data class EnemyData(val name: String, val emoji: String, val hp: Int)

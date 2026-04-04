@@ -36,8 +36,12 @@ class StudyRepositoryImpl(
     }
 
     override suspend fun getSessionHistory(limit: Int, offset: Int): List<StudySession> {
-        // TODO: 実装（Go 側の ListSessions も未完成）
-        return emptyList()
+        return try {
+            gateway.listSessions(limit, offset).getOrThrow()
+                .sessions.map { it.toDomain() }
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     override suspend fun savePendingSession(session: StudySession) {

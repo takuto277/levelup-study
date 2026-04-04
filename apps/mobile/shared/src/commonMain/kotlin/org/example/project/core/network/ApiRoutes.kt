@@ -31,6 +31,9 @@ object ApiRoutes {
     /** POST: 勉強セッション完了 & 報酬確定 */
     fun studyComplete(userId: String) = "/api/v1/users/$userId/study/complete"
 
+    /** GET: 勉強セッション履歴一覧 */
+    fun studySessions(userId: String) = "/api/v1/users/$userId/study/sessions"
+
     // ── User Characters ─────────────────────────
     /** GET: 所持キャラ一覧 */
     fun userCharacters(userId: String) = "/api/v1/users/$userId/characters"

@@ -65,7 +65,7 @@ struct PartyScreenView: View {
     @State private var uiState: PartyUiState
 
     init() {
-        let vm = PartyViewModel()
+        let vm = KoinHelperKt.getPartyViewModel()
         self.viewModel = vm
         _uiState = State(initialValue: vm.uiState.value as! PartyUiState)
     }

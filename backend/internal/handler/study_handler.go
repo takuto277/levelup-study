@@ -73,6 +73,11 @@ func (h *StudyHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
 	_ = limit
 	_ = offset
 	_ = userID
-	// TODO: service にリスト取得メソッドを追加するか、repository を直接注入する
-	respondJSON(w, http.StatusOK, map[string]string{"message": "実装予定"})
+	sessions, err := h.studyService.ListSessions(userID, limit, offset)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "セッション一覧の取得に失敗しました")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{"sessions": sessions})
 }

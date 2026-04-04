@@ -27,6 +27,24 @@ data class GachaBannerListResponse(
 )
 
 @Serializable
+data class GachaPullResultResponse(
+    @SerialName("result_type") val resultType: String,
+    @SerialName("item_id") val itemId: String,
+    val name: String = "",
+    val rarity: Int = 0,
+    @SerialName("is_new") val isNew: Boolean = false,
+    @SerialName("pity_count") val pityCount: Int = 0
+)
+
+@Serializable
+data class GachaPullResponse(
+    val results: List<GachaPullResultResponse>,
+    @SerialName("stones_spent") val stonesSpent: Int = 0,
+    @SerialName("remaining_stones") val remainingStones: Int = 0,
+    @SerialName("updated_user") val updatedUser: UserResponse? = null
+)
+
+@Serializable
 data class GachaResultResponse(
     val id: String,
     @SerialName("user_id") val userId: String,
@@ -35,12 +53,6 @@ data class GachaResultResponse(
     @SerialName("result_item_id") val resultItemId: String,
     @SerialName("pity_count") val pityCount: Int,
     @SerialName("created_at") val createdAt: String
-)
-
-@Serializable
-data class GachaPullResponse(
-    val results: List<GachaResultResponse>,
-    @SerialName("updated_user") val updatedUser: UserResponse
 )
 
 @Serializable
@@ -73,6 +85,20 @@ fun GachaBannerResponse.toDomain(): GachaBanner = GachaBanner(
     pityThreshold = pityThreshold,
     rateTable = rateTable,
     isActive = isActive
+)
+
+fun GachaPullResultResponse.toDomain(): GachaResult = GachaResult(
+    id = "",
+    userId = "",
+    bannerId = "",
+    resultType = runCatching { GachaResultType.valueOf(resultType.uppercase()) }
+        .getOrDefault(GachaResultType.CHARACTER),
+    resultItemId = itemId,
+    name = name,
+    rarity = rarity,
+    pityCount = pityCount,
+    isNew = isNew,
+    createdAt = ""
 )
 
 fun GachaResultResponse.toDomain(): GachaResult = GachaResult(

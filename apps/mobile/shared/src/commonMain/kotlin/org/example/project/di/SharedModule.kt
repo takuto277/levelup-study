@@ -40,13 +40,6 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-/**
- * KMP 共有モジュールの DI 定義 (Koin)
- *
- * 使い方:
- * - Android: Application.onCreate() で startKoin { modules(sharedModule) }
- * - iOS: KoinHelper.doInitKoin() を AppDelegate/iOSApp で呼ぶ
- */
 val sharedModule = module {
 
     // ── Network ─────────────────────────────────
@@ -68,7 +61,7 @@ val sharedModule = module {
     singleOf(::WeaponRepositoryImpl) bind WeaponRepository::class
     singleOf(::PartyRepositoryImpl) bind PartyRepository::class
     singleOf(::DungeonRepositoryImpl) bind DungeonRepository::class
-    singleOf(::GachaRepositoryImpl) bind GachaRepository::class
+    single<GachaRepository> { GachaRepositoryImpl(get(), get()) }
 
     // ── UseCase ─────────────────────────────────
     factoryOf(::HomeUseCase)

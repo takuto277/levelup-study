@@ -40,6 +40,7 @@ type GachaPullResponse struct {
 	Results         []GachaPullResult `json:"results"`
 	StonesSpent     int               `json:"stones_spent"`
 	RemainingStones int               `json:"remaining_stones"`
+	UpdatedUser     *model.User       `json:"updated_user"`
 }
 
 // RateTableEntry — 排出テーブルの1エントリ
@@ -230,7 +231,6 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 		return nil, err
 	}
 
-	// 最新の石残高を取得
 	updatedUser, _ := s.userRepo.GetByID(userID)
 	remaining := 0
 	if updatedUser != nil {
@@ -241,6 +241,7 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 		Results:         results,
 		StonesSpent:     totalCost,
 		RemainingStones: remaining,
+		UpdatedUser:     updatedUser,
 	}, nil
 }
 

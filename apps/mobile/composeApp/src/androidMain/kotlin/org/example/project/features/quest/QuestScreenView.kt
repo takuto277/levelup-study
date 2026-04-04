@@ -55,7 +55,7 @@ private fun difficultyGradient(difficulty: DungeonDifficulty): List<Color> = whe
 // ── メイン画面 ──────────────────────────────────────
 @Composable
 fun QuestScreenView() {
-    val viewModel = remember { QuestViewModel() }
+    val viewModel = remember { org.example.project.di.getQuestViewModel() }
     val uiState by viewModel.uiState.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize().background(BgColor)) {

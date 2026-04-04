@@ -75,7 +75,9 @@ struct StudyQuestScreenView: View {
             lastDamage: 0,
             defeatedCount: 0,
             serverRewards: [],
-            serverSynced: nil
+            serverSynced: nil,
+            partyLeadName: "冒険者",
+            partyLeadImageUrl: ""
         ))
     }
 

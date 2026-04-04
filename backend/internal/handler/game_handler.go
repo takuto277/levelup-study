@@ -54,7 +54,7 @@ func (h *GameHandler) ListCharacters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, list)
+	respondJSON(w, http.StatusOK, map[string]interface{}{"characters": list})
 }
 
 // GetCharacter — GET /api/v1/users/{userID}/characters/{characterID}
@@ -119,7 +119,7 @@ func (h *GameHandler) ListWeapons(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, list)
+	respondJSON(w, http.StatusOK, map[string]interface{}{"weapons": list})
 }
 
 // ============================================================
@@ -141,7 +141,7 @@ func (h *GameHandler) GetParty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, slots)
+	respondJSON(w, http.StatusOK, map[string]interface{}{"slots": slots})
 }
 
 // UpdatePartySlot — PUT /api/v1/users/{userID}/party/{slotPosition}
@@ -229,5 +229,5 @@ func (h *GameHandler) ListDungeonProgress(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	respondJSON(w, http.StatusOK, list)
+	respondJSON(w, http.StatusOK, map[string]interface{}{"progress": list})
 }

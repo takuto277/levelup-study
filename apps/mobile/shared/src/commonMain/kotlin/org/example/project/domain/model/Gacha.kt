@@ -43,6 +43,8 @@ data class GachaResult(
     val bannerId: String,
     val resultType: GachaResultType,
     val resultItemId: String,
+    val name: String = "",
+    val rarity: Int = 0,
     val pityCount: Int,
     val isNew: Boolean = true,
     val createdAt: String
