@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/takuto277/levelup-study/backend/internal/model"
 	"github.com/takuto277/levelup-study/backend/internal/repository"
 )
 
@@ -73,6 +75,41 @@ func (h *MasterHandler) ListStudyGenres(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	respondJSON(w, http.StatusOK, map[string]interface{}{"genres": list})
+}
+
+// CreateStudyGenre — POST /api/v1/master/genres
+func (h *MasterHandler) CreateStudyGenre(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Slug     string `json:"slug"`
+		Label    string `json:"label"`
+		Emoji    string `json:"emoji"`
+		ColorHex string `json:"color_hex"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Label == "" || req.Slug == "" {
+		respondError(w, http.StatusBadRequest, "slug と label は必須です")
+		return
+	}
+	if req.Emoji == "" {
+		req.Emoji = "📖"
+	}
+	if req.ColorHex == "" {
+		req.ColorHex = "#6B7280"
+	}
+
+	genre := &model.MasterStudyGenre{
+		Slug:      req.Slug,
+		Label:     req.Label,
+		Emoji:     req.Emoji,
+		ColorHex:  req.ColorHex,
+		SortOrder: 99,
+		IsDefault: false,
+		IsActive:  true,
+	}
+	if err := h.repo.CreateStudyGenre(genre); err != nil {
+		respondError(w, http.StatusInternalServerError, "ジャンル作成に失敗しました")
+		return
+	}
+	respondJSON(w, http.StatusCreated, genre)
 }
 
 // GetDungeon — GET /api/v1/master/dungeons/{dungeonID}

@@ -40,6 +40,7 @@ struct StudyQuestScreenView: View {
     @Environment(\.dismiss) var dismiss
     let initialStudyMinutes: Int
     let genreId: String?
+    let dungeonName: String?
 
     private final class ViewModelHolder: ObservableObject {
         let viewModel: StudyQuestViewModel
@@ -54,9 +55,10 @@ struct StudyQuestScreenView: View {
     @State private var walkPhase = false
     @State private var didStartQuest = false
 
-    init(initialStudyMinutes: Int, genreId: String? = nil) {
+    init(initialStudyMinutes: Int, genreId: String? = nil, dungeonName: String? = nil) {
         self.initialStudyMinutes = initialStudyMinutes
         self.genreId = genreId
+        self.dungeonName = dungeonName
         _uiState = State(initialValue: StudyQuestUiState(
             type: .study,
             status: .ready,
@@ -77,7 +79,8 @@ struct StudyQuestScreenView: View {
             serverRewards: [],
             serverSynced: nil,
             partyLeadName: "冒険者",
-            partyLeadImageUrl: ""
+            partyLeadImageUrl: "",
+            dungeonName: dungeonName
         ))
     }
 
@@ -97,7 +100,7 @@ struct StudyQuestScreenView: View {
         .onAppear {
             if !didStartQuest {
                 didStartQuest = true
-                holder.viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId))
+                holder.viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId, dungeonName: dungeonName))
             }
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 pulsePhase = true
@@ -127,14 +130,24 @@ struct StudyQuestScreenView: View {
             // トップバー
             Spacer().frame(height: 56)
             HStack {
-                // ジャンルバッジ
-                Text("📖 \(uiState.genreId ?? "総合")")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(accentIndigo)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(accentIndigo.opacity(0.15))
-                    .cornerRadius(12)
+                VStack(alignment: .leading, spacing: 4) {
+                    if let dn = uiState.dungeonName, !dn.isEmpty {
+                        Text("🏰 \(dn)")
+                            .font(.system(size: 11, weight: .heavy))
+                            .foregroundColor(fireOrange)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(fireOrange.opacity(0.15))
+                            .cornerRadius(10)
+                    }
+                    Text("📖 \(uiState.genreId ?? "総合")")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(accentIndigo)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(accentIndigo.opacity(0.15))
+                        .cornerRadius(10)
+                }
 
                 Spacer()
 

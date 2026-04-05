@@ -50,13 +50,14 @@ private val BreakGlow = Color(0xFF10B981)
 fun StudyQuestScreenView(
     initialStudyMinutes: Int,
     genreId: String? = null,
+    dungeonName: String? = null,
     onDismiss: () -> Unit
 ) {
     val viewModel = remember { StudyQuestViewModel() }
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.onIntent(StudyQuestIntent.StartQuest(initialStudyMinutes, genreId))
+        viewModel.onIntent(StudyQuestIntent.StartQuest(initialStudyMinutes, genreId, dungeonName))
     }
 
     val isBreak = uiState.type == StudySessionType.BREAK
@@ -145,17 +146,23 @@ private fun MainQuestView(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .background(AccentIndigo.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    text = "📖 " + (uiState.genreId ?: "総合"),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AccentIndigo
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                uiState.dungeonName?.takeIf { it.isNotEmpty() }?.let { dn ->
+                    Box(
+                        modifier = Modifier
+                            .background(FireOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text("🏰 $dn", fontSize = 11.sp, fontWeight = FontWeight.Black, color = FireOrange)
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .background(AccentIndigo.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text("📖 " + (uiState.genreId ?: "総合"), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AccentIndigo)
+                }
             }
             Box(
                 modifier = Modifier

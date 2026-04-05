@@ -27,15 +27,16 @@ private let fireRed = Color(hex: 0xEF4444)
 private let fireOrange = Color(hex: 0xF59E0B)
 private let emeraldGreen = Color(hex: 0x10B981)
 
-/// ホーム画面（タブ③: 中央）
 struct HomeScreenView: View {
     @State private var showStudySheet = false
     @State private var studyMinutes = 25
-    @State private var selectedGenre = "総合"
+    @State private var selectedGenreSlug = "general"
     @State private var isBouncing = false
     @State private var messageIndex = 0
+    @State private var showAddGenreSheet = false
+    @State private var newGenreLabel = ""
+    @State private var newGenreEmoji = "📖"
 
-    // KMP HomeViewModel — Koin から取得
     private let homeViewModel = KoinHelperKt.getHomeViewModel()
     @State private var homeState: HomeUiState?
 
@@ -47,16 +48,16 @@ struct HomeScreenView: View {
         "集中すれば、何でもできる。"
     ]
 
-    private let genres: [(emoji: String, label: String)] = [
-        ("🔢", "数学"),
-        ("🔬", "理科"),
-        ("📝", "語学"),
-        ("💻", "プログラミング"),
-        ("📚", "総合"),
-        ("🎨", "クリエイティブ")
-    ]
-
     let messageTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
+
+    private var genreList: [(slug: String, emoji: String, label: String)] {
+        let fromServer = (homeState?.genres ?? []).map { genre in
+            (slug: genre.slug, emoji: genre.emoji, label: genre.label)
+        }
+        return fromServer.isEmpty
+            ? [("general", "📚", "総合")]
+            : fromServer
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -78,7 +79,14 @@ struct HomeScreenView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(bgColor)
         .fullScreenCover(isPresented: $showStudySheet) {
-            StudyQuestScreenView(initialStudyMinutes: studyMinutes, genreId: selectedGenre)
+            StudyQuestScreenView(
+                initialStudyMinutes: studyMinutes,
+                genreId: selectedGenreSlug,
+                dungeonName: homeState?.selectedDungeonName
+            )
+        }
+        .sheet(isPresented: $showAddGenreSheet) {
+            addGenreSheet
         }
         .onReceive(messageTimer) { _ in
             withAnimation(.easeInOut(duration: 0.3)) {
@@ -126,14 +134,6 @@ struct HomeScreenView: View {
                         .font(.system(size: 15, weight: .heavy))
                         .foregroundColor(textPrimary)
                 }
-                Circle()
-                    .fill(emeraldGreen)
-                    .frame(width: 24, height: 24)
-                    .overlay(
-                        Image(systemName: "plus")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
-                    )
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -148,7 +148,6 @@ struct HomeScreenView: View {
 
     private var characterArea: some View {
         ZStack {
-            // オーラ
             Circle()
                 .fill(
                     RadialGradient(
@@ -161,7 +160,6 @@ struct HomeScreenView: View {
                 .frame(width: 280, height: 280)
 
             VStack(spacing: 0) {
-                // 吹き出し
                 VStack(spacing: 0) {
                     HStack(spacing: 8) {
                         Text("💬").font(.system(size: 14))
@@ -175,7 +173,6 @@ struct HomeScreenView: View {
                     .cornerRadius(20)
                     .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
 
-                    // 三角
                     Triangle()
                         .fill(cardWhite)
                         .frame(width: 16, height: 10)
@@ -183,7 +180,6 @@ struct HomeScreenView: View {
 
                 Spacer().frame(height: 6)
 
-                // キャラクター
                 Text("🧙‍♂️")
                     .font(.system(size: 100))
                     .offset(y: isBouncing ? -12 : 0)
@@ -195,12 +191,11 @@ struct HomeScreenView: View {
 
                 Spacer().frame(height: 4)
 
-                // 名前 + Lv
                 HStack(spacing: 8) {
-                    Text("マーリン")
+                    Text(homeState?.mainCharacter?.character?.name ?? "冒険者")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(textPrimary)
-                    Text("Lv.24")
+                    Text("Lv.\(homeState?.mainCharacter?.level ?? 1)")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(accentBlue)
                         .padding(.horizontal, 8)
@@ -259,7 +254,6 @@ struct HomeScreenView: View {
             .cornerRadius(20)
             .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
 
-            // クイック選択
             HStack(spacing: 8) {
                 ForEach([15, 25, 45, 60], id: \.self) { min in
                     let isSelected = studyMinutes == min
@@ -287,10 +281,10 @@ struct HomeScreenView: View {
                 .font(.system(size: 13, weight: .bold))
                 .foregroundColor(textSecondary)
 
-            HStack {
-                Picker("ジャンル", selection: $selectedGenre) {
-                    ForEach(genres, id: \.label) { genre in
-                        Text("\(genre.emoji) \(genre.label)").tag(genre.label)
+            HStack(spacing: 8) {
+                Picker("ジャンル", selection: $selectedGenreSlug) {
+                    ForEach(genreList, id: \.slug) { genre in
+                        Text("\(genre.emoji) \(genre.label)").tag(genre.slug)
                     }
                 }
                 .pickerStyle(.menu)
@@ -299,9 +293,88 @@ struct HomeScreenView: View {
                 .background(cardWhite)
                 .cornerRadius(12)
                 .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
+
+                Button(action: { showAddGenreSheet = true }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 16))
+                        Text("追加")
+                            .font(.system(size: 12, weight: .bold))
+                    }
+                    .foregroundColor(accentBlue)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(accentBlue.opacity(0.1))
+                    .cornerRadius(10)
+                }
             }
         }
         .padding(.horizontal, 32)
+    }
+
+    // MARK: - Add Genre Sheet
+
+    private var addGenreSheet: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("ジャンル名")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(textSecondary)
+                    TextField("例: 英語、物理", text: $newGenreLabel)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 16))
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("絵文字")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(textSecondary)
+                    HStack(spacing: 12) {
+                        ForEach(["📖", "📐", "🧪", "🌍", "🎵", "⚽", "🎮", "✏️"], id: \.self) { emoji in
+                            Button(action: { newGenreEmoji = emoji }) {
+                                Text(emoji)
+                                    .font(.system(size: 28))
+                                    .padding(6)
+                                    .background(newGenreEmoji == emoji ? accentBlue.opacity(0.2) : Color.clear)
+                                    .cornerRadius(10)
+                            }
+                        }
+                    }
+                }
+
+                Button(action: {
+                    guard !newGenreLabel.isEmpty else { return }
+                    homeViewModel.onIntent(intent: HomeIntentAddGenre(
+                        label: newGenreLabel,
+                        emoji: newGenreEmoji,
+                        colorHex: "#6B7280"
+                    ))
+                    newGenreLabel = ""
+                    newGenreEmoji = "📖"
+                    showAddGenreSheet = false
+                }) {
+                    Text("ジャンルを追加")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(newGenreLabel.isEmpty ? Color.gray : accentBlue)
+                        .cornerRadius(14)
+                }
+                .disabled(newGenreLabel.isEmpty)
+
+                Spacer()
+            }
+            .padding(24)
+            .navigationTitle("ジャンル追加")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") { showAddGenreSheet = false }
+                }
+            }
+        }
     }
 
     private func destinationBanner(name: String) -> some View {
@@ -309,13 +382,13 @@ struct HomeScreenView: View {
             Text("📍 次の目的地:")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundColor(accentIndigo)
-            
+
             Text(name)
                 .font(.system(size: 14, weight: .heavy))
                 .foregroundColor(textPrimary)
-            
+
             Spacer()
-            
+
             Image(systemName: "chevron.right")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundColor(textSecondary)
@@ -354,7 +427,7 @@ struct HomeScreenView: View {
     }
 }
 
-// MARK: - 吹き出し三角
+// MARK: - Triangle
 
 private struct Triangle: Shape {
     func path(in rect: CGRect) -> Path {

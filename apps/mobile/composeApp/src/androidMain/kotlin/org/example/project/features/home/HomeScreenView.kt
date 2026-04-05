@@ -38,12 +38,16 @@ fun HomeScreenView() {
     var selectedTab by remember { mutableStateOf(2) }
     var showStudySheet by remember { mutableStateOf(false) }
     var studyMinutes by remember { mutableStateOf(25) }
-    var selectedGenre by remember { mutableStateOf("総合") }
+    var selectedGenreSlug by remember { mutableStateOf("general") }
+
+    val homeViewModel = remember { org.example.project.di.getHomeViewModel() }
+    val homeState by homeViewModel.uiState.collectAsState()
 
     if (showStudySheet) {
         org.example.project.features.study.StudyQuestScreenView(
             initialStudyMinutes = studyMinutes,
-            genreId = selectedGenre,
+            genreId = selectedGenreSlug,
+            dungeonName = homeState.selectedDungeonName,
             onDismiss = { showStudySheet = false }
         )
     } else {
@@ -60,9 +64,11 @@ fun HomeScreenView() {
                         2 -> HomeTabContent(
                             studyMinutes = studyMinutes,
                             onStudyMinutesChange = { studyMinutes = it },
-                            selectedGenre = selectedGenre,
-                            onGenreChange = { selectedGenre = it },
-                            onStartStudy = { showStudySheet = true }
+                            selectedGenreSlug = selectedGenreSlug,
+                            onGenreChange = { selectedGenreSlug = it },
+                            onStartStudy = { showStudySheet = true },
+                            homeState = homeState,
+                            homeViewModel = homeViewModel
                         )
                         3 -> org.example.project.features.gacha.GachaScreenView()
                         4 -> org.example.project.features.record.RecordScreenView()
@@ -84,20 +90,19 @@ fun HomeScreenView() {
 fun HomeTabContent(
     studyMinutes: Int,
     onStudyMinutesChange: (Int) -> Unit,
-    selectedGenre: String,
+    selectedGenreSlug: String,
     onGenreChange: (String) -> Unit,
-    onStartStudy: () -> Unit
+    onStartStudy: () -> Unit,
+    homeState: org.example.project.features.home.HomeUiState,
+    homeViewModel: org.example.project.features.home.HomeViewModel
 ) {
-    // ジャンルデータ
-    val genres = remember {
-        listOf(
-            "🔢" to "数学",
-            "🔬" to "理科",
-            "📝" to "語学",
-            "💻" to "プログラミング",
-            "📚" to "総合",
-            "🎨" to "クリエイティブ"
-        )
+    var showAddGenreDialog by remember { mutableStateOf(false) }
+    var newGenreLabel by remember { mutableStateOf("") }
+    var newGenreEmoji by remember { mutableStateOf("📖") }
+
+    val genres = remember(homeState.genres) {
+        if (homeState.genres.isEmpty()) listOf(Triple("general", "📚", "総合"))
+        else homeState.genres.map { Triple(it.slug, it.emoji, it.label) }
     }
     // アニメーション
     val infiniteTransition = rememberInfiniteTransition(label = "home")
@@ -135,12 +140,66 @@ fun HomeTabContent(
         }
     }
 
+    if (showAddGenreDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddGenreDialog = false },
+            title = { Text("ジャンル追加") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = newGenreLabel,
+                        onValueChange = { newGenreLabel = it },
+                        label = { Text("ジャンル名") },
+                        singleLine = true
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("📖", "📐", "🧪", "🌍", "🎵", "⚽", "🎮", "✏️").forEach { emoji ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (newGenreEmoji == emoji) AccentBlue.copy(0.2f) else Color.Transparent)
+                                    .clickable { newGenreEmoji = emoji }
+                                    .padding(6.dp)
+                            ) { Text(emoji, fontSize = 22.sp) }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newGenreLabel.isNotEmpty()) {
+                            homeViewModel.onIntent(HomeIntent.AddGenre(newGenreLabel, newGenreEmoji, "#6B7280"))
+                            newGenreLabel = ""; newGenreEmoji = "📖"
+                            showAddGenreDialog = false
+                        }
+                    }
+                ) { Text("追加") }
+            },
+            dismissButton = { TextButton(onClick = { showAddGenreDialog = false }) { Text("キャンセル") } }
+        )
+    }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // ── ヘッダー ──
-        HomeHeader()
+        HomeHeader(homeState = homeState)
+
+        homeState.selectedDungeonName?.let { dn ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .background(AccentIndigo.copy(0.08f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("📍 次の目的地:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AccentIndigo)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(dn, fontSize = 14.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+            }
+        }
 
         Spacer(modifier = Modifier.weight(0.4f))
 
@@ -319,22 +378,19 @@ fun HomeTabContent(
         ) {
             Text("📖 ジャンル", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
             Spacer(modifier = Modifier.height(8.dp))
-            // 3列×2行でグリッド風に
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (row in genres.chunked(3)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
                     ) {
-                        row.forEach { (emoji, label) ->
-                            val isSelected = selectedGenre == label
+                        row.forEach { (slug, emoji, label) ->
+                            val isSelected = selectedGenreSlug == slug
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(
-                                        if (isSelected) AccentIndigo else Color(0xFFE2E8F0)
-                                    )
-                                    .clickable { onGenreChange(label) }
+                                    .background(if (isSelected) AccentIndigo else Color(0xFFE2E8F0))
+                                    .clickable { onGenreChange(slug) }
                                     .padding(horizontal = 12.dp, vertical = 8.dp)
                             ) {
                                 Row(
@@ -342,15 +398,26 @@ fun HomeTabContent(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Text(emoji, fontSize = 14.sp)
-                                    Text(
-                                        label,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) Color.White else TextSecondary
-                                    )
+                                    Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) Color.White else TextSecondary)
                                 }
                             }
                         }
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(AccentBlue.copy(0.1f))
+                        .clickable { showAddGenreDialog = true }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add", tint = AccentBlue, modifier = Modifier.size(16.dp))
+                        Text("追加", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AccentBlue)
                     }
                 }
             }
@@ -395,7 +462,7 @@ fun HomeTabContent(
 // ── ヘッダー ─────────────────────────────────
 
 @Composable
-private fun HomeHeader() {
+private fun HomeHeader(homeState: org.example.project.features.home.HomeUiState) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -403,7 +470,6 @@ private fun HomeHeader() {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 累計勉強時間
         Row(
             modifier = Modifier
                 .shadow(4.dp, RoundedCornerShape(16.dp))
@@ -415,11 +481,10 @@ private fun HomeHeader() {
             Spacer(modifier = Modifier.width(8.dp))
             Column {
                 Text("累計勉強", fontSize = 10.sp, color = TextSecondary)
-                Text("124h 30m", fontSize = 15.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+                Text(homeState.formattedStudyTime, fontSize = 15.sp, fontWeight = FontWeight.Black, color = TextPrimary)
             }
         }
 
-        // 知識の結晶
         Row(
             modifier = Modifier
                 .shadow(4.dp, RoundedCornerShape(16.dp))
@@ -431,16 +496,7 @@ private fun HomeHeader() {
             Spacer(modifier = Modifier.width(8.dp))
             Column {
                 Text("知識の結晶", fontSize = 10.sp, color = TextSecondary)
-                Text("1,250", fontSize = 15.sp, fontWeight = FontWeight.Black, color = TextPrimary)
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .background(EmeraldGreen, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White, modifier = Modifier.size(16.dp))
+                Text("${homeState.stones}", fontSize = 15.sp, fontWeight = FontWeight.Black, color = TextPrimary)
             }
         }
     }

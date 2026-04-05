@@ -148,6 +148,7 @@ func NewRouter(
 			r.Get("/dungeons/{dungeonID}", masterH.GetDungeon)
 			r.Get("/gacha/banners", masterH.ListActiveBanners)
 			r.Get("/genres", masterH.ListStudyGenres)
+			r.Post("/genres", masterH.CreateStudyGenre)
 		})
 	})
 

@@ -43,8 +43,7 @@ data class StudyQuestUiState(
     val defeatedCount: Int = 0,
     val serverRewards: List<String> = emptyList(),
     val serverSynced: Boolean? = null,
-    /** パーティ先頭キャラクター名 */
     val partyLeadName: String = "冒険者",
-    /** パーティ先頭キャラクター画像URL */
-    val partyLeadImageUrl: String = ""
+    val partyLeadImageUrl: String = "",
+    val dungeonName: String? = null
 )

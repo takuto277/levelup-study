@@ -8,10 +8,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * ホーム画面の ViewModel
- * ユーザーステータス表示 + メインキャラ表示 + 勉強開始導線
- */
 class HomeViewModel(
     private val homeUseCase: HomeUseCase
 ) : ViewModel() {
@@ -26,11 +22,12 @@ class HomeViewModel(
     fun onIntent(intent: HomeIntent) {
         when (intent) {
             is HomeIntent.Refresh -> loadHome()
-            is HomeIntent.StartStudy -> { /* ナビゲーションはネイティブ側で処理 */ }
-            is HomeIntent.TapMainCharacter -> { /* キャラタップ演出はネイティブ側 */ }
+            is HomeIntent.StartStudy -> { }
+            is HomeIntent.TapMainCharacter -> { }
             is HomeIntent.SelectDungeon -> {
-                _uiState.update { it.copy(selectedDungeonName = intent.name) }
+                _uiState.update { it.copy(selectedDungeonId = intent.id, selectedDungeonName = intent.name) }
             }
+            is HomeIntent.AddGenre -> addGenre(intent.label, intent.emoji, intent.colorHex)
         }
     }
 
@@ -46,12 +43,23 @@ class HomeViewModel(
                         gold = data.user.gold,
                         displayName = data.user.displayName,
                         mainCharacter = data.mainCharacter,
+                        genres = data.genres,
                         isLoading = false
                     )
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
+        }
+    }
+
+    private fun addGenre(label: String, emoji: String, colorHex: String) {
+        viewModelScope.launch {
+            try {
+                homeUseCase.createGenre(label, emoji, colorHex)
+                val data = homeUseCase.loadHomeData()
+                _uiState.update { it.copy(genres = data.genres) }
+            } catch (_: Exception) { }
         }
     }
 }

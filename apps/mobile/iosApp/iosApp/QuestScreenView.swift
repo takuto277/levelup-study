@@ -235,7 +235,7 @@ struct QuestScreenView: View {
                         showDetail = false
                     }
                 } onSelect: {
-                    homeViewModel.onIntent(intent: HomeIntentSelectDungeon(name: dungeon.name))
+                    homeViewModel.onIntent(intent: HomeIntentSelectDungeon(id: dungeon.id, name: dungeon.name))
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                         showDetail = false
                     }
@@ -371,13 +371,9 @@ private struct DungeonCardView: View {
                     .background(Color(UIColor.systemGroupedBackground).opacity(0.6))
                 }
 
-                // 報酬プレビュー
+                // 報酬プレビュー（EXPのみ表示）
                 HStack(spacing: 16) {
-                    rewardChip("💰", "\(dungeon.rewards.gold)", Color(hex: 0xFFD700))
                     rewardChip("✨", "\(dungeon.rewards.exp) EXP", Color(hex: 0x10B981))
-                    if dungeon.rewards.gachaStones > 0 {
-                        rewardChip("💎", "\(dungeon.rewards.gachaStones)", Color(hex: 0x8B5CF6))
-                    }
                     if let bonus = dungeon.rewards.bonusItemName {
                         rewardChip("🎁", bonus, Color(hex: 0xEC4899))
                     }
@@ -501,11 +497,7 @@ private struct DungeonDetailOverlay: View {
 
                             HStack {
                                 Spacer()
-                                rewardDetailItem("💰", "ゴールド", "\(dungeon.rewards.gold)G", Color(hex: 0xFFD700))
-                                Spacer()
                                 rewardDetailItem("✨", "経験値", "\(dungeon.rewards.exp) EXP", Color(hex: 0x10B981))
-                                Spacer()
-                                rewardDetailItem("💎", "ガチャ石", "\(dungeon.rewards.gachaStones)個", Color(hex: 0x8B5CF6))
                                 Spacer()
                             }
 

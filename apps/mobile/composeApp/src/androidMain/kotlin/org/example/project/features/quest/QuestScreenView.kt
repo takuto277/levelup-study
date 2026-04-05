@@ -111,11 +111,19 @@ fun QuestScreenView() {
             }
         }
 
-        // ダンジョン詳細ボトムシート
         uiState.selectedDungeon?.let { dungeon ->
+            val homeVm = remember { org.example.project.di.getHomeViewModel() }
             DungeonDetailSheet(
                 dungeon = dungeon,
-                onDismiss = { viewModel.onIntent(QuestIntent.DismissDetail) }
+                onDismiss = { viewModel.onIntent(QuestIntent.DismissDetail) },
+                onSelect = {
+                    homeVm.onIntent(
+                        org.example.project.features.home.HomeIntent.SelectDungeon(
+                            id = dungeon.id, name = dungeon.name
+                        )
+                    )
+                    viewModel.onIntent(QuestIntent.DismissDetail)
+                }
             )
         }
     }
@@ -328,11 +336,7 @@ private fun DungeonCard(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                RewardChip("💰", "${dungeon.rewards.gold}", GoldColor)
                 RewardChip("✨", "${dungeon.rewards.exp} EXP", ExpGreen)
-                if (dungeon.rewards.gachaStones > 0) {
-                    RewardChip("💎", "${dungeon.rewards.gachaStones}", GachaViolet)
-                }
                 dungeon.rewards.bonusItemName?.let { itemName ->
                     RewardChip("🎁", itemName, Color(0xFFEC4899))
                 }
@@ -374,7 +378,8 @@ private fun RewardChip(emoji: String, text: String, color: Color) {
 @Composable
 private fun DungeonDetailSheet(
     dungeon: Dungeon,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSelect: () -> Unit = {}
 ) {
     // 半透明の背景
     Box(
@@ -518,9 +523,7 @@ private fun DungeonDetailSheet(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            RewardDetailItem("💰", "ゴールド", "${dungeon.rewards.gold}G", GoldColor)
                             RewardDetailItem("✨", "経験値", "${dungeon.rewards.exp} EXP", ExpGreen)
-                            RewardDetailItem("💎", "ガチャ石", "${dungeon.rewards.gachaStones}個", GachaViolet)
                         }
 
                         dungeon.rewards.bonusItemName?.let { itemName ->
@@ -568,12 +571,8 @@ private fun DungeonDetailSheet(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 出発ボタン
                 Button(
-                    onClick = {
-                        // TODO: ダンジョン選択 → 勉強開始画面へ遷移
-                        onDismiss()
-                    },
+                    onClick = { onSelect() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)

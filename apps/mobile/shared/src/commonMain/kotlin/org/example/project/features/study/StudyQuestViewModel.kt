@@ -102,7 +102,7 @@ class StudyQuestViewModel(
     // ── Intent ハンドラ ─────────────────────────────
     fun onIntent(intent: StudyQuestIntent) {
         when (intent) {
-            is StudyQuestIntent.StartQuest -> startQuest(intent.studyMinutes, intent.genreId)
+            is StudyQuestIntent.StartQuest -> startQuest(intent.studyMinutes, intent.genreId, intent.dungeonName)
             is StudyQuestIntent.TogglePause -> togglePause()
             is StudyQuestIntent.EndQuest -> endQuest()
             is StudyQuestIntent.NextSession -> nextSession()
@@ -137,7 +137,7 @@ class StudyQuestViewModel(
 
     // ── 内部ロジック ────────────────────────────────
 
-    private fun startQuest(studyMinutes: Int, genreId: String?) {
+    private fun startQuest(studyMinutes: Int, genreId: String?, dungeonName: String? = null) {
         if (_uiState.value.status == StudySessionStatus.RUNNING) return
 
         sessionStartedAt = Clock.System.now().toString()
@@ -151,7 +151,9 @@ class StudyQuestViewModel(
                 targetStudyMinutes = studyMinutes,
                 elapsedSeconds = 0,
                 isOvertime = false,
-                currentLog = listOf("冒険を開始した！"),
+                currentLog = listOf(
+                    if (dungeonName != null) "「${dungeonName}」の探索を開始した！" else "冒険を開始した！"
+                ),
                 displayTime = formatTime(studyMinutes.toLong() * 60),
                 genreId = genreId,
                 adventurePhase = AdventurePhase.WALKING,
@@ -160,7 +162,8 @@ class StudyQuestViewModel(
                 enemyHp = firstEnemy.hp,
                 enemyMaxHp = firstEnemy.hp,
                 lastDamage = 0,
-                defeatedCount = 0
+                defeatedCount = 0,
+                dungeonName = dungeonName
             )
         }
         startTimer()

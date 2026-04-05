@@ -257,3 +257,8 @@ func (r *MasterRepository) ListStudyGenres() ([]model.MasterStudyGenre, error) {
 	err := r.db.Where("is_active = true").Order("sort_order ASC").Find(&list).Error
 	return list, err
 }
+
+// CreateStudyGenre — ジャンルを作成する
+func (r *MasterRepository) CreateStudyGenre(g *model.MasterStudyGenre) error {
+	return r.db.Create(g).Error
+}
