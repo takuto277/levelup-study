@@ -37,22 +37,22 @@ private func rarityGradient(_ rarity: Int) -> [Color] {
 
 private func characterEmoji(_ characterId: String) -> String {
     switch characterId {
-    case "char_wizard": return "🧙‍♂️"
-    case "char_knight": return "⚔️"
-    case "char_archer": return "🏹"
-    case "char_healer": return "💚"
-    case "char_ninja": return "🥷"
-    case "char_dragon": return "🐉"
+    case "char_wizard", "a0000000-0000-0000-0000-000000000005": return "🧙‍♂️"
+    case "char_knight", "a0000000-0000-0000-0000-000000000001": return "⚔️"
+    case "char_archer", "a0000000-0000-0000-0000-000000000003": return "🏹"
+    case "char_healer", "a0000000-0000-0000-0000-000000000004": return "💚"
+    case "char_ninja", "a0000000-0000-0000-0000-000000000002": return "🥷"
+    case "char_dragon", "a0000000-0000-0000-0000-000000000006": return "🐉"
     default: return "👤"
     }
 }
 
 private func weaponEmoji(_ weaponId: String?) -> String {
     switch weaponId {
-    case "wpn_staff": return "🪄"
-    case "wpn_sword": return "⚔️"
-    case "wpn_wand": return "✨"
-    default: return ""
+    case "wpn_staff", "b0000000-0000-0000-0000-000000000005": return "🪄"
+    case "wpn_sword", "b0000000-0000-0000-0000-000000000001": return "⚔️"
+    case "wpn_wand", "b0000000-0000-0000-0000-000000000004": return "✨"
+    default: return "🗡️"
     }
 }
 
@@ -61,12 +61,11 @@ private func weaponEmoji(_ weaponId: String?) -> String {
 /// 編成画面（タブ②: 左から2番目）
 /// キャラクターの確認・パーティスロット配置・ステータス閲覧
 struct PartyScreenView: View {
-    private let viewModel: PartyViewModel
+    @StateObject private var holder = ViewModelHolder()
     @State private var uiState: PartyUiState
 
     init() {
         let vm = KoinHelperKt.getPartyViewModel()
-        self.viewModel = vm
         _uiState = State(initialValue: vm.uiState.value as! PartyUiState)
     }
 
@@ -107,11 +106,28 @@ struct PartyScreenView: View {
                     Spacer()
                 }
             }
+
+            // ローディング
+            if uiState.isLoading {
+                Color.black.opacity(0.2).ignoresSafeArea()
+                ProgressView()
+                    .scaleEffect(1.5)
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+            }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: uiState.selectedCharacter != nil)
         .onReceive(Timer.publish(every: 0.3, on: .main, in: .common).autoconnect()) { _ in
-            self.uiState = viewModel.uiState.value as! PartyUiState
+            self.uiState = holder.viewModel.uiState.value as! PartyUiState
         }
+        .onAppear {
+            holder.viewModel.onIntent(intent: PartyIntentRefresh())
+        }
+    }
+
+    // MARK: - ViewModel Holder
+
+    private class ViewModelHolder: ObservableObject {
+        let viewModel: PartyViewModel = KoinHelperKt.getPartyViewModel()
     }
 
     // MARK: - Header
@@ -252,7 +268,7 @@ struct PartyScreenView: View {
 
     private func partySlotCard(slot: Int, character: UserCharacter?, isSelected: Bool) -> some View {
         Button(action: {
-            viewModel.onIntent(intent: PartyIntentSelectSlot(slotPosition: Int32(slot)))
+            holder.viewModel.onIntent(intent: PartyIntentSelectSlot(slotPosition: Int32(slot)))
         }) {
             VStack(spacing: 4) {
                 if let char = character, let master = char.character {
@@ -315,7 +331,7 @@ struct PartyScreenView: View {
                 .foregroundColor(.white)
             Spacer()
             Button("キャンセル") {
-                viewModel.onIntent(intent: PartyIntentSelectSlot(slotPosition: 0))
+                holder.viewModel.onIntent(intent: PartyIntentSelectSlot(slotPosition: 0))
             }
             .font(.system(size: 12))
             .foregroundColor(.white.opacity(0.8))
@@ -359,12 +375,12 @@ struct PartyScreenView: View {
 
         return Button(action: {
             if let slot = uiState.selectedSlot, slot.intValue > 0 {
-                viewModel.onIntent(intent: PartyIntentAssignCharacter(
+                holder.viewModel.onIntent(intent: PartyIntentAssignCharacter(
                     slotPosition: slot.int32Value,
                     userCharacterId: character.id
                 ))
             } else {
-                viewModel.onIntent(intent: PartyIntentSelectCharacter(userCharacterId: character.id))
+                holder.viewModel.onIntent(intent: PartyIntentSelectCharacter(userCharacterId: character.id))
             }
         }) {
             VStack(spacing: 0) {
@@ -452,7 +468,7 @@ struct PartyScreenView: View {
             Color.black.opacity(0.45)
                 .ignoresSafeArea()
                 .onTapGesture {
-                    viewModel.onIntent(intent: PartyIntentDismissCharacterDetail())
+                    holder.viewModel.onIntent(intent: PartyIntentDismissCharacterDetail())
                 }
 
             VStack(spacing: 0) {

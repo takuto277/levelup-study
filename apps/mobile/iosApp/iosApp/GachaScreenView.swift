@@ -1,14 +1,15 @@
 import SwiftUI
+import Shared
 
 // ============================================================
-// MARK: - Data Types
+// MARK: - Data Types (local Swift types for UI)
 // ============================================================
 
-private enum GachaPhase {
+private enum UIPhase {
     case bannerSelect, confirm, pulling, result
 }
 
-private enum BannerType: String {
+private enum UIBannerType: String {
     case character, weapon, mixed
 
     var label: String {
@@ -37,7 +38,7 @@ private enum BannerType: String {
 private struct BannerDisplay: Identifiable {
     let id: String
     let name: String
-    let type: BannerType
+    let type: UIBannerType
     let pityThreshold: Int
     let featuredRarity: Int
     let description: String
@@ -73,17 +74,17 @@ private struct ResultItem: Identifiable {
 }
 
 // ============================================================
-// MARK: - Store (ViewModel)
+// MARK: - Store (bridges to KMP GachaViewModel)
 // ============================================================
 
-/// ガチャ画面のローカルステート管理
-/// TODO: KMP GachaViewModel + Koin 接続後はこのクラスを置き換える
 private class GachaStore: ObservableObject {
-    @Published var phase: GachaPhase = .bannerSelect
+    let kmpViewModel: GachaViewModel
+
+    @Published var phase: UIPhase = .bannerSelect
     @Published var banners: [BannerDisplay] = []
     @Published var selectedBanner: BannerDisplay?
-    @Published var currentStones: Int = 1250
-    @Published var pityCount: Int = 47
+    @Published var currentStones: Int = 0
+    @Published var pityCount: Int = 0
     @Published var pullResults: [ResultItem] = []
     @Published var lastPullCount: Int = 0
     @Published var error: String?
@@ -95,88 +96,102 @@ private class GachaStore: ObservableObject {
     var canPullMulti: Bool { currentStones >= Self.multiCost }
     var highestRarity: Int { pullResults.map(\.rarity).max() ?? 3 }
 
-    init() { loadBanners() }
+    private var syncTimer: Timer?
 
-    func loadBanners() {
-        banners = [
-            BannerDisplay(id: "b1", name: "光の勇者ピックアップ", type: .character, pityThreshold: 90, featuredRarity: 5,
-                          description: "★5 光の勇者アリア 排出率UP!"),
-            BannerDisplay(id: "b2", name: "伝説の聖剣ガチャ", type: .weapon, pityThreshold: 80, featuredRarity: 5,
-                          description: "★5 聖剣エクスカリバー 排出率UP!"),
-            BannerDisplay(id: "b3", name: "新学期スペシャル召喚", type: .mixed, pityThreshold: 0, featuredRarity: 4,
-                          description: "★4以上キャラ＆武器の排出率2倍!")
-        ]
+    init() {
+        kmpViewModel = KoinHelperKt.getGachaViewModel()
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
+            self?.syncFromKMP()
+        }
     }
 
+    deinit { syncTimer?.invalidate() }
+
+    // MARK: Actions (forwarded to KMP ViewModel)
+
     func selectBanner(_ banner: BannerDisplay) {
-        selectedBanner = banner
-        pityCount = Int.random(in: 20...75)
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { phase = .confirm }
+        kmpViewModel.onIntent(intent: GachaIntentSelectBanner(bannerId: banner.id))
     }
 
     func pullSingle() {
-        guard canPullSingle else { return }
-        currentStones -= Self.singleCost
-        lastPullCount = 1
-        withAnimation(.easeInOut(duration: 0.3)) { phase = .pulling }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
-            self.pullResults = self.generateResults(count: 1)
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) { self.phase = .result }
-        }
+        guard canPullSingle, let banner = selectedBanner else { return }
+        kmpViewModel.onIntent(intent: GachaIntentPullSingle(bannerId: banner.id))
     }
 
     func pullMulti() {
-        guard canPullMulti else { return }
-        currentStones -= Self.multiCost
-        lastPullCount = 10
-        withAnimation(.easeInOut(duration: 0.3)) { phase = .pulling }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
-            self.pullResults = self.generateResults(count: 10)
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) { self.phase = .result }
-        }
+        guard canPullMulti, let banner = selectedBanner else { return }
+        kmpViewModel.onIntent(intent: GachaIntentPullMulti(bannerId: banner.id))
     }
 
     func pullAgain() {
-        pullResults = []
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { phase = .confirm }
+        kmpViewModel.onIntent(intent: GachaIntentPullAgain())
     }
 
     func backToBannerSelect() {
-        selectedBanner = nil
-        pullResults = []
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { phase = .bannerSelect }
+        kmpViewModel.onIntent(intent: GachaIntentDismissResults())
     }
 
-    // ── Mock Data ─────────────────────────────────
-    private let charPool: [(String, Int)] = [
-        ("光の勇者アリア", 5), ("闇の魔王ゼファー", 5), ("聖女セラフィーナ", 5),
-        ("炎の魔術師レイ", 4), ("氷の弓使いリナ", 4), ("風の剣士カイト", 4),
-        ("見習い戦士タロウ", 3), ("森の精霊コダマ", 3), ("街の商人マルコ", 3)
-    ]
-    private let weapPool: [(String, Int)] = [
-        ("聖剣エクスカリバー", 5), ("闇の大鎌デスサイズ", 5),
-        ("氷の弓フロストアロー", 4), ("炎の杖ヘルフレイム", 4),
-        ("鉄の剣", 3), ("木の杖", 3), ("革の盾", 3)
-    ]
+    // MARK: KMP State Sync
 
-    private func generateResults(count: Int) -> [ResultItem] {
-        (0..<count).map { i in
-            let rarity = rollRarity(guarantee4: count >= 10 && i == count - 1)
-            let isChar = Bool.random()
-            let pool = isChar ? charPool : weapPool
-            let item = pool.filter { $0.1 == rarity }.randomElement() ?? pool.filter { $0.1 <= rarity }.randomElement()!
-            return ResultItem(
-                id: UUID().uuidString, name: item.0, rarity: item.1,
-                type: isChar ? .character : .weapon, isNew: Int.random(in: 0...3) == 0
-            )
+    private func syncFromKMP() {
+        guard let state = kmpViewModel.uiState.value as? GachaUiState else { return }
+
+        let newPhase: UIPhase
+        let kp = state.phase
+        if kp == GachaPhase.bannerSelect { newPhase = .bannerSelect }
+        else if kp == GachaPhase.confirm { newPhase = .confirm }
+        else if kp == GachaPhase.pulling { newPhase = .pulling }
+        else { newPhase = .result }
+
+        if newPhase != phase {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { phase = newPhase }
         }
+
+        currentStones = Int(state.currentStones)
+        pityCount = Int(state.pityCount)
+        lastPullCount = Int(state.lastPullCount)
+        error = state.error
+
+        let newBanners: [BannerDisplay] = state.banners.compactMap { item in
+            guard let b = item as? GachaBanner else { return nil }
+            return convertBanner(b)
+        }
+        if banners.map(\.id) != newBanners.map(\.id) { banners = newBanners }
+
+        if let sb = state.selectedBanner {
+            selectedBanner = banners.first { $0.id == sb.id }
+        } else {
+            selectedBanner = nil
+        }
+
+        let newResults: [ResultItem] = state.pullResults.compactMap { item in
+            guard let r = item as? GachaResultItem else { return nil }
+            return convertResult(r)
+        }
+        if pullResults.map(\.id) != newResults.map(\.id) { pullResults = newResults }
     }
 
-    private func rollRarity(guarantee4: Bool) -> Int {
-        let roll = Int.random(in: 1...1000)
-        if roll <= 30 { return 5 }
-        if roll <= 180 || guarantee4 { return 4 }
-        return 3
+    private func convertBanner(_ b: GachaBanner) -> BannerDisplay {
+        let bt: UIBannerType
+        let kbt = b.bannerType
+        if kbt == BannerType.character { bt = .character }
+        else if kbt == BannerType.weapon { bt = .weapon }
+        else { bt = .mixed }
+        return BannerDisplay(
+            id: b.id, name: b.name, type: bt,
+            pityThreshold: b.pityThreshold?.intValue ?? 0,
+            featuredRarity: 5,
+            description: "期間限定召喚開催中！"
+        )
+    }
+
+    private func convertResult(_ r: GachaResultItem) -> ResultItem {
+        let it: ItemType = (r.type == GachaResultType.character) ? .character : .weapon
+        return ResultItem(
+            id: r.id, name: r.name,
+            rarity: Int(r.rarity),
+            type: it, isNew: r.isNew
+        )
     }
 }
 
@@ -184,13 +199,11 @@ private class GachaStore: ObservableObject {
 // MARK: - Main View
 // ============================================================
 
-/// 召喚画面（タブ④）
 struct GachaScreenView: View {
     @StateObject private var store = GachaStore()
 
     var body: some View {
         ZStack {
-            // 深いグラデーション背景
             LinearGradient(
                 colors: [
                     Color(red: 0.04, green: 0.04, blue: 0.18),
@@ -201,7 +214,6 @@ struct GachaScreenView: View {
             )
             .ignoresSafeArea()
 
-            // 背景パーティクル装飾
             BackgroundParticles()
 
             switch store.phase {
@@ -253,7 +265,6 @@ private struct BannerSelectView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // ヘッダー
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("召 喚")
@@ -270,7 +281,6 @@ private struct BannerSelectView: View {
             .padding(.top, 16)
             .padding(.bottom, 24)
 
-            // バナーカード一覧
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 16) {
                     ForEach(Array(store.banners.enumerated()), id: \.element.id) { index, banner in
@@ -294,8 +304,6 @@ private struct BannerSelectView: View {
     }
 }
 
-// ── バナーカード ──────────────────────────────
-
 private struct BannerCard: View {
     let banner: BannerDisplay
     let onTap: () -> Void
@@ -304,7 +312,6 @@ private struct BannerCard: View {
     var body: some View {
         Button(action: onTap) {
             ZStack(alignment: .bottomLeading) {
-                // 背景グラデーション
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(LinearGradient(
                         colors: banner.type.colors,
@@ -312,7 +319,6 @@ private struct BannerCard: View {
                     ))
                     .frame(height: 180)
 
-                // シマー効果
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(
                         LinearGradient(
@@ -324,7 +330,6 @@ private struct BannerCard: View {
                     .offset(x: shimmerOffset)
                     .mask(RoundedRectangle(cornerRadius: 20, style: .continuous).frame(height: 180))
 
-                // 大きなアイコン（右上）
                 Image(systemName: banner.type.icon)
                     .font(.system(size: 80, weight: .ultraLight))
                     .foregroundColor(.white.opacity(0.1))
@@ -332,7 +337,6 @@ private struct BannerCard: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     .clipped()
 
-                // テキスト情報
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 4) {
                         Text("PICK UP")
@@ -389,7 +393,6 @@ private struct ConfirmView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // ヘッダー
             HStack {
                 Button(action: { store.backToBannerSelect() }) {
                     HStack(spacing: 6) {
@@ -421,19 +424,16 @@ private struct ConfirmView: View {
                         .scaleEffect(appeared ? 1 : 0.8)
                         .opacity(appeared ? 1 : 0)
 
-                        // 召喚オーブ
                         SummoningOrb(bannerType: banner.type)
                             .frame(height: 200)
                             .scaleEffect(appeared ? 1 : 0.5)
                             .opacity(appeared ? 1 : 0)
 
-                        // 天井カウンター
                         if banner.pityThreshold > 0 {
                             PityCounter(current: store.pityCount, threshold: banner.pityThreshold)
                                 .opacity(appeared ? 1 : 0)
                         }
 
-                        // 召喚ボタン
                         VStack(spacing: 12) {
                             GlowPullButton(
                                 label: "単発召喚", cost: GachaStore.singleCost,
@@ -455,7 +455,6 @@ private struct ConfirmView: View {
                         .offset(y: appeared ? 0 : 40)
                         .opacity(appeared ? 1 : 0)
 
-                        // 排出率
                         RateInfoCard().opacity(appeared ? 1 : 0)
                     }
                 }
@@ -467,8 +466,6 @@ private struct ConfirmView: View {
         .onDisappear { appeared = false }
     }
 }
-
-// ── 天井カウンター ─────────────────────────────
 
 private struct PityCounter: View {
     let current: Int
@@ -510,8 +507,6 @@ private struct PityCounter: View {
         )
     }
 }
-
-// ── 排出率テーブル ─────────────────────────────
 
 private struct RateInfoCard: View {
     @State private var expanded = false
@@ -584,7 +579,6 @@ private struct PullAnimationView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            // パーティクル
             ForEach(0..<20, id: \.self) { i in
                 Circle()
                     .fill(accentColor.opacity(0.7))
@@ -596,7 +590,6 @@ private struct PullAnimationView: View {
                     .opacity(particlesVisible ? 1 : 0)
             }
 
-            // 外側リング
             Circle()
                 .stroke(
                     AngularGradient(
@@ -609,7 +602,6 @@ private struct PullAnimationView: View {
                 .scaleEffect(circleScale)
                 .opacity(circleOpacity)
 
-            // 内側リング
             Circle()
                 .stroke(
                     AngularGradient(
@@ -622,7 +614,6 @@ private struct PullAnimationView: View {
                 .scaleEffect(circleScale)
                 .opacity(circleOpacity)
 
-            // 十字の装飾線
             ForEach(0..<4, id: \.self) { i in
                 Rectangle()
                     .fill(accentColor.opacity(0.3))
@@ -632,7 +623,6 @@ private struct PullAnimationView: View {
                     .opacity(circleOpacity)
             }
 
-            // 中央グロー
             RadialGradient(
                 gradient: Gradient(colors: [accentColor.opacity(0.8), accentColor.opacity(0.2), .clear]),
                 center: .center, startRadius: 0, endRadius: 80
@@ -641,7 +631,6 @@ private struct PullAnimationView: View {
             .scaleEffect(glowScale)
             .opacity(glowOpacity)
 
-            // バースト（フラッシュ）
             Circle()
                 .fill(
                     RadialGradient(
@@ -662,21 +651,18 @@ private struct PullAnimationView: View {
     }
 
     private func startAnimation() {
-        // Phase 1: 円が出現
         withAnimation(.easeOut(duration: 0.6)) {
             circleScale = 1.0; circleOpacity = 1.0; glowScale = 0.6; glowOpacity = 0.4
         }
         withAnimation(.linear(duration: 2.5).repeatForever(autoreverses: false)) { rotation = 360 }
         withAnimation(.easeIn(duration: 0.5).delay(0.3)) { particlesVisible = true }
 
-        // Phase 2: 収束
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation(.easeIn(duration: 1.0)) {
                 circleScale = 1.4; glowScale = 1.2; glowOpacity = 0.8; particlesConverge = true
             }
         }
 
-        // Phase 3: バースト
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.7) {
             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
             withAnimation(.easeOut(duration: 0.25)) {
@@ -689,10 +675,8 @@ private struct PullAnimationView: View {
     }
 }
 
-// ── Idle 状態のオーブ ────────────────────────
-
 private struct SummoningOrb: View {
-    let bannerType: BannerType
+    let bannerType: UIBannerType
     @State private var pulse = false
     @State private var rotation: Double = 0
 
@@ -832,17 +816,13 @@ private struct ResultView: View {
     }
 
     private func scheduleReveal(index: Int, afterSeconds: Double) {
-        let deadline: DispatchTime = .now() + afterSeconds
-        DispatchQueue.main.asyncAfter(deadline: deadline) {
-            let anim = Animation.spring(response: 0.5, dampingFraction: 0.7)
-            withAnimation(anim) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + afterSeconds) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                 _ = cardsRevealed.insert(index)
             }
         }
     }
 }
-
-// ── 単発結果カード ─────────────────────────────
 
 private struct SingleResultCard: View {
     let item: ResultItem; let revealed: Bool
@@ -854,9 +834,7 @@ private struct SingleResultCard: View {
                     .fill(
                         RadialGradient(
                             gradient: Gradient(colors: [item.rarityColor.opacity(0.5), item.rarityColor.opacity(0.1), .clear]),
-                            center: .center,
-                            startRadius: 20,
-                            endRadius: 120
+                            center: .center, startRadius: 20, endRadius: 120
                         )
                     )
                     .frame(width: 240, height: 240)
@@ -888,8 +866,6 @@ private struct SingleResultCard: View {
         .rotation3DEffect(.degrees(revealed ? 0 : 180), axis: (x: 0, y: 1, z: 0))
     }
 }
-
-// ── 10連結果カード ─────────────────────────────
 
 private struct MultiResultCard: View {
     let item: ResultItem; let revealed: Bool

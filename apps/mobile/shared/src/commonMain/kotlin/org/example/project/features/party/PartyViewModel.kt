@@ -1,8 +1,7 @@
 package org.example.project.features.party
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,12 +16,10 @@ import org.example.project.domain.model.PartySlot
  */
 class PartyViewModel(
     private val partyUseCase: PartyUseCase
-) {
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PartyUiState())
     val uiState: StateFlow<PartyUiState> = _uiState.asStateFlow()
-
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     init {
         loadPartyData()
@@ -45,7 +42,7 @@ class PartyViewModel(
     private fun loadPartyData() {
         _uiState.update { it.copy(isLoading = true, error = null) }
 
-        scope.launch {
+        viewModelScope.launch {
             try {
                 val data = partyUseCase.loadPartyData()
                 _uiState.update {
@@ -67,7 +64,7 @@ class PartyViewModel(
     }
 
     private fun assignCharacter(slotPosition: Int, userCharacterId: String) {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 partyUseCase.assignCharacterToSlot(slotPosition, userCharacterId)
                 loadPartyData()
@@ -78,7 +75,7 @@ class PartyViewModel(
     }
 
     private fun removeFromSlot(slotPosition: Int) {
-        scope.launch {
+        viewModelScope.launch {
             try {
                 partyUseCase.removeFromSlot(slotPosition)
                 loadPartyData()

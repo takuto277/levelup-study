@@ -176,7 +176,6 @@ func (h *GameHandler) UpdatePartySlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Upsert 用の model を作成
 	partySlot := &model.UserPartySlot{
 		UserID:          userID,
 		SlotPosition:    slotPos,
@@ -187,7 +186,18 @@ func (h *GameHandler) UpdatePartySlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, map[string]string{"message": "パーティを更新しました"})
+	slots, err := h.partyRepo.GetByUser(userID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "パーティ取得に失敗しました")
+		return
+	}
+	for _, s := range slots {
+		if s.SlotPosition == slotPos {
+			respondJSON(w, http.StatusOK, s)
+			return
+		}
+	}
+	respondJSON(w, http.StatusOK, partySlot)
 }
 
 // RemovePartySlot — DELETE /api/v1/users/{userID}/party/{slotPosition}

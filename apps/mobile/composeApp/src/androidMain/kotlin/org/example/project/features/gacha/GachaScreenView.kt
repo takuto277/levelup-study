@@ -30,6 +30,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.example.project.di.getGachaViewModel
+import org.example.project.domain.model.BannerType
+import org.example.project.domain.model.GachaBanner
+import org.example.project.domain.model.GachaResultType
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -54,126 +58,24 @@ private fun rarityColor(rarity: Int): Color = when (rarity) {
 
 private fun rarityStars(rarity: Int): String = "★".repeat(rarity)
 
-// ══════════════════════════════════════════════════════════════
-// Data Types
-// ══════════════════════════════════════════════════════════════
-
-private enum class GachaPhase { BANNER_SELECT, CONFIRM, PULLING, RESULT }
-
-private enum class BannerType(val label: String, val colors: List<Color>) {
-    CHARACTER("キャラ", listOf(Color(0xFF4B32C8), Color(0xFF8033E6))),
-    WEAPON("武器", listOf(Color(0xFFCC3333), Color(0xFFE6661A))),
-    MIXED("ミックス", listOf(Color(0xFF9933CC), Color(0xFFE64D80)))
+private fun bannerColors(type: BannerType): List<Color> = when (type) {
+    BannerType.CHARACTER -> listOf(Color(0xFF4B32C8), Color(0xFF8033E6))
+    BannerType.WEAPON -> listOf(Color(0xFFCC3333), Color(0xFFE6661A))
+    BannerType.MIXED -> listOf(Color(0xFF9933CC), Color(0xFFE64D80))
+    else -> listOf(Color.Gray, Color.Black)
 }
 
-private data class BannerDisplay(
-    val id: String,
-    val name: String,
-    val type: BannerType,
-    val pityThreshold: Int,
-    val featuredRarity: Int,
-    val description: String
-)
-
-private enum class ItemType(val label: String) {
-    CHARACTER("キャラクター"), WEAPON("武器")
+private fun bannerIcon(type: BannerType) = when (type) {
+    BannerType.CHARACTER -> Icons.Default.Person
+    BannerType.WEAPON -> Icons.Default.Shield
+    BannerType.MIXED -> Icons.Default.Star
+    else -> Icons.Default.QuestionMark
 }
 
-private data class ResultItem(
-    val id: String,
-    val name: String,
-    val rarity: Int,
-    val type: ItemType,
-    val isNew: Boolean
-)
-
-// ══════════════════════════════════════════════════════════════
-// Store (local mock ViewModel)
-// TODO: KMP GachaViewModel + Koin 接続後はこのクラスを置き換える
-// ══════════════════════════════════════════════════════════════
-
-private class GachaStore {
-    var phase by mutableStateOf(GachaPhase.BANNER_SELECT)
-    var banners by mutableStateOf(emptyList<BannerDisplay>())
-    var selectedBanner by mutableStateOf<BannerDisplay?>(null)
-    var currentStones by mutableIntStateOf(1250)
-    var pityCount by mutableIntStateOf(47)
-    var pullResults by mutableStateOf(emptyList<ResultItem>())
-    var lastPullCount by mutableIntStateOf(0)
-
-    val canPullSingle: Boolean get() = currentStones >= SINGLE_COST
-    val canPullMulti: Boolean get() = currentStones >= MULTI_COST
-    val highestRarity: Int get() = pullResults.maxOfOrNull { it.rarity } ?: 3
-
-    init { loadBanners() }
-
-    fun loadBanners() {
-        banners = listOf(
-            BannerDisplay("b1", "光の勇者ピックアップ", BannerType.CHARACTER, 90, 5, "★5 光の勇者アリア 排出率UP!"),
-            BannerDisplay("b2", "伝説の聖剣ガチャ", BannerType.WEAPON, 80, 5, "★5 聖剣エクスカリバー 排出率UP!"),
-            BannerDisplay("b3", "新学期スペシャル召喚", BannerType.MIXED, 0, 4, "★4以上キャラ＆武器の排出率2倍!")
-        )
-    }
-
-    fun selectBanner(banner: BannerDisplay) {
-        selectedBanner = banner
-        pityCount = Random.nextInt(20, 76)
-        phase = GachaPhase.CONFIRM
-    }
-
-    suspend fun pullSingle() {
-        if (!canPullSingle) return
-        currentStones -= SINGLE_COST; lastPullCount = 1
-        executePull(1)
-    }
-
-    suspend fun pullMulti() {
-        if (!canPullMulti) return
-        currentStones -= MULTI_COST; lastPullCount = 10
-        executePull(10)
-    }
-
-    private suspend fun executePull(count: Int) {
-        phase = GachaPhase.PULLING
-        delay(3200L) // 演出の最低時間
-        pullResults = generateResults(count)
-        phase = GachaPhase.RESULT
-    }
-
-    fun pullAgain() { pullResults = emptyList(); phase = GachaPhase.CONFIRM }
-    fun backToBannerSelect() { selectedBanner = null; pullResults = emptyList(); phase = GachaPhase.BANNER_SELECT }
-
-    // ── Mock Data ──
-    private val charPool = listOf(
-        "光の勇者アリア" to 5, "闇の魔王ゼファー" to 5, "聖女セラフィーナ" to 5,
-        "炎の魔術師レイ" to 4, "氷の弓使いリナ" to 4, "風の剣士カイト" to 4,
-        "見習い戦士タロウ" to 3, "森の精霊コダマ" to 3, "街の商人マルコ" to 3
-    )
-    private val weapPool = listOf(
-        "聖剣エクスカリバー" to 5, "闇の大鎌デスサイズ" to 5,
-        "氷の弓フロストアロー" to 4, "炎の杖ヘルフレイム" to 4,
-        "鉄の剣" to 3, "木の杖" to 3, "革の盾" to 3
-    )
-
-    private fun generateResults(count: Int): List<ResultItem> = (1..count).map { i ->
-        val rarity = rollRarity(count >= 10 && i == count)
-        val isChar = Random.nextBoolean()
-        val pool = if (isChar) charPool else weapPool
-        val item = pool.filter { it.second == rarity }.randomOrNull()
-            ?: pool.filter { it.second <= rarity }.random()
-        ResultItem("mock_${System.nanoTime()}_$i", item.first, item.second,
-            if (isChar) ItemType.CHARACTER else ItemType.WEAPON, Random.nextInt(4) == 0)
-    }
-
-    private fun rollRarity(guarantee4: Boolean): Int {
-        val roll = Random.nextInt(1, 1001)
-        return when { roll <= 30 -> 5; roll <= 180 || guarantee4 -> 4; else -> 3 }
-    }
-
-    companion object {
-        const val SINGLE_COST = 50
-        const val MULTI_COST = 450
-    }
+private fun itemIcon(type: GachaResultType) = when (type) {
+    GachaResultType.CHARACTER -> Icons.Default.Person
+    GachaResultType.WEAPON -> Icons.Default.Shield
+    else -> Icons.Default.Star
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -182,7 +84,8 @@ private class GachaStore {
 
 @Composable
 fun GachaScreenView() {
-    val store = remember { GachaStore() }
+    val viewModel = remember { getGachaViewModel() }
+    val uiState by viewModel.uiState.collectAsState()
 
     Box(
         modifier = Modifier
@@ -193,15 +96,29 @@ fun GachaScreenView() {
         BackgroundParticles()
 
         Crossfade(
-            targetState = store.phase,
+            targetState = uiState.phase,
             animationSpec = tween(400),
             label = "phase"
         ) { phase ->
             when (phase) {
-                GachaPhase.BANNER_SELECT -> BannerSelectPhase(store)
-                GachaPhase.CONFIRM -> ConfirmPhase(store)
-                GachaPhase.PULLING -> PullAnimationPhase(store.highestRarity)
-                GachaPhase.RESULT -> ResultPhase(store)
+                GachaPhase.BANNER_SELECT -> BannerSelectPhase(viewModel, uiState)
+                GachaPhase.CONFIRM -> ConfirmPhase(viewModel, uiState)
+                GachaPhase.PULLING -> PullAnimationPhase(uiState.highestRarity)
+                GachaPhase.RESULT -> ResultPhase(viewModel, uiState)
+            }
+        }
+
+        // エラー表示
+        uiState.error?.let { err ->
+            Snackbar(
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 100.dp),
+                action = {
+                    TextButton(onClick = { viewModel.onIntent(GachaIntent.DismissError) }) {
+                        Text("閉じる", color = Color.White)
+                    }
+                }
+            ) {
+                Text(err)
             }
         }
     }
@@ -237,7 +154,7 @@ private fun BackgroundParticles() {
 // ══════════════════════════════════════════════════════════════
 
 @Composable
-private fun BannerSelectPhase(store: GachaStore) {
+private fun BannerSelectPhase(viewModel: GachaViewModel, uiState: GachaUiState) {
     Column(modifier = Modifier.fillMaxSize()) {
         // ヘッダー
         Row(
@@ -248,7 +165,7 @@ private fun BannerSelectPhase(store: GachaStore) {
                 Text("召 喚", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color.White)
                 Text("知識の結晶で仲間を召喚しよう", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f))
             }
-            StoneCountBadge(store.currentStones)
+            StoneCountBadge(uiState.currentStones)
         }
 
         // バナーカード一覧
@@ -256,14 +173,14 @@ private fun BannerSelectPhase(store: GachaStore) {
             modifier = Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            store.banners.forEachIndexed { index, banner ->
+            uiState.banners.forEachIndexed { index, banner ->
                 var visible by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) { delay(index * 120L); visible = true }
                 AnimatedVisibility(
                     visible = visible,
                     enter = fadeIn(tween(400)) + slideInVertically(tween(500)) { it / 2 }
                 ) {
-                    BannerCard(banner) { store.selectBanner(banner) }
+                    BannerCard(banner) { viewModel.onIntent(GachaIntent.SelectBanner(banner.id)) }
                 }
             }
             Spacer(modifier = Modifier.height(120.dp))
@@ -272,7 +189,7 @@ private fun BannerSelectPhase(store: GachaStore) {
 }
 
 @Composable
-private fun BannerCard(banner: BannerDisplay, onClick: () -> Unit) {
+private fun BannerCard(banner: GachaBanner, onClick: () -> Unit) {
     val shimmer = rememberInfiniteTransition(label = "shimmer")
     val shimmerX by shimmer.animateFloat(
         initialValue = -300f, targetValue = 600f,
@@ -285,9 +202,8 @@ private fun BannerCard(banner: BannerDisplay, onClick: () -> Unit) {
             .height(180.dp)
             .clip(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
-            .background(Brush.linearGradient(banner.type.colors))
+            .background(Brush.linearGradient(bannerColors(banner.bannerType)))
             .drawBehind {
-                // shimmer overlay
                 drawRect(
                     Brush.linearGradient(
                         listOf(Color.Transparent, Color.White.copy(alpha = 0.12f), Color.Transparent),
@@ -297,13 +213,8 @@ private fun BannerCard(banner: BannerDisplay, onClick: () -> Unit) {
             }
     ) {
         // 大アイコン背景
-        val iconRes = when (banner.type) {
-            BannerType.CHARACTER -> Icons.Default.Person
-            BannerType.WEAPON -> Icons.Default.Shield
-            BannerType.MIXED -> Icons.Default.Star
-        }
         Icon(
-            iconRes, null,
+            bannerIcon(banner.bannerType), null,
             modifier = Modifier.size(100.dp).align(Alignment.TopEnd).offset(x = 20.dp, y = (-10).dp),
             tint = Color.White.copy(alpha = 0.1f)
         )
@@ -314,15 +225,20 @@ private fun BannerCard(banner: BannerDisplay, onClick: () -> Unit) {
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 BadgeChip("PICK UP", Color.White.copy(alpha = 0.25f))
-                BadgeChip(banner.type.label, Color.White.copy(alpha = 0.15f))
+                BadgeChip(when(banner.bannerType) {
+                    BannerType.CHARACTER -> "キャラ"
+                    BannerType.WEAPON -> "武器"
+                    BannerType.MIXED -> "ミックス"
+                    else -> "不明"
+                }, Color.White.copy(alpha = 0.15f))
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(banner.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(banner.description, fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
+            Text("期間限定召喚開催中！", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
             Spacer(modifier = Modifier.height(6.dp))
             Row {
-                repeat(banner.featuredRarity) {
+                repeat(5) {
                     Text("★", fontSize = 14.sp, color = GoldStar)
                 }
             }
@@ -346,9 +262,8 @@ private fun BadgeChip(text: String, bg: Color) {
 // ══════════════════════════════════════════════════════════════
 
 @Composable
-private fun ConfirmPhase(store: GachaStore) {
-    val coroutineScope = rememberCoroutineScope()
-    val banner = store.selectedBanner ?: return
+private fun ConfirmPhase(viewModel: GachaViewModel, uiState: GachaUiState) {
+    val banner = uiState.selectedBanner ?: return
 
     Column(modifier = Modifier.fillMaxSize()) {
         // ヘッダー
@@ -356,12 +271,12 @@ private fun ConfirmPhase(store: GachaStore) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { store.backToBannerSelect() }) {
+            IconButton(onClick = { viewModel.onIntent(GachaIntent.BackToBannerSelect) }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "戻る", tint = Color.White.copy(alpha = 0.7f))
             }
             Text("バナー選択", fontSize = 14.sp, color = Color.White.copy(alpha = 0.7f))
             Spacer(modifier = Modifier.weight(1f))
-            StoneCountBadge(store.currentStones)
+            StoneCountBadge(uiState.currentStones)
         }
 
         Column(
@@ -374,27 +289,29 @@ private fun ConfirmPhase(store: GachaStore) {
             // バナー名
             Text(banner.name, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(banner.description, fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
+            Text("知識の結晶を消費して召喚します", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
             Spacer(modifier = Modifier.height(24.dp))
 
             // 召喚オーブ
-            SummoningOrb(banner.type)
+            SummoningOrb(banner.bannerType)
             Spacer(modifier = Modifier.height(24.dp))
 
             // 天井カウンター
-            if (banner.pityThreshold > 0) {
-                PityCounter(store.pityCount, banner.pityThreshold)
-                Spacer(modifier = Modifier.height(20.dp))
+            banner.pityThreshold?.let { threshold ->
+                if (threshold > 0) {
+                    PityCounter(uiState.pityCount, threshold)
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
             }
 
             // 召喚ボタン
             GlowPullButton(
-                "単発召喚", GachaStore.SINGLE_COST, store.canPullSingle, banner.type.colors
-            ) { coroutineScope.launch { store.pullSingle() } }
+                "単発召喚", GachaUiState.SINGLE_PULL_COST, uiState.canPullSingle, bannerColors(banner.bannerType)
+            ) { viewModel.onIntent(GachaIntent.PullSingle(banner.id)) }
             Spacer(modifier = Modifier.height(12.dp))
             GlowPullButton(
-                "10連召喚", GachaStore.MULTI_COST, store.canPullMulti, banner.type.colors, isPrimary = true
-            ) { coroutineScope.launch { store.pullMulti() } }
+                "10連召喚", GachaUiState.MULTI_PULL_COST, uiState.canPullMulti, bannerColors(banner.bannerType), isPrimary = true
+            ) { viewModel.onIntent(GachaIntent.PullMulti(banner.id)) }
             Spacer(modifier = Modifier.height(20.dp))
 
             // 排出率情報
@@ -641,31 +558,27 @@ private fun SummoningOrb(type: BannerType) {
         modifier = Modifier.size(200.dp),
         contentAlignment = Alignment.Center
     ) {
+        val colors = bannerColors(type)
         // 外周リング
         Canvas(modifier = Modifier.size(160.dp).rotate(rotation)) {
             drawCircle(
-                Brush.sweepGradient(type.colors + listOf(type.colors.first())),
+                Brush.sweepGradient(colors + listOf(colors.first())),
                 style = Stroke(width = 3f)
             )
         }
         // 内周リング
         Canvas(modifier = Modifier.size(120.dp).rotate(-rotation * 0.5f)) {
-            drawCircle(type.colors.first().copy(alpha = 0.3f), style = Stroke(width = 1.5f))
+            drawCircle(colors.first().copy(alpha = 0.3f), style = Stroke(width = 1.5f))
         }
         // グロー
         Box(
             modifier = Modifier.size(120.dp).scale(pulse).background(
-                Brush.radialGradient(listOf(type.colors.last().copy(alpha = 0.4f), Color.Transparent)),
+                Brush.radialGradient(listOf(colors.last().copy(alpha = 0.4f), Color.Transparent)),
                 CircleShape
             )
         )
         // アイコン
-        val icon = when (type) {
-            BannerType.CHARACTER -> Icons.Default.Person
-            BannerType.WEAPON -> Icons.Default.Shield
-            BannerType.MIXED -> Icons.Default.Star
-        }
-        Icon(icon, null, modifier = Modifier.size(40.dp).scale(pulse * 0.9f), tint = Color.White.copy(alpha = 0.8f))
+        Icon(bannerIcon(type), null, modifier = Modifier.size(40.dp).scale(pulse * 0.9f), tint = Color.White.copy(alpha = 0.8f))
     }
 }
 
@@ -674,9 +587,8 @@ private fun SummoningOrb(type: BannerType) {
 // ══════════════════════════════════════════════════════════════
 
 @Composable
-private fun ResultPhase(store: GachaStore) {
-    val coroutineScope = rememberCoroutineScope()
-    val sorted = remember(store.pullResults) { store.pullResults.sortedByDescending { it.rarity } }
+private fun ResultPhase(viewModel: GachaViewModel, uiState: GachaUiState) {
+    val sorted = remember(uiState.pullResults) { uiState.pullResults.sortedByDescending { it.rarity } }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // ヘッダー
@@ -686,17 +598,16 @@ private fun ResultPhase(store: GachaStore) {
         ) {
             Text("召喚結果", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Spacer(modifier = Modifier.weight(1f))
-            StoneCountBadge(store.currentStones)
+            StoneCountBadge(uiState.currentStones)
         }
 
         Column(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (store.lastPullCount == 1 && sorted.isNotEmpty()) {
+            if (uiState.lastPullCount == 1 && sorted.isNotEmpty()) {
                 SingleResultCard(sorted.first())
             } else {
-                // 10連 : 2列グリッド（scrollable column 内なので固定高さで配置）
                 sorted.forEachIndexed { index, item ->
                     var visible by remember { mutableStateOf(false) }
                     LaunchedEffect(Unit) { delay(150L + index * 80L); visible = true }
@@ -712,13 +623,13 @@ private fun ResultPhase(store: GachaStore) {
             Spacer(modifier = Modifier.height(24.dp))
 
             // アクションボタン
-            val cost = if (store.lastPullCount == 1) GachaStore.SINGLE_COST else GachaStore.MULTI_COST
-            val canPull = if (store.lastPullCount == 1) store.canPullSingle else store.canPullMulti
+            val cost = if (uiState.lastPullCount == 1) GachaUiState.SINGLE_PULL_COST else GachaUiState.MULTI_PULL_COST
+            val canPull = if (uiState.lastPullCount == 1) uiState.canPullSingle else uiState.canPullMulti
             GlowPullButton("もう一度召喚する", cost, canPull,
                 listOf(Color(0xFF4D99FF), Color(0xFF804DFF))
-            ) { store.pullAgain() }
+            ) { viewModel.onIntent(GachaIntent.PullAgain) }
             Spacer(modifier = Modifier.height(10.dp))
-            TextButton(onClick = { store.backToBannerSelect() }) {
+            TextButton(onClick = { viewModel.onIntent(GachaIntent.DismissResults) }) {
                 Text("バナー選択に戻る", fontSize = 15.sp, color = Color.White.copy(alpha = 0.5f))
             }
             Spacer(modifier = Modifier.height(120.dp))
@@ -729,7 +640,7 @@ private fun ResultPhase(store: GachaStore) {
 // ── 単発結果カード ─────────────────────────────
 
 @Composable
-private fun SingleResultCard(item: ResultItem) {
+private fun SingleResultCard(item: GachaResultItem) {
     var revealed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { delay(300); revealed = true }
 
@@ -756,7 +667,6 @@ private fun SingleResultCard(item: ResultItem) {
             .border(1.dp, rarityColor(item.rarity).copy(alpha = 0.4f), RoundedCornerShape(24.dp))
             .padding(32.dp)
     ) {
-        // Rarity glow circle
         Box(modifier = Modifier.size(140.dp), contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier.size(140.dp).background(
@@ -765,8 +675,7 @@ private fun SingleResultCard(item: ResultItem) {
                     ), CircleShape
                 )
             )
-            val icon = if (item.type == ItemType.CHARACTER) Icons.Default.Person else Icons.Default.Shield
-            Icon(icon, null, modifier = Modifier.size(60.dp), tint = Color.White)
+            Icon(itemIcon(item.type), null, modifier = Modifier.size(60.dp), tint = Color.White)
             if (item.isNew) {
                 Text(
                     "NEW", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Color.White,
@@ -780,14 +689,14 @@ private fun SingleResultCard(item: ResultItem) {
         Spacer(modifier = Modifier.height(8.dp))
         Text(item.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(item.type.label, fontSize = 13.sp, color = Color.White.copy(alpha = 0.5f))
+        Text(if (item.type == GachaResultType.CHARACTER) "キャラクター" else "武器", fontSize = 13.sp, color = Color.White.copy(alpha = 0.5f))
     }
 }
 
 // ── 10連結果カード ─────────────────────────────
 
 @Composable
-private fun MultiResultCard(item: ResultItem) {
+private fun MultiResultCard(item: GachaResultItem) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -796,7 +705,6 @@ private fun MultiResultCard(item: ResultItem) {
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // アイコン + レアリティ光彩
         Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier.size(48.dp).background(
@@ -805,8 +713,7 @@ private fun MultiResultCard(item: ResultItem) {
                     ), CircleShape
                 )
             )
-            val icon = if (item.type == ItemType.CHARACTER) Icons.Default.Person else Icons.Default.Shield
-            Icon(icon, null, modifier = Modifier.size(24.dp), tint = Color.White)
+            Icon(itemIcon(item.type), null, modifier = Modifier.size(24.dp), tint = Color.White)
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
