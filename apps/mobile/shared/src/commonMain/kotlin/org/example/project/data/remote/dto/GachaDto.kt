@@ -2,6 +2,7 @@ package org.example.project.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import org.example.project.domain.model.BannerType
 import org.example.project.domain.model.GachaBanner
 import org.example.project.domain.model.GachaResult
@@ -17,7 +18,7 @@ data class GachaBannerResponse(
     @SerialName("start_at") val startAt: String,
     @SerialName("end_at") val endAt: String,
     @SerialName("pity_threshold") val pityThreshold: Int? = null,
-    @SerialName("rate_table") val rateTable: String,
+    @SerialName("rate_table") val rateTable: JsonElement,
     @SerialName("is_active") val isActive: Boolean
 )
 
@@ -83,7 +84,7 @@ fun GachaBannerResponse.toDomain(): GachaBanner = GachaBanner(
     startAt = startAt,
     endAt = endAt,
     pityThreshold = pityThreshold,
-    rateTable = rateTable,
+    rateTable = rateTable.toString(),
     isActive = isActive
 )
 
