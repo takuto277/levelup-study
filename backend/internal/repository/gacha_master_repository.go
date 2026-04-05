@@ -248,3 +248,12 @@ func (r *MasterRepository) DeactivateBanner(id uuid.UUID) error {
 		Where("id = ?", id).
 		Update("is_active", false).Error
 }
+
+// --- 勉強ジャンルマスタ ---
+
+// ListStudyGenres — 有効なジャンル一覧を取得する（sort_order 昇順）
+func (r *MasterRepository) ListStudyGenres() ([]model.MasterStudyGenre, error) {
+	var list []model.MasterStudyGenre
+	err := r.db.Where("is_active = true").Order("sort_order ASC").Find(&list).Error
+	return list, err
+}

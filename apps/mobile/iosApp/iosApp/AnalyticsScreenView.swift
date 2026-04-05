@@ -47,7 +47,7 @@ struct AnalyticsScreenView: View {
     @State private var uiState: RecordUiState
 
     init() {
-        let vm = RecordViewModel()
+        let vm = KoinHelperKt.getRecordViewModel()
         self.viewModel = vm
         _uiState = State(initialValue: vm.uiState.value as! RecordUiState)
     }

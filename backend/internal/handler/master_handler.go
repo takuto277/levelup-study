@@ -64,6 +64,17 @@ func (h *MasterHandler) ListActiveBanners(w http.ResponseWriter, r *http.Request
 	respondJSON(w, http.StatusOK, map[string]interface{}{"banners": list})
 }
 
+// ListStudyGenres — GET /api/v1/master/genres
+// 勉強ジャンルマスタ一覧を返す
+func (h *MasterHandler) ListStudyGenres(w http.ResponseWriter, r *http.Request) {
+	list, err := h.repo.ListStudyGenres()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "ジャンルマスタ取得に失敗しました")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]interface{}{"genres": list})
+}
+
 // GetDungeon — GET /api/v1/master/dungeons/{dungeonID}
 // ダンジョン詳細を返す（ステージ情報含む）
 func (h *MasterHandler) GetDungeon(w http.ResponseWriter, r *http.Request) {

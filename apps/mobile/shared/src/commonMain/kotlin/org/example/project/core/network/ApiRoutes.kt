@@ -71,4 +71,5 @@ object ApiRoutes {
     const val MASTER_DUNGEONS = "/api/v1/master/dungeons"
     fun masterDungeon(dungeonId: String) = "/api/v1/master/dungeons/$dungeonId"
     const val MASTER_GACHA_BANNERS = "/api/v1/master/gacha/banners"
+    const val MASTER_GENRES = "/api/v1/master/genres"
 }

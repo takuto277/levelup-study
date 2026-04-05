@@ -1,25 +1,31 @@
 package org.example.project.features.record
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
+import org.example.project.domain.model.MasterStudyGenre
+import org.example.project.domain.model.StudySession
 
-/**
- * 記録（Record）画面の ViewModel
- *
- * - 勉強記録の集計・表示を担当
- * - 期間切替（今日 / 週間 / 月間）でチャートデータを再計算
- * - ジャンルフィルターで表示を絞り込み
- * - 現在はモックデータ。将来的に StudyRepository を DI で注入
- */
-class RecordViewModel {
+class RecordViewModel(
+    private val recordUseCase: RecordUseCase
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RecordUiState())
     val uiState: StateFlow<RecordUiState> = _uiState.asStateFlow()
 
-    /** モックの勉強ログ（日別 × ジャンル別） */
-    private val mockDailyRecords: List<DailyRecord> = generateMockRecords()
+    private var allSessions: List<StudySession> = emptyList()
+    private var genreMap: Map<String, GenreInfo> = emptyMap()
 
     init {
         refreshData()
@@ -40,20 +46,46 @@ class RecordViewModel {
         }
     }
 
-    // ── 集計 ──────────────────────────────────────────
-
     private fun refreshData() {
-        val totalMinutes = mockDailyRecords.sumOf { it.totalMinutes() }
-        _uiState.update {
-            it.copy(
-                totalStudyMinutes = totalMinutes,
-                streakDays = 12,
-                todaySessions = 3,
-                characterEmoji = "🧙‍♂️",
-                characterMessage = getCharacterMessage(totalMinutes)
-            )
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            try {
+                val data = recordUseCase.loadRecordData()
+                allSessions = data.sessions
+                genreMap = buildGenreMap(data.genres)
+
+                val totalMinutes = data.user.totalStudySeconds.toInt() / 60
+                val streakDays = calculateStreakDays(allSessions)
+                val todayCount = countTodaySessions(allSessions)
+
+                _uiState.update {
+                    it.copy(
+                        totalStudyMinutes = totalMinutes,
+                        streakDays = streakDays,
+                        todaySessions = todayCount,
+                        characterEmoji = "\uD83E\uDDD9\u200D\u2642\uFE0F",
+                        characterMessage = getCharacterMessage(totalMinutes),
+                        isLoading = false
+                    )
+                }
+                recalculate()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.message) }
+            }
         }
-        recalculate()
+    }
+
+    private fun buildGenreMap(genres: List<MasterStudyGenre>): Map<String, GenreInfo> {
+        val map = mutableMapOf<String, GenreInfo>()
+        for (g in genres) {
+            val colorLong = try {
+                g.colorHex.removePrefix("#").toLong(16) or 0xFF000000L
+            } catch (_: Exception) {
+                0xFF6B7280L
+            }
+            map[g.slug] = GenreInfo(id = g.id, label = g.label, emoji = g.emoji, colorHex = colorLong)
+        }
+        return map
     }
 
     private fun recalculate() {
@@ -61,47 +93,57 @@ class RecordViewModel {
         val period = state.selectedPeriod
         val genre = state.selectedGenre
 
-        // 期間に応じたレコードを取得
-        val filteredRecords = when (period) {
-            RecordPeriod.TODAY -> mockDailyRecords.takeLast(1)
-            RecordPeriod.WEEKLY -> mockDailyRecords.takeLast(7)
-            RecordPeriod.MONTHLY -> mockDailyRecords.takeLast(30)
+        val today = todayDateString()
+
+        val filteredSessions: List<StudySession> = when (period) {
+            RecordPeriod.TODAY -> allSessions.filter { s -> extractDate(s.startedAt) == today }
+            RecordPeriod.WEEKLY -> {
+                val dates = last7Days(today)
+                allSessions.filter { s -> extractDate(s.startedAt) in dates }
+            }
+            RecordPeriod.MONTHLY -> {
+                val dates = last30Days(today)
+                allSessions.filter { s -> extractDate(s.startedAt) in dates }
+            }
         }
 
-        // チャートバー生成
-        val bars = filteredRecords.map { record ->
-            val genreMinutes = if (genre != null) {
-                mapOf(genre to (record.genreMinutes[genre] ?: 0))
-            } else {
-                record.genreMinutes
+        val dailyData: Map<String, List<StudySession>> = filteredSessions
+            .groupBy { s -> extractDate(s.startedAt) }
+
+        val sortedDays: List<String> = dailyData.keys.sorted()
+
+        val bars: List<ChartBar> = sortedDays.map { date ->
+            val daySessions: List<StudySession> = dailyData[date] ?: emptyList()
+            val genreMinutes = mutableMapOf<GenreInfo, Int>()
+            for (s in daySessions) {
+                val gi = resolveGenre(s.category)
+                genreMinutes[gi] = (genreMinutes[gi] ?: 0) + s.durationSeconds / 60
             }
-            val total = if (genre != null) (record.genreMinutes[genre] ?: 0) else record.totalMinutes()
+            val filtered: Map<GenreInfo, Int> = if (genre != null) {
+                mapOf(genre to (genreMinutes[genre] ?: 0))
+            } else {
+                genreMinutes.toMap()
+            }
+            val total = if (genre != null) (genreMinutes[genre] ?: 0) else genreMinutes.values.sum()
             ChartBar(
-                label = record.label,
+                label = formatDateLabel(date),
                 minutes = total,
-                genreMinutes = genreMinutes
+                genreMinutes = filtered
             )
         }
 
-        // 期間合計
-        val periodTotal = bars.sumOf { it.minutes }
+        val periodTotal = bars.sumOf { bar -> bar.minutes }
 
-        // ジャンル別集計
         val genreTotals = mutableMapOf<GenreInfo, Int>()
-        for (record in filteredRecords) {
-            for ((g, min) in record.genreMinutes) {
-                genreTotals[g] = (genreTotals[g] ?: 0) + min
-            }
+        for (s in filteredSessions) {
+            val gi = resolveGenre(s.category)
+            genreTotals[gi] = (genreTotals[gi] ?: 0) + s.durationSeconds / 60
         }
         val grandTotal = genreTotals.values.sum().coerceAtLeast(1)
-        val breakdown = genreTotals.entries
-            .sortedByDescending { it.value }
-            .map { (g, min) ->
-                GenreStudyTime(
-                    genre = g,
-                    minutes = min,
-                    ratio = min.toFloat() / grandTotal
-                )
+        val breakdown: List<GenreStudyTime> = genreTotals.entries
+            .sortedByDescending { entry -> entry.value }
+            .map { entry ->
+                GenreStudyTime(genre = entry.key, minutes = entry.value, ratio = entry.value.toFloat() / grandTotal)
             }
 
         _uiState.update {
@@ -113,7 +155,31 @@ class RecordViewModel {
         }
     }
 
-    // ── キャラクターメッセージ ────────────────────────
+    private fun resolveGenre(category: String?): GenreInfo {
+        if (category == null) return GenreInfo.GENERAL
+        return genreMap[category] ?: GenreInfo.GENERAL
+    }
+
+    private fun calculateStreakDays(sessions: List<StudySession>): Int {
+        if (sessions.isEmpty()) return 0
+        val dates = sessions.map { s -> extractDate(s.startedAt) }.distinct().sorted().reversed()
+        val today = todayDateString()
+        if (dates.firstOrNull() != today) return 0
+        var streak = 1
+        for (i in 1 until dates.size) {
+            if (isConsecutive(dates[i], dates[i - 1])) {
+                streak++
+            } else {
+                break
+            }
+        }
+        return streak
+    }
+
+    private fun countTodaySessions(sessions: List<StudySession>): Int {
+        val today = todayDateString()
+        return sessions.count { s -> extractDate(s.startedAt) == today }
+    }
 
     private fun getCharacterMessage(totalMinutes: Int): String {
         return when {
@@ -126,53 +192,36 @@ class RecordViewModel {
         }
     }
 
-    // ── モックデータ ────────────────────────────────
-
-    /**
-     * 日別 × ジャンル別の勉強時間記録（内部モデル）
-     */
-    data class DailyRecord(
-        val label: String,
-        val genreMinutes: Map<GenreInfo, Int>
-    ) {
-        fun totalMinutes(): Int = genreMinutes.values.sum()
-    }
-
     companion object {
-        private fun generateMockRecords(): List<DailyRecord> {
-            // 30日分のモックデータ
-            val dayLabels30 = listOf(
-                "3/3","3/4","3/5","3/6","3/7","3/8","3/9",
-                "3/10","3/11","3/12","3/13","3/14","3/15","3/16",
-                "3/17","3/18","3/19","3/20","3/21","3/22","3/23",
-                "3/24","3/25","3/26","3/27","3/28","3/29","3/30",
-                "3/31","4/1"
-            )
+        internal fun extractDate(isoTimestamp: String): String = isoTimestamp.take(10)
 
-            // 各日のジャンル別データ（擬似ランダム風に決め打ち）
-            val patterns = listOf(
-                mapOf(GenreInfo.MATH to 25, GenreInfo.LANGUAGE to 30),
-                mapOf(GenreInfo.PROGRAMMING to 45, GenreInfo.GENERAL to 15),
-                mapOf(GenreInfo.SCIENCE to 30, GenreInfo.MATH to 20, GenreInfo.CREATIVE to 10),
-                mapOf(GenreInfo.LANGUAGE to 40, GenreInfo.PROGRAMMING to 20),
-                mapOf(GenreInfo.MATH to 35, GenreInfo.SCIENCE to 25, GenreInfo.GENERAL to 15),
-                mapOf(GenreInfo.PROGRAMMING to 50, GenreInfo.CREATIVE to 20),
-                mapOf(GenreInfo.GENERAL to 20, GenreInfo.LANGUAGE to 25),
-                mapOf(GenreInfo.MATH to 30, GenreInfo.SCIENCE to 35, GenreInfo.PROGRAMMING to 25),
-                mapOf(GenreInfo.LANGUAGE to 45, GenreInfo.CREATIVE to 15),
-                mapOf(GenreInfo.MATH to 40, GenreInfo.GENERAL to 25, GenreInfo.SCIENCE to 20),
-                mapOf(GenreInfo.PROGRAMMING to 55, GenreInfo.MATH to 15),
-                mapOf(GenreInfo.SCIENCE to 30, GenreInfo.LANGUAGE to 35),
-                mapOf(GenreInfo.GENERAL to 25, GenreInfo.CREATIVE to 30, GenreInfo.MATH to 20),
-                mapOf(GenreInfo.PROGRAMMING to 40, GenreInfo.SCIENCE to 20),
-                mapOf(GenreInfo.MATH to 50, GenreInfo.LANGUAGE to 30, GenreInfo.GENERAL to 10),
-            )
+        internal fun formatDateLabel(date: String): String {
+            val parts = date.split("-")
+            return if (parts.size >= 3) "${parts[1].trimStart('0')}/${parts[2].trimStart('0')}" else date
+        }
 
-            return dayLabels30.mapIndexed { idx, label ->
-                DailyRecord(
-                    label = label,
-                    genreMinutes = patterns[idx % patterns.size]
-                )
+        internal fun todayDateString(): String {
+            val now = Clock.System.now()
+            return now.toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
+        }
+
+        internal fun last7Days(today: String): Set<String> = lastNDays(today, 7)
+        internal fun last30Days(today: String): Set<String> = lastNDays(today, 30)
+
+        private fun lastNDays(today: String, n: Int): Set<String> {
+            val date = LocalDate.parse(today)
+            return (0 until n).map { i ->
+                date.minus(DatePeriod(days = i)).toString()
+            }.toSet()
+        }
+
+        internal fun isConsecutive(earlier: String, later: String): Boolean {
+            return try {
+                val d1 = LocalDate.parse(earlier)
+                val d2 = LocalDate.parse(later)
+                d1.plus(DatePeriod(days = 1)) == d2
+            } catch (_: Exception) {
+                false
             }
         }
     }

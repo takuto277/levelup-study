@@ -57,6 +57,7 @@ type SecurityConfig struct {
 //   GET    /api/v1/master/dungeons                     ダンジョンマスタ
 //   GET    /api/v1/master/dungeons/{dungeonID}         ダンジョン詳細
 //   GET    /api/v1/master/gacha/banners                開催中バナー
+//   GET    /api/v1/master/genres                       勉強ジャンルマスタ
 // ============================================================
 
 func NewRouter(
@@ -146,6 +147,7 @@ func NewRouter(
 			r.Get("/dungeons", masterH.ListDungeons)
 			r.Get("/dungeons/{dungeonID}", masterH.GetDungeon)
 			r.Get("/gacha/banners", masterH.ListActiveBanners)
+			r.Get("/genres", masterH.ListStudyGenres)
 		})
 	})
 

@@ -56,7 +56,7 @@ private fun formatHoursMinutes(minutes: Int): Pair<String, String> {
 
 @Composable
 fun RecordScreenView() {
-    val viewModel = remember { RecordViewModel() }
+    val viewModel = remember { org.example.project.di.getRecordViewModel() }
     val uiState by viewModel.uiState.collectAsState()
 
     Column(

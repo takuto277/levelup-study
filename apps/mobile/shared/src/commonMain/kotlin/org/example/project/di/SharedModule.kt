@@ -4,6 +4,7 @@ import org.example.project.core.network.ApiClient
 import org.example.project.data.remote.gateway.CharacterGateway
 import org.example.project.data.remote.gateway.DungeonGateway
 import org.example.project.data.remote.gateway.GachaGateway
+import org.example.project.data.remote.gateway.GenreGateway
 import org.example.project.data.remote.gateway.PartyGateway
 import org.example.project.data.remote.gateway.StudyGateway
 import org.example.project.data.remote.gateway.UserGateway
@@ -11,6 +12,7 @@ import org.example.project.data.remote.gateway.WeaponGateway
 import org.example.project.data.repository.CharacterRepositoryImpl
 import org.example.project.data.repository.DungeonRepositoryImpl
 import org.example.project.data.repository.GachaRepositoryImpl
+import org.example.project.data.repository.GenreRepositoryImpl
 import org.example.project.data.repository.PartyRepositoryImpl
 import org.example.project.data.repository.StudyRepositoryImpl
 import org.example.project.data.repository.UserRepositoryImpl
@@ -18,10 +20,13 @@ import org.example.project.data.repository.WeaponRepositoryImpl
 import org.example.project.domain.repository.CharacterRepository
 import org.example.project.domain.repository.DungeonRepository
 import org.example.project.domain.repository.GachaRepository
+import org.example.project.domain.repository.GenreRepository
 import org.example.project.domain.repository.PartyRepository
 import org.example.project.domain.repository.StudyRepository
 import org.example.project.domain.repository.UserRepository
 import org.example.project.domain.repository.WeaponRepository
+import org.example.project.features.record.RecordUseCase
+import org.example.project.features.record.RecordViewModel
 import org.example.project.features.analytics.AnalyticsUseCase
 import org.example.project.features.analytics.AnalyticsViewModel
 import org.example.project.features.gacha.GachaUseCase
@@ -53,6 +58,7 @@ val sharedModule = module {
     singleOf(::PartyGateway)
     singleOf(::DungeonGateway)
     singleOf(::GachaGateway)
+    singleOf(::GenreGateway)
 
     // ── Repository ──────────────────────────────
     singleOf(::UserRepositoryImpl) bind UserRepository::class
@@ -62,6 +68,7 @@ val sharedModule = module {
     singleOf(::PartyRepositoryImpl) bind PartyRepository::class
     singleOf(::DungeonRepositoryImpl) bind DungeonRepository::class
     single<GachaRepository> { GachaRepositoryImpl(get(), get()) }
+    singleOf(::GenreRepositoryImpl) bind GenreRepository::class
 
     // ── UseCase ─────────────────────────────────
     factoryOf(::HomeUseCase)
@@ -69,6 +76,7 @@ val sharedModule = module {
     factoryOf(::PartyUseCase)
     factoryOf(::GachaUseCase)
     factoryOf(::AnalyticsUseCase)
+    factoryOf(::RecordUseCase)
     factoryOf(::StudyUseCase)
 
     // ── ViewModel ───────────────────────────────
@@ -77,6 +85,7 @@ val sharedModule = module {
     factoryOf(::PartyViewModel)
     factoryOf(::GachaViewModel)
     factoryOf(::AnalyticsViewModel)
+    factoryOf(::RecordViewModel)
     factoryOf(::StudyViewModel)
     factoryOf(::StudyQuestViewModel)
 }

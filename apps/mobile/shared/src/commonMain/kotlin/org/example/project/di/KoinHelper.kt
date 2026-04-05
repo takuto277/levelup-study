@@ -2,6 +2,7 @@ package org.example.project.di
 
 import org.example.project.core.session.UserSessionStore
 import org.example.project.features.analytics.AnalyticsViewModel
+import org.example.project.features.record.RecordViewModel
 import org.example.project.features.gacha.GachaViewModel
 import org.example.project.features.home.HomeViewModel
 import org.example.project.features.party.PartyViewModel
@@ -62,5 +63,9 @@ fun getGachaViewModel(): GachaViewModel {
 }
 
 fun getAnalyticsViewModel(): AnalyticsViewModel {
+    return KoinPlatform.getKoin().get()
+}
+
+fun getRecordViewModel(): RecordViewModel {
     return KoinPlatform.getKoin().get()
 }

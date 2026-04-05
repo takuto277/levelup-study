@@ -169,6 +169,25 @@ func (MasterGachaBanner) TableName() string                 { return "m_gacha_ba
 func (b *MasterGachaBanner) BeforeCreate(tx *gorm.DB) error { ensureUUID(&b.ID); return nil }
 
 // ============================================================
+// m_study_genres — 勉強ジャンルマスタ
+// デフォルト6ジャンル。将来的にユーザーカスタムジャンル対応可。
+// ============================================================
+
+type MasterStudyGenre struct {
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	Slug      string    `gorm:"type:varchar(30);not null;uniqueIndex"            json:"slug"`
+	Label     string    `gorm:"type:varchar(50);not null"                        json:"label"`
+	Emoji     string    `gorm:"type:varchar(10);not null"                        json:"emoji"`
+	ColorHex  string    `gorm:"type:varchar(10);not null"                        json:"color_hex"`
+	SortOrder int       `gorm:"not null;default:0"                               json:"sort_order"`
+	IsDefault bool      `gorm:"not null;default:true"                            json:"is_default"`
+	IsActive  bool      `gorm:"not null;default:true"                            json:"is_active"`
+}
+
+func (MasterStudyGenre) TableName() string                 { return "m_study_genres" }
+func (g *MasterStudyGenre) BeforeCreate(tx *gorm.DB) error { ensureUUID(&g.ID); return nil }
+
+// ============================================================
 // user_characters — ユーザー所持キャラ
 // ガチャで引いたキャラをここに保存。レベルや装備も管理。
 // ============================================================
@@ -272,6 +291,7 @@ func AllModels() []interface{} {
 		&MasterDungeon{},
 		&MasterDungeonStage{},
 		&MasterGachaBanner{},
+		&MasterStudyGenre{},
 		&UserCharacter{},
 		&UserWeapon{},
 		&UserPartySlot{},
