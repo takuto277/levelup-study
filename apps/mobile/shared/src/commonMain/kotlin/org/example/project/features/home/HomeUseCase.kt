@@ -5,6 +5,7 @@ import org.example.project.domain.model.MasterStudyGenre
 import org.example.project.domain.model.User
 import org.example.project.domain.model.UserCharacter
 import org.example.project.domain.repository.CharacterRepository
+import org.example.project.domain.repository.DungeonRepository
 import org.example.project.domain.repository.GenreRepository
 import org.example.project.domain.repository.PartyRepository
 import org.example.project.domain.repository.UserRepository
@@ -13,12 +14,14 @@ class HomeUseCase(
     private val userRepository: UserRepository,
     private val partyRepository: PartyRepository,
     private val characterRepository: CharacterRepository,
-    private val genreRepository: GenreRepository
+    private val genreRepository: GenreRepository,
+    private val dungeonRepository: DungeonRepository
 ) {
     data class HomeData(
         val user: User,
         val mainCharacter: UserCharacter?,
-        val genres: List<MasterStudyGenre>
+        val genres: List<MasterStudyGenre>,
+        val selectedDungeonName: String?
     )
 
     suspend fun loadHomeData(): HomeData {
@@ -40,7 +43,22 @@ class HomeUseCase(
             emptyList()
         }
 
-        return HomeData(user = user, mainCharacter = mainCharacter, genres = genres)
+        val selectedDungeonName: String? = try {
+            val dungeonId = user.selectedDungeonId
+            if (dungeonId != null) {
+                val dungeons = dungeonRepository.getDungeons()
+                dungeons.find { it.id == dungeonId }?.name
+            } else null
+        } catch (_: Exception) {
+            null
+        }
+
+        return HomeData(
+            user = user,
+            mainCharacter = mainCharacter,
+            genres = genres,
+            selectedDungeonName = selectedDungeonName
+        )
     }
 
     suspend fun createGenre(label: String, emoji: String, colorHex: String): MasterStudyGenre {

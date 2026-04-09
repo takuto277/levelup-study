@@ -25,16 +25,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.example.project.domain.model.DungeonDifficulty
 
-// ── カラーパレット ───────────────────────────────────
-private val BgColor = Color(0xFFF8FAFC)
-private val CardWhite = Color(0xFFFFFFFF)
-private val TextPrimary = Color(0xFF1E293B)
-private val TextSecondary = Color(0xFF64748B)
+// ── カラーパレット（青テーマ）──────────────────────────
+private val BgColor = Color(0xFF0B1120)
+private val CardWhite = Color(0xFF111B2E)
+private val TextPrimary = Color(0xFFF1F5F9)
+private val TextSecondary = Color(0xFF94A3B8)
 private val AccentBlue = Color(0xFF3B82F6)
 private val AccentIndigo = Color(0xFF6366F1)
+private val AccentCyan = Color(0xFF22D3EE)
 private val GoldColor = Color(0xFFFFD700)
 private val ExpGreen = Color(0xFF10B981)
 private val GachaViolet = Color(0xFF8B5CF6)
+private val BgSurface = Color(0xFF1A2744)
 
 private fun difficultyColor(difficulty: DungeonDifficulty): Color = when (difficulty) {
     DungeonDifficulty.BEGINNER -> Color(0xFF10B981)
@@ -58,7 +60,7 @@ fun QuestScreenView() {
     val viewModel = remember { org.example.project.di.getQuestViewModel() }
     val uiState by viewModel.uiState.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize().background(BgColor)) {
+    Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(BgColor, Color(0xFF0F172A))))) {
         Column(modifier = Modifier.fillMaxSize()) {
             // ヘッダー
             QuestHeader()

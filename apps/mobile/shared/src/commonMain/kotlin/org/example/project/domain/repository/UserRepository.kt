@@ -17,6 +17,9 @@ interface UserRepository {
     /** ユーザー情報を更新（表示名等） */
     suspend fun updateUser(displayName: String): User
 
+    /** 選択中ダンジョンを保存 */
+    suspend fun updateSelectedDungeon(dungeonId: String?): User
+
     /** サーバーから最新のユーザー情報を同期 */
     suspend fun syncFromServer(): User
 

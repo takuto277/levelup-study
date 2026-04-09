@@ -259,14 +259,22 @@ private fun MainQuestView(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp)
+                .padding(horizontal = 8.dp)
+                .height(280.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .background(
-                    if (isBreak) Brush.verticalGradient(listOf(Color(0xFF0A1F0A), Color(0xFF132613)))
-                    else Brush.verticalGradient(listOf(Color(0xFF0A0F1E), Color(0xFF141C2F)))
+                    if (isBreak) Brush.verticalGradient(listOf(Color(0xFF0A1F0A), Color(0xFF132613), Color(0xFF0A1F0A)))
+                    else Brush.verticalGradient(listOf(Color(0xFF06060F), Color(0xFF0E1428), Color(0xFF1A1040)))
                 ),
             contentAlignment = Alignment.Center
         ) {
+            if (!isBreak) {
+                Column(modifier = Modifier.matchParentSize()) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Box(modifier = Modifier.fillMaxWidth().height(30.dp)
+                        .background(Brush.verticalGradient(listOf(Color(0xFF2D1B0E), Color(0xFF1A1005)))))
+                }
+            }
             if (isBreak) {
                 BreakScene(restFlicker)
             } else {
@@ -353,55 +361,20 @@ private fun MainQuestView(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(if (isBreak) BreakCard else DarkCard)
-                .padding(12.dp)
-        ) {
-            Column {
-                Text(
-                    if (isBreak) "🌙 キャンプログ" else "📜 冒険ログ",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextWhite
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    val logs = uiState.currentLog.takeLast(3)
-                    logs.forEachIndexed { idx, log ->
-                        val isLatest = idx == logs.lastIndex
-                        Row(
-                            modifier = Modifier.padding(bottom = 4.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 5.dp)
-                                    .size(4.dp)
-                                    .background(
-                                        if (isLatest) (if (isBreak) BreakAccent else AccentBlue) else TextMuted,
-                                        CircleShape
-                                    )
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = log,
-                                fontSize = 11.sp,
-                                color = if (isLatest) TextWhite else TextMuted,
-                                fontWeight = if (isLatest) FontWeight.SemiBold else FontWeight.Normal,
-                                lineHeight = 15.sp
-                            )
-                        }
-                    }
-                }
-            }
+        // 直近ログ（1行のみ）
+        uiState.currentLog.lastOrNull()?.let { lastLog ->
+            Text(
+                text = lastLog,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isBreak) BreakAccent else AccentBlue,
+                maxLines = 1,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background((if (isBreak) BreakCard else DarkCard).copy(alpha = 0.8f))
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
         }
 
         Spacer(modifier = Modifier.weight(0.1f))

@@ -31,7 +31,15 @@ class UserRepositoryImpl(
 
     override suspend fun updateUser(displayName: String): User {
         val userId = UserSessionStore.requireUserId()
-        val response = gateway.updateUser(userId, UpdateUserRequest(displayName)).getOrThrow()
+        val response = gateway.updateUser(userId, UpdateUserRequest(displayName = displayName)).getOrThrow()
+        val user = response.toDomain()
+        cachedUser = user
+        return user
+    }
+
+    override suspend fun updateSelectedDungeon(dungeonId: String?): User {
+        val userId = UserSessionStore.requireUserId()
+        val response = gateway.updateUser(userId, UpdateUserRequest(selectedDungeonId = dungeonId ?: "")).getOrThrow()
         val user = response.toDomain()
         cachedUser = user
         return user

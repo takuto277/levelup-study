@@ -80,7 +80,7 @@ val sharedModule = module {
     factoryOf(::StudyUseCase)
 
     // ── ViewModel ───────────────────────────────
-    factoryOf(::HomeViewModel)
+    singleOf(::HomeViewModel)
     factoryOf(::QuestViewModel)
     factoryOf(::PartyViewModel)
     factoryOf(::GachaViewModel)

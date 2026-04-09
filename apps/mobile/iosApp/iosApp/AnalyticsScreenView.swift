@@ -1,473 +1,238 @@
 import SwiftUI
 import Shared
 
-// MARK: - Color Helper
-
 private extension Color {
     init(hex: UInt, alpha: Double = 1.0) {
-        self.init(
-            .sRGB,
-            red: Double((hex >> 16) & 0xFF) / 255,
-            green: Double((hex >> 8) & 0xFF) / 255,
-            blue: Double(hex & 0xFF) / 255,
-            opacity: alpha
-        )
+        self.init(.sRGB, red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255, opacity: alpha)
     }
 }
 
-// MARK: - 定数
-
-private let textPrimary = Color(hex: 0x1E293B)
-private let textSecondary = Color(hex: 0x64748B)
-private let textTertiary = Color(hex: 0x94A3B8)
+private let bgDark = Color(hex: 0x0B1120)
+private let bgCard = Color(hex: 0x111B2E)
+private let bgSurface = Color(hex: 0x1A2744)
+private let accentCyan = Color(hex: 0x22D3EE)
 private let accentBlue = Color(hex: 0x3B82F6)
+private let accentIndigo = Color(hex: 0x6366F1)
+private let textW = Color(hex: 0xF1F5F9)
+private let textSub = Color(hex: 0x94A3B8)
+private let textDim = Color(hex: 0x64748B)
 
-private func genreColor(_ genre: GenreInfo) -> Color {
-    Color(hex: UInt(genre.colorHex))
-}
+private func genreColor(_ g: GenreInfo) -> Color { Color(hex: UInt(g.colorHex)) }
+private func fmtMin(_ m: Int) -> String { let h = m/60, r = m%60; return h > 0 ? "\(h)h \(r)m" : "\(r)m" }
+private func fmtHM(_ m: Int) -> (String, String) { (String(m/60), String(format: "%02d", m%60)) }
 
-private func formatMinutes(_ minutes: Int) -> String {
-    let h = minutes / 60
-    let m = minutes % 60
-    return h > 0 ? "\(h)h \(m)m" : "\(m)m"
-}
-
-private func formatHoursMinutes(_ minutes: Int) -> (String, String) {
-    let h = minutes / 60
-    let m = minutes % 60
-    return (String(h), String(format: "%02d", m))
-}
-
-// MARK: - メイン
-
-/// 記録画面（タブ⑤: 右端）
-/// KMP RecordViewModel を使用して勉強時間を可視化
 struct AnalyticsScreenView: View {
     private let viewModel: RecordViewModel
     @State private var uiState: RecordUiState
 
-    init() {
-        let vm = KoinHelperKt.getRecordViewModel()
-        self.viewModel = vm
-        _uiState = State(initialValue: vm.uiState.value as! RecordUiState)
-    }
+    init() { let vm = KoinHelperKt.getRecordViewModel(); self.viewModel = vm; _uiState = State(initialValue: vm.uiState.value as! RecordUiState) }
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 12) {
-                recordHeader
-                totalStudyCard
+            VStack(alignment: .leading, spacing: 14) {
+                header
+                totalCard
                 periodTabs
-
+                if uiState.selectedPeriod == .monthly { monthSelector }
                 Spacer().frame(height: 4)
-                periodSummaryCard
-
+                summaryCard
                 Spacer().frame(height: 4)
-                barChartCard
-
+                chartCard
                 Spacer().frame(height: 4)
-                genreBreakdownCard
-
+                genreCard
                 Spacer().frame(height: 120)
             }
         }
-        .background(Color(UIColor.systemGroupedBackground))
-        .onReceive(Timer.publish(every: 0.3, on: .main, in: .common).autoconnect()) { _ in
-            self.uiState = viewModel.uiState.value as! RecordUiState
-        }
+        .background(LinearGradient(colors: [bgDark, Color(hex: 0x0F172A)], startPoint: .top, endPoint: .bottom).ignoresSafeArea())
+        .onReceive(Timer.publish(every: 0.3, on: .main, in: .common).autoconnect()) { _ in self.uiState = viewModel.uiState.value as! RecordUiState }
     }
 
-    // MARK: - ヘッダー + キャラ吹き出し
-
-    private var recordHeader: some View {
+    // MARK: - Header
+    private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text("📊").font(.system(size: 24))
-                    Text("記録")
-                        .font(.system(size: 28, weight: .heavy))
-                        .foregroundColor(textPrimary)
-                }
-                Text("あなたの冒険の軌跡")
-                    .font(.subheadline)
-                    .foregroundColor(textSecondary)
+                Text("記 録").font(.system(size: 28, weight: .black)).foregroundColor(textW)
+                Text("あなたの冒険の軌跡").font(.caption).foregroundColor(textSub)
             }
             Spacer()
-
-            // キャラ吹き出し（小さめ）
-            HStack(alignment: .bottom, spacing: 4) {
-                Text(uiState.characterMessage)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(textPrimary)
-                    .lineLimit(2)
-                    .frame(maxWidth: 140, alignment: .trailing)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color(UIColor.secondarySystemGroupedBackground))
-                    .cornerRadius(12)
-                    .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
-
-                Text(uiState.characterEmoji)
-                    .font(.system(size: 36))
+            VStack(alignment: .trailing, spacing: 3) {
+                HStack(spacing: 3) { Text("📅").font(.system(size: 8)); Text("今日").font(.system(size: 8, weight: .bold)).foregroundColor(textSub); Text(fmtMin(Int(uiState.todayStudyMinutes))).font(.system(size: 10, weight: .heavy)).foregroundColor(textW) }
+                HStack(spacing: 3) { Text("📆").font(.system(size: 8)); Text("今週").font(.system(size: 8, weight: .bold)).foregroundColor(textSub); Text(fmtMin(Int(uiState.weekStudyMinutes))).font(.system(size: 10, weight: .heavy)).foregroundColor(textW) }
+                HStack(spacing: 3) { Text("🗓️").font(.system(size: 8)); Text("月間").font(.system(size: 8, weight: .bold)).foregroundColor(textSub); Text(fmtMin(Int(uiState.monthStudyMinutes))).font(.system(size: 10, weight: .heavy)).foregroundColor(textW) }
             }
+            .padding(8).background(bgCard).cornerRadius(10)
+            Text(uiState.characterEmoji).font(.system(size: 26))
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 20).padding(.vertical, 12)
     }
 
-    // MARK: - 累計勉強時間ヒーロー
-
-    private var totalStudyCard: some View {
-        let (hours, mins) = formatHoursMinutes(Int(uiState.totalStudyMinutes))
-
+    // MARK: - Total
+    private var totalCard: some View {
+        let (h, m) = fmtHM(Int(uiState.totalStudyMinutes))
         return VStack(alignment: .leading, spacing: 8) {
-            Text("🏆 累計勉強時間")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundColor(.white.opacity(0.85))
-
+            Text("🏆 累計勉強時間").font(.system(size: 12, weight: .bold)).foregroundColor(.white.opacity(0.8))
             HStack(alignment: .bottom, spacing: 0) {
-                Text(hours)
-                    .font(.system(size: 56, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-                Text("h")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.white.opacity(0.75))
-                    .padding(.bottom, 8)
-                Spacer().frame(width: 8)
-                Text(mins)
-                    .font(.system(size: 56, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-                Text("m")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.white.opacity(0.75))
-                    .padding(.bottom, 8)
+                Text(h).font(.system(size: 52, weight: .black, design: .rounded)).foregroundColor(.white)
+                Text("h").font(.system(size: 20, weight: .bold)).foregroundColor(.white.opacity(0.7)).padding(.bottom, 7)
+                Spacer().frame(width: 6)
+                Text(m).font(.system(size: 52, weight: .black, design: .rounded)).foregroundColor(.white)
+                Text("m").font(.system(size: 20, weight: .bold)).foregroundColor(.white.opacity(0.7)).padding(.bottom, 7)
             }
-
-            HStack(spacing: 16) {
-                statPill(emoji: "🔥", text: "\(uiState.streakDays)日連続")
-                statPill(emoji: "📖", text: "今日 \(uiState.todaySessions)回")
+            HStack(spacing: 14) {
+                pill("🔥", "\(uiState.streakDays)日連続")
+                pill("📖", "今日 \(uiState.todaySessions)回")
             }
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [Color(hex: 0x3B82F6), Color(hex: 0x6366F1), Color(hex: 0x8B5CF6)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .cornerRadius(24)
-        .shadow(color: Color(hex: 0x3B82F6).opacity(0.3), radius: 10, y: 6)
-        .padding(.horizontal, 16)
+        .padding(22).frame(maxWidth: .infinity, alignment: .leading)
+        .background(LinearGradient(colors: [accentBlue, accentIndigo, Color(hex: 0x8B5CF6)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        .cornerRadius(22).padding(.horizontal, 16)
     }
 
-    private func statPill(emoji: String, text: String) -> some View {
-        HStack(spacing: 4) {
-            Text(emoji).font(.system(size: 12))
-            Text(text).font(.system(size: 12, weight: .bold)).foregroundColor(.white)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Color.white.opacity(0.2))
-        .cornerRadius(20)
+    private func pill(_ e: String, _ t: String) -> some View {
+        HStack(spacing: 3) { Text(e).font(.system(size: 11)); Text(t).font(.system(size: 11, weight: .bold)).foregroundColor(.white) }
+            .padding(.horizontal, 10).padding(.vertical, 5).background(Color.white.opacity(0.2)).cornerRadius(18)
     }
 
-    // MARK: - 期間タブ
-
+    // MARK: - Period Tabs
     private var periodTabs: some View {
         HStack(spacing: 4) {
-            ForEach([RecordPeriod.today, RecordPeriod.weekly, RecordPeriod.monthly], id: \.self) { period in
-                let isSelected = uiState.selectedPeriod == period
-                Button(action: {
-                    viewModel.onIntent(intent: RecordIntentSelectPeriod(period: period))
-                }) {
-                    Text(period.label)
-                        .font(.system(size: 14, weight: isSelected ? .bold : .medium))
-                        .foregroundColor(isSelected ? accentBlue : textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(isSelected ? Color(UIColor.secondarySystemGroupedBackground) : .clear)
-                        .cornerRadius(12)
-                }
-                .buttonStyle(.plain)
+            ForEach([RecordPeriod.today, .weekly, .monthly], id: \.self) { p in
+                let sel = uiState.selectedPeriod == p
+                Button(action: { viewModel.onIntent(intent: RecordIntentSelectPeriod(period: p)) }) {
+                    Text(p.label).font(.system(size: 13, weight: sel ? .bold : .medium)).foregroundColor(sel ? accentCyan : textSub)
+                        .frame(maxWidth: .infinity).padding(.vertical, 9).background(sel ? bgCard : .clear).cornerRadius(10)
+                }.buttonStyle(.plain)
             }
         }
-        .padding(4)
-        .background(Color(hex: 0xE2E8F0))
-        .cornerRadius(16)
-        .padding(.horizontal, 16)
+        .padding(4).background(bgSurface).cornerRadius(14).padding(.horizontal, 16)
     }
 
-    // MARK: - 期間サマリー
+    // MARK: - Month Selector
+    private var monthSelector: some View {
+        let ms = uiState.availableMonths as! [YearMonth_]
+        let idx = ms.firstIndex(where: { $0.year == uiState.selectedYear && $0.month == uiState.selectedMonth }) ?? 0
+        return HStack {
+            Button(action: { if idx + 1 < ms.count { let y = ms[idx+1]; viewModel.onIntent(intent: RecordIntentSelectMonth(year: y.year, month: y.month)) } }) {
+                Image(systemName: "chevron.left").font(.system(size: 13, weight: .bold)).foregroundColor(idx < ms.count - 1 ? accentCyan : textDim)
+            }.disabled(idx >= ms.count - 1)
+            Spacer()
+            Text("\(uiState.selectedYear)年\(uiState.selectedMonth)月").font(.system(size: 15, weight: .heavy)).foregroundColor(textW)
+            Spacer()
+            Button(action: { if idx > 0 { let y = ms[idx-1]; viewModel.onIntent(intent: RecordIntentSelectMonth(year: y.year, month: y.month)) } }) {
+                Image(systemName: "chevron.right").font(.system(size: 13, weight: .bold)).foregroundColor(idx > 0 ? accentCyan : textDim)
+            }.disabled(idx <= 0)
+        }
+        .padding(.horizontal, 24).padding(.vertical, 6)
+    }
 
-    private var periodSummaryCard: some View {
-        let periodLabel: String = {
+    // MARK: - Summary
+    private var summaryCard: some View {
+        let lbl: String = {
             switch uiState.selectedPeriod {
-            case .today: return "今日の勉強時間"
-            case .weekly: return "今週の勉強時間"
-            case .monthly: return "今月の勉強時間"
-            default: return "勉強時間"
+            case .today: return "今日の勉強時間"; case .weekly: return "今週の勉強時間"
+            case .monthly: return "\(uiState.selectedYear)/\(uiState.selectedMonth) の勉強時間"; default: return "勉強時間"
             }
         }()
-
         return HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text(periodLabel)
-                    .font(.system(size: 13))
-                    .foregroundColor(textSecondary)
-                Text(formatMinutes(Int(uiState.periodTotalMinutes)))
-                    .font(.system(size: 32, weight: .heavy))
-                    .foregroundColor(textPrimary)
+                Text(lbl).font(.system(size: 12)).foregroundColor(textSub)
+                Text(fmtMin(Int(uiState.periodTotalMinutes))).font(.system(size: 28, weight: .heavy)).foregroundColor(textW)
             }
             Spacer()
-            if !uiState.genreBreakdown.isEmpty {
-                miniDonutChart
-            }
+            if !uiState.genreBreakdown.isEmpty { donut }
         }
-        .padding(20)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
-        .padding(.horizontal, 16)
+        .padding(18).background(bgCard).cornerRadius(18).padding(.horizontal, 16)
     }
 
-    private var miniDonutChart: some View {
-        Canvas { context, size in
-            let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let radius = min(size.width, size.height) / 2 - 5
-            var startAngle = Angle.degrees(-90)
-
-            for item in uiState.genreBreakdown {
-                let sweep = Angle.degrees(Double(item.ratio) * 360)
-                let path = Path { p in
-                    p.addArc(center: center, radius: radius,
-                             startAngle: startAngle,
-                             endAngle: startAngle + sweep,
-                             clockwise: false)
-                }
-                context.stroke(path, with: .color(genreColor(item.genre)), lineWidth: 8)
-                startAngle = startAngle + sweep
+    private var donut: some View {
+        Canvas { ctx, sz in
+            let c = CGPoint(x: sz.width/2, y: sz.height/2), r = min(sz.width, sz.height)/2 - 5
+            var s = Angle.degrees(-90)
+            for i in uiState.genreBreakdown {
+                let sw = Angle.degrees(Double(i.ratio) * 360)
+                let p = Path { p in p.addArc(center: c, radius: r, startAngle: s, endAngle: s + sw, clockwise: false) }
+                ctx.stroke(p, with: .color(genreColor(i.genre)), lineWidth: 7); s = s + sw
             }
-        }
-        .frame(width: 64, height: 64)
+        }.frame(width: 56, height: 56)
     }
 
-    // MARK: - 棒グラフ
-
-    private var barChartCard: some View {
-        let bars = uiState.chartBars
-        let maxMin = bars.map { Int($0.minutes) }.max() ?? 1
-        let selectedGenre = uiState.selectedGenre
-
-        return VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("学習時間の推移")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(textPrimary)
-                if let sg = selectedGenre {
-                    Text("\(sg.emoji) \(sg.label)のみ表示中")
-                        .font(.system(size: 11))
-                        .foregroundColor(textSecondary)
-                } else {
-                    Text("全ジャンル")
-                        .font(.system(size: 11))
-                        .foregroundColor(textSecondary)
-                }
+    // MARK: - Chart
+    private var chartCard: some View {
+        let bars = uiState.chartBars; let mx = bars.map { Int($0.minutes) }.max() ?? 1; let sg = uiState.selectedGenre
+        return VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("学習時間の推移").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
+                Text(sg != nil ? "\(sg!.emoji) \(sg!.label)のみ" : "全ジャンル").font(.system(size: 10)).foregroundColor(textSub)
             }
-
             if !bars.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .bottom, spacing: 6) {
-                        ForEach(Array(bars.enumerated()), id: \.offset) { _, bar in
-                            barItem(bar: bar, maxMin: maxMin, selectedGenre: selectedGenre, barCount: bars.count)
-                        }
-                    }
-                    .frame(height: 160)
-                    .padding(.bottom, 4)
+                    HStack(alignment: .bottom, spacing: 5) {
+                        ForEach(Array(bars.enumerated()), id: \.offset) { _, b in barItem(b, mx: mx, sg: sg, cnt: bars.count) }
+                    }.frame(height: 150).padding(.bottom, 4)
                 }
             }
         }
-        .padding(20)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
-        .padding(.horizontal, 16)
+        .padding(18).background(bgCard).cornerRadius(18).padding(.horizontal, 16)
     }
 
-    private func barItem(bar: ChartBar, maxMin: Int, selectedGenre: GenreInfo?, barCount: Int) -> some View {
-        let fraction = CGFloat(bar.minutes) / CGFloat(max(maxMin, 1))
-        let barHeight = max(130.0 * fraction, 4.0)
-        let barWidth: CGFloat = barCount <= 7 ? 36 : (barCount <= 14 ? 28 : 22)
-
+    private func barItem(_ b: ChartBar, mx: Int, sg: GenreInfo?, cnt: Int) -> some View {
+        let fr = CGFloat(b.minutes) / CGFloat(max(mx, 1)); let bh = max(120 * fr, 3); let bw: CGFloat = cnt <= 7 ? 34 : (cnt <= 14 ? 26 : 20)
         return VStack(spacing: 0) {
-            if bar.minutes > 0 {
-                Text("\(bar.minutes)")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(textSecondary)
-                Spacer().frame(height: 2)
-            }
-
+            if b.minutes > 0 { Text("\(b.minutes)").font(.system(size: 8, weight: .bold)).foregroundColor(textSub); Spacer().frame(height: 2) }
             Spacer()
-
-            if let sg = selectedGenre {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(genreColor(sg))
-                    .frame(height: barHeight)
-            } else {
-                stackedBar(bar: bar, barHeight: barHeight)
+            if let g = sg { RoundedRectangle(cornerRadius: 5).fill(genreColor(g)).frame(height: bh) }
+            else {
+                let gm = b.genreMinutes as! [GenreInfo: KotlinInt]; let t = gm.values.reduce(0) { $0 + $1.intValue }; let st = max(t, 1)
+                VStack(spacing: 0) {
+                    let sr = gm.sorted { $0.value.intValue > $1.value.intValue }
+                    ForEach(Array(sr.enumerated()), id: \.offset) { _, e in Rectangle().fill(genreColor(e.key)).frame(height: max(bh * CGFloat(e.value.intValue) / CGFloat(st), 2)) }
+                }.clipShape(RoundedRectangle(cornerRadius: 5))
             }
-
-            Spacer().frame(height: 4)
-
-            Text(bar.label)
-                .font(.system(size: 8))
-                .foregroundColor(textTertiary)
-                .lineLimit(1)
-        }
-        .frame(width: barWidth)
+            Spacer().frame(height: 3)
+            Text(b.label).font(.system(size: 7)).foregroundColor(textDim).lineLimit(1)
+        }.frame(width: bw)
     }
 
-    private func stackedBar(bar: ChartBar, barHeight: CGFloat) -> some View {
-        let genreMinutes = bar.genreMinutes as! [GenreInfo: KotlinInt]
-        let total = genreMinutes.values.reduce(0) { $0 + $1.intValue }
-        let safeTot = max(total, 1)
-
-        return VStack(spacing: 0) {
-            let sorted = genreMinutes.sorted { $0.value.intValue > $1.value.intValue }
-            ForEach(Array(sorted.enumerated()), id: \.offset) { _, entry in
-                let segmentH = max(barHeight * CGFloat(entry.value.intValue) / CGFloat(safeTot), 2)
-                Rectangle()
-                    .fill(genreColor(entry.key))
-                    .frame(height: segmentH)
-            }
-        }
-        .clipShape(AnalyticsRoundedCorner(radius: 6, corners: [.topLeft, .topRight]))
-    }
-
-    // MARK: - ジャンル別内訳
-
-    private var genreBreakdownCard: some View {
-        let breakdown = uiState.genreBreakdown
-
-        return VStack(alignment: .leading, spacing: 16) {
+    // MARK: - Genre
+    private var genreCard: some View {
+        let bd = uiState.genreBreakdown
+        return VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("ジャンル別内訳")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(textPrimary)
+                Text("ジャンル別内訳").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
                 Spacer()
                 if uiState.selectedGenre != nil {
-                    Button(action: {
-                        viewModel.onIntent(intent: RecordIntentSelectGenre(genre: nil))
-                    }) {
-                        Text("全表示")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(accentBlue)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(Color(hex: 0xF1F5F9))
-                            .cornerRadius(8)
-                    }
-                    .buttonStyle(.plain)
+                    Button(action: { viewModel.onIntent(intent: RecordIntentSelectGenre(genre: nil)) }) {
+                        Text("全表示").font(.system(size: 10, weight: .bold)).foregroundColor(accentCyan).padding(.horizontal, 8).padding(.vertical, 3).background(bgSurface).cornerRadius(6)
+                    }.buttonStyle(.plain)
                 }
             }
-
-            // ジャンルチップ
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(Array(breakdown.enumerated()), id: \.offset) { _, item in
-                        genreChip(item: item, isSelected: uiState.selectedGenre == item.genre)
+                HStack(spacing: 6) {
+                    ForEach(Array(bd.enumerated()), id: \.offset) { _, i in
+                        let sel = uiState.selectedGenre == i.genre; let c = genreColor(i.genre)
+                        Button(action: { viewModel.onIntent(intent: RecordIntentSelectGenre(genre: i.genre)) }) {
+                            HStack(spacing: 3) { Text(i.genre.emoji).font(.system(size: 12)); Text(i.genre.label).font(.system(size: 11, weight: sel ? .bold : .medium)).foregroundColor(sel ? c : textSub) }
+                                .padding(.horizontal, 12).padding(.vertical, 6).background(sel ? c.opacity(0.2) : bgSurface)
+                                .overlay(RoundedRectangle(cornerRadius: 18).stroke(sel ? c : .clear, lineWidth: 1.5)).cornerRadius(18)
+                        }.buttonStyle(.plain)
                     }
                 }
             }
-
-            // バー詳細
-            ForEach(Array(breakdown.enumerated()), id: \.offset) { _, item in
-                genreBarRow(
-                    item: item,
-                    isHighlighted: uiState.selectedGenre == nil || uiState.selectedGenre == item.genre
-                )
-            }
+            ForEach(Array(bd.enumerated()), id: \.offset) { _, i in genreRow(i, hi: uiState.selectedGenre == nil || uiState.selectedGenre == i.genre) }
         }
-        .padding(20)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
-        .padding(.horizontal, 16)
+        .padding(18).background(bgCard).cornerRadius(18).padding(.horizontal, 16)
     }
 
-    private func genreChip(item: GenreStudyTime, isSelected: Bool) -> some View {
-        let color = genreColor(item.genre)
-        return Button(action: {
-            viewModel.onIntent(intent: RecordIntentSelectGenre(genre: item.genre))
-        }) {
-            HStack(spacing: 4) {
-                Text(item.genre.emoji).font(.system(size: 14))
-                Text(item.genre.label)
-                    .font(.system(size: 12, weight: isSelected ? .bold : .medium))
-                    .foregroundColor(isSelected ? color : textSecondary)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(isSelected ? color.opacity(0.15) : Color(hex: 0xF1F5F9))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(isSelected ? color : .clear, lineWidth: 1.5)
-            )
-            .cornerRadius(20)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func genreBarRow(item: GenreStudyTime, isHighlighted: Bool) -> some View {
-        let color = genreColor(item.genre)
-        let alpha: Double = isHighlighted ? 1.0 : 0.35
-        let percentage = Int(item.ratio * 100)
-
-        return HStack(spacing: 8) {
-            Text(item.genre.emoji).font(.system(size: 16))
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(item.genre.label)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(textPrimary.opacity(alpha))
-                    Spacer()
-                    Text("\(formatMinutes(Int(item.minutes))) (\(percentage)%)")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(color.opacity(alpha))
-                }
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color(hex: 0xE2E8F0))
-                            .frame(height: 8)
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(color.opacity(alpha))
-                            .frame(width: geo.size.width * min(CGFloat(item.ratio), 1.0), height: 8)
-                    }
-                }
-                .frame(height: 8)
+    private func genreRow(_ i: GenreStudyTime, hi: Bool) -> some View {
+        let c = genreColor(i.genre); let a: Double = hi ? 1 : 0.3
+        return HStack(spacing: 6) {
+            Text(i.genre.emoji).font(.system(size: 14))
+            VStack(alignment: .leading, spacing: 3) {
+                HStack { Text(i.genre.label).font(.system(size: 12, weight: .semibold)).foregroundColor(textW.opacity(a)); Spacer(); Text("\(fmtMin(Int(i.minutes))) (\(Int(i.ratio * 100))%)").font(.system(size: 11, weight: .bold)).foregroundColor(c.opacity(a)) }
+                GeometryReader { g in ZStack(alignment: .leading) { RoundedRectangle(cornerRadius: 3).fill(bgDark).frame(height: 6); RoundedRectangle(cornerRadius: 3).fill(c.opacity(a)).frame(width: g.size.width * min(CGFloat(i.ratio), 1), height: 6) } }.frame(height: 6)
             }
         }
     }
 }
 
-// MARK: - RoundedCorner Helper
-
-private struct AnalyticsRoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(roundedRect: rect, byRoundingCorners: corners, cornerRadii: CGSize(width: radius, height: radius))
-        return Path(path.cgPath)
-    }
-}
-
-// MARK: - Preview
-
-struct AnalyticsScreenView_Previews: PreviewProvider {
-    static var previews: some View {
-        AnalyticsScreenView()
-    }
-}
+private typealias YearMonth_ = YearMonth

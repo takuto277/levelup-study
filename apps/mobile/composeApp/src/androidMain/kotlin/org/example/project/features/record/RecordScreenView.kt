@@ -29,14 +29,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// ── カラーパレット ─────────────────────────────────
-private val BgColor = Color(0xFFF8FAFC)
-private val CardWhite = Color(0xFFFFFFFF)
-private val TextPrimary = Color(0xFF1E293B)
-private val TextSecondary = Color(0xFF64748B)
-private val TextTertiary = Color(0xFF94A3B8)
+// ── カラーパレット（青テーマ）──────────────────────
+private val BgColor = Color(0xFF0B1120)
+private val CardWhite = Color(0xFF111B2E)
+private val TextPrimary = Color(0xFFF1F5F9)
+private val TextSecondary = Color(0xFF94A3B8)
+private val TextTertiary = Color(0xFF64748B)
 private val AccentBlue = Color(0xFF3B82F6)
 private val AccentIndigo = Color(0xFF6366F1)
+private val AccentCyan = Color(0xFF22D3EE)
+private val BgSurface = Color(0xFF1A2744)
 
 private fun genreColor(genre: GenreInfo): Color = Color(genre.colorHex)
 
@@ -62,9 +64,9 @@ fun RecordScreenView() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(BgColor, Color(0xFF0F172A))))
             .verticalScroll(rememberScrollState())
     ) {
-        // ヘッダー + キャラ吹き出し
         RecordHeader(uiState)
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -79,6 +81,14 @@ fun RecordScreenView() {
             selected = uiState.selectedPeriod,
             onSelect = { viewModel.onIntent(RecordIntent.SelectPeriod(it)) }
         )
+
+        // 月間セレクター
+        if (uiState.selectedPeriod == RecordPeriod.MONTHLY) {
+            MonthSelector(
+                uiState = uiState,
+                onSelect = { y, m -> viewModel.onIntent(RecordIntent.SelectMonth(y, m)) }
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -131,30 +141,32 @@ private fun RecordHeader(uiState: RecordUiState) {
             )
         }
 
-        // キャラ吹き出し（小さめ）
-        Row(verticalAlignment = Alignment.Bottom) {
-            // 吹き出し
-            Box(
-                modifier = Modifier
-                    .shadow(2.dp, RoundedCornerShape(12.dp))
-                    .background(CardWhite, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                    .widthIn(max = 140.dp)
-            ) {
-                Text(
-                    uiState.characterMessage,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
-                    lineHeight = 14.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+        // 勉強時間サマリー
+        Column(
+            modifier = Modifier
+                .shadow(2.dp, RoundedCornerShape(12.dp))
+                .background(CardWhite, RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("📅 今日", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(formatMinutes(uiState.todayStudyMinutes), fontSize = 11.sp, fontWeight = FontWeight.Black, color = TextPrimary)
             }
-            Spacer(modifier = Modifier.width(4.dp))
-            // キャラ
-            Text(uiState.characterEmoji, fontSize = 36.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("📆 今週", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(formatMinutes(uiState.weekStudyMinutes), fontSize = 11.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🗓️ 月間", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(formatMinutes(uiState.monthStudyMinutes), fontSize = 11.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+            }
         }
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(uiState.characterEmoji, fontSize = 30.sp)
     }
 }
 
@@ -282,7 +294,7 @@ private fun PeriodSummaryCard(uiState: RecordUiState) {
     val periodLabel = when (uiState.selectedPeriod) {
         RecordPeriod.TODAY -> "今日の勉強時間"
         RecordPeriod.WEEKLY -> "今週の勉強時間"
-        RecordPeriod.MONTHLY -> "今月の勉強時間"
+        RecordPeriod.MONTHLY -> "${uiState.selectedYear}/${uiState.selectedMonth} の勉強時間"
     }
 
     Row(
@@ -619,6 +631,53 @@ private fun GenreBarRow(item: GenreStudyTime, isHighlighted: Boolean) {
                         .background(color.copy(alpha = alpha))
                 )
             }
+        }
+    }
+}
+
+// ── 月間セレクター ──────────────────────────────────
+
+@Composable
+private fun MonthSelector(uiState: RecordUiState, onSelect: (Int, Int) -> Unit) {
+    val months = uiState.availableMonths
+    val currentIdx = months.indexOfFirst { it.year == uiState.selectedYear && it.month == uiState.selectedMonth }.coerceAtLeast(0)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(enabled = currentIdx < months.size - 1) {
+                    val ym = months[currentIdx + 1]
+                    onSelect(ym.year, ym.month)
+                }
+                .padding(8.dp)
+        ) {
+            Text("◀", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (currentIdx < months.size - 1) AccentBlue else TextTertiary)
+        }
+
+        Text(
+            "${uiState.selectedYear}年${uiState.selectedMonth}月",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Black,
+            color = TextPrimary
+        )
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(enabled = currentIdx > 0) {
+                    val ym = months[currentIdx - 1]
+                    onSelect(ym.year, ym.month)
+                }
+                .padding(8.dp)
+        ) {
+            Text("▶", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (currentIdx > 0) AccentBlue else TextTertiary)
         }
     }
 }

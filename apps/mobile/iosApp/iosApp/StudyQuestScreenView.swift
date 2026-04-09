@@ -236,15 +236,47 @@ struct StudyQuestScreenView: View {
 
             Spacer().frame(height: 8)
 
-            // 冒険シーン
+            // 冒険シーン（大型化でダンジョン潜入感を演出）
             ZStack {
                 RoundedRectangle(cornerRadius: 24)
                     .fill(
                         isBreak
-                            ? LinearGradient(colors: [Color(hex: 0x0A1F0A), Color(hex: 0x132613)], startPoint: .top, endPoint: .bottom)
-                            : LinearGradient(colors: [Color(hex: 0x0A0F1E), Color(hex: 0x141C2F)], startPoint: .top, endPoint: .bottom)
+                            ? LinearGradient(colors: [Color(hex: 0x0A1F0A), Color(hex: 0x132613), Color(hex: 0x0A1F0A)], startPoint: .top, endPoint: .bottom)
+                            : LinearGradient(colors: [Color(hex: 0x06060F), Color(hex: 0x0E1428), Color(hex: 0x1A1040)], startPoint: .top, endPoint: .bottom)
                     )
-                    .frame(height: 220)
+
+                // 壁のテクスチャ（装飾）
+                if !isBreak {
+                    VStack {
+                        HStack {
+                            ForEach(0..<8, id: \.self) { _ in
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(textMuted.opacity(0.05))
+                                    .frame(width: 40, height: 24)
+                            }
+                        }
+                        .padding(.top, 8)
+                        Spacer()
+                        // 松明の光
+                        HStack {
+                            Text("🔥").font(.system(size: 16)).opacity(pulsePhase ? 0.9 : 0.5)
+                            Spacer()
+                            Text("🔥").font(.system(size: 16)).opacity(pulsePhase ? 0.5 : 0.9)
+                        }
+                        .padding(.horizontal, 16)
+                        // 地面
+                        Rectangle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(hex: 0x2D1B0E), Color(hex: 0x1A1005)],
+                                    startPoint: .top, endPoint: .bottom
+                                )
+                            )
+                            .frame(height: 30)
+                            .cornerRadius(0)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                }
 
                 if isBreak {
                     breakScene
@@ -252,7 +284,8 @@ struct StudyQuestScreenView: View {
                     adventureScene
                 }
             }
-            .padding(.horizontal, 24)
+            .frame(height: 280)
+            .padding(.horizontal, 16)
 
             Spacer().frame(height: 16)
 
@@ -283,37 +316,18 @@ struct StudyQuestScreenView: View {
 
             Spacer().frame(height: 12)
 
-            // 冒険ログ（コンパクト）
-            VStack(alignment: .leading, spacing: 6) {
-                Text(isBreak ? "🌙 キャンプログ" : "📜 冒険ログ")
+            // 直近ログ（1行のみ）
+            if let lastLog = uiState.currentLog.last {
+                Text(lastLog)
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(textWhite)
-
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        let logs = Array(uiState.currentLog.suffix(3))
-                        ForEach(Array(logs.enumerated()), id: \.offset) { idx, log in
-                            let isLatest = idx == logs.count - 1
-                            HStack(alignment: .top, spacing: 8) {
-                                Circle()
-                                    .fill(isLatest ? (isBreak ? breakAccent : accentBlue) : textMuted)
-                                    .frame(width: 4, height: 4)
-                                    .padding(.top, 5)
-                                Text(log)
-                                    .font(.system(size: 11, weight: isLatest ? .semibold : .regular))
-                                    .foregroundColor(isLatest ? textWhite : textMuted)
-                                    .lineSpacing(2)
-                            }
-                        }
-                    }
-                }
+                    .foregroundColor(isBreak ? breakAccent : accentBlue)
+                    .lineLimit(1)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background((isBreak ? breakCard : darkCard).opacity(0.8))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 24)
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 100)
-            .background(isBreak ? breakCard : darkCard)
-            .cornerRadius(16)
-            .padding(.horizontal, 24)
 
             Spacer()
 
@@ -499,14 +513,14 @@ struct StudyQuestScreenView: View {
                 EmptyView()
             }
         }
-        .frame(height: 220)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - 休憩シーン
 
     private var breakScene: some View {
         breakSceneContent
-            .frame(height: 220)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var breakSceneContent: some View {

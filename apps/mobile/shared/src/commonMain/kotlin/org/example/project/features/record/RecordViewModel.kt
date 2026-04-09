@@ -27,9 +27,7 @@ class RecordViewModel(
     private var allSessions: List<StudySession> = emptyList()
     private var genreMap: Map<String, GenreInfo> = emptyMap()
 
-    init {
-        refreshData()
-    }
+    init { refreshData() }
 
     fun onIntent(intent: RecordIntent) {
         when (intent) {
@@ -40,6 +38,10 @@ class RecordViewModel(
             is RecordIntent.SelectGenre -> {
                 val newGenre = if (_uiState.value.selectedGenre == intent.genre) null else intent.genre
                 _uiState.update { it.copy(selectedGenre = newGenre) }
+                recalculate()
+            }
+            is RecordIntent.SelectMonth -> {
+                _uiState.update { it.copy(selectedYear = intent.year, selectedMonth = intent.month) }
                 recalculate()
             }
             is RecordIntent.Refresh -> refreshData()
@@ -54,9 +56,19 @@ class RecordViewModel(
                 allSessions = data.sessions
                 genreMap = buildGenreMap(data.genres)
 
-                val totalMinutes = data.user.totalStudySeconds.toInt() / 60
+                // 累計はセッションの合計秒数から計算（一貫性のため）
+                val totalSeconds = allSessions.sumOf { it.durationSeconds.toLong() }
+                val totalMinutes = (totalSeconds / 60).toInt()
                 val streakDays = calculateStreakDays(allSessions)
                 val todayCount = countTodaySessions(allSessions)
+                val availableMonths = buildAvailableMonths(allSessions)
+
+                val today = todayDateString()
+                val todayMin = sessionMinutesForDates(allSessions, setOf(today))
+                val weekMin = sessionMinutesForDates(allSessions, last7Days(today))
+                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                val monthDates = datesInMonth(now.year, now.monthNumber)
+                val monthMin = sessionMinutesForDates(allSessions, monthDates)
 
                 _uiState.update {
                     it.copy(
@@ -64,8 +76,14 @@ class RecordViewModel(
                         streakDays = streakDays,
                         todaySessions = todayCount,
                         characterEmoji = "\uD83E\uDDD9\u200D\u2642\uFE0F",
-                        characterMessage = getCharacterMessage(totalMinutes),
-                        isLoading = false
+                        characterMessage = "",
+                        isLoading = false,
+                        availableMonths = availableMonths,
+                        selectedYear = now.year,
+                        selectedMonth = now.monthNumber,
+                        todayStudyMinutes = todayMin,
+                        weekStudyMinutes = weekMin,
+                        monthStudyMinutes = monthMin
                     )
                 }
                 recalculate()
@@ -90,49 +108,37 @@ class RecordViewModel(
 
     private fun recalculate() {
         val state = _uiState.value
-        val period = state.selectedPeriod
         val genre = state.selectedGenre
-
         val today = todayDateString()
 
-        val filteredSessions: List<StudySession> = when (period) {
-            RecordPeriod.TODAY -> allSessions.filter { s -> extractDate(s.startedAt) == today }
+        val filteredSessions: List<StudySession> = when (state.selectedPeriod) {
+            RecordPeriod.TODAY -> allSessions.filter { extractDate(it.startedAt) == today }
             RecordPeriod.WEEKLY -> {
                 val dates = last7Days(today)
-                allSessions.filter { s -> extractDate(s.startedAt) in dates }
+                allSessions.filter { extractDate(it.startedAt) in dates }
             }
             RecordPeriod.MONTHLY -> {
-                val dates = last30Days(today)
-                allSessions.filter { s -> extractDate(s.startedAt) in dates }
+                val dates = datesInMonth(state.selectedYear, state.selectedMonth)
+                allSessions.filter { extractDate(it.startedAt) in dates }
             }
         }
 
-        val dailyData: Map<String, List<StudySession>> = filteredSessions
-            .groupBy { s -> extractDate(s.startedAt) }
+        val dailyData = filteredSessions.groupBy { extractDate(it.startedAt) }
+        val sortedDays = dailyData.keys.sorted()
 
-        val sortedDays: List<String> = dailyData.keys.sorted()
-
-        val bars: List<ChartBar> = sortedDays.map { date ->
-            val daySessions: List<StudySession> = dailyData[date] ?: emptyList()
+        val bars = sortedDays.map { date ->
+            val daySessions = dailyData[date] ?: emptyList()
             val genreMinutes = mutableMapOf<GenreInfo, Int>()
             for (s in daySessions) {
                 val gi = resolveGenre(s.category)
                 genreMinutes[gi] = (genreMinutes[gi] ?: 0) + s.durationSeconds / 60
             }
-            val filtered: Map<GenreInfo, Int> = if (genre != null) {
-                mapOf(genre to (genreMinutes[genre] ?: 0))
-            } else {
-                genreMinutes.toMap()
-            }
+            val filtered = if (genre != null) mapOf(genre to (genreMinutes[genre] ?: 0)) else genreMinutes.toMap()
             val total = if (genre != null) (genreMinutes[genre] ?: 0) else genreMinutes.values.sum()
-            ChartBar(
-                label = formatDateLabel(date),
-                minutes = total,
-                genreMinutes = filtered
-            )
+            ChartBar(label = formatDateLabel(date), minutes = total, genreMinutes = filtered)
         }
 
-        val periodTotal = bars.sumOf { bar -> bar.minutes }
+        val periodTotal = bars.sumOf { it.minutes }
 
         val genreTotals = mutableMapOf<GenreInfo, Int>()
         for (s in filteredSessions) {
@@ -140,19 +146,11 @@ class RecordViewModel(
             genreTotals[gi] = (genreTotals[gi] ?: 0) + s.durationSeconds / 60
         }
         val grandTotal = genreTotals.values.sum().coerceAtLeast(1)
-        val breakdown: List<GenreStudyTime> = genreTotals.entries
-            .sortedByDescending { entry -> entry.value }
-            .map { entry ->
-                GenreStudyTime(genre = entry.key, minutes = entry.value, ratio = entry.value.toFloat() / grandTotal)
-            }
+        val breakdown = genreTotals.entries
+            .sortedByDescending { it.value }
+            .map { GenreStudyTime(genre = it.key, minutes = it.value, ratio = it.value.toFloat() / grandTotal) }
 
-        _uiState.update {
-            it.copy(
-                chartBars = bars,
-                periodTotalMinutes = periodTotal,
-                genreBreakdown = breakdown
-            )
-        }
+        _uiState.update { it.copy(chartBars = bars, periodTotalMinutes = periodTotal, genreBreakdown = breakdown) }
     }
 
     private fun resolveGenre(category: String?): GenreInfo {
@@ -160,36 +158,41 @@ class RecordViewModel(
         return genreMap[category] ?: GenreInfo.GENERAL
     }
 
+    private fun sessionMinutesForDates(sessions: List<StudySession>, dates: Set<String>): Int {
+        return sessions.filter { extractDate(it.startedAt) in dates }.sumOf { it.durationSeconds / 60 }
+    }
+
+    private fun buildAvailableMonths(sessions: List<StudySession>): List<YearMonth> {
+        val monthSet = mutableSetOf<YearMonth>()
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        monthSet.add(YearMonth(now.year, now.monthNumber))
+        for (s in sessions) {
+            val date = extractDate(s.startedAt)
+            val parts = date.split("-")
+            if (parts.size >= 2) {
+                val y = parts[0].toIntOrNull() ?: continue
+                val m = parts[1].toIntOrNull() ?: continue
+                monthSet.add(YearMonth(y, m))
+            }
+        }
+        return monthSet.sortedWith(compareByDescending<YearMonth> { it.year }.thenByDescending { it.month })
+    }
+
     private fun calculateStreakDays(sessions: List<StudySession>): Int {
         if (sessions.isEmpty()) return 0
-        val dates = sessions.map { s -> extractDate(s.startedAt) }.distinct().sorted().reversed()
+        val dates = sessions.map { extractDate(it.startedAt) }.distinct().sorted().reversed()
         val today = todayDateString()
         if (dates.firstOrNull() != today) return 0
         var streak = 1
         for (i in 1 until dates.size) {
-            if (isConsecutive(dates[i], dates[i - 1])) {
-                streak++
-            } else {
-                break
-            }
+            if (isConsecutive(dates[i], dates[i - 1])) streak++ else break
         }
         return streak
     }
 
     private fun countTodaySessions(sessions: List<StudySession>): Int {
         val today = todayDateString()
-        return sessions.count { s -> extractDate(s.startedAt) == today }
-    }
-
-    private fun getCharacterMessage(totalMinutes: Int): String {
-        return when {
-            totalMinutes >= 6000 -> "100時間突破！もはや伝説の勇者だな！"
-            totalMinutes >= 3000 -> "50時間超えか…大した修行量だ。"
-            totalMinutes >= 1200 -> "いい調子だ！その努力は裏切らないぞ。"
-            totalMinutes >= 600  -> "10時間も頑張ったのか。見直したぞ。"
-            totalMinutes >= 60   -> "毎日の積み重ねが力になる。続けろよ。"
-            else                 -> "まずは冒険に出てみよう！最初の一歩が大事だ。"
-        }
+        return sessions.count { extractDate(it.startedAt) == today }
     }
 
     companion object {
@@ -206,13 +209,22 @@ class RecordViewModel(
         }
 
         internal fun last7Days(today: String): Set<String> = lastNDays(today, 7)
-        internal fun last30Days(today: String): Set<String> = lastNDays(today, 30)
 
         private fun lastNDays(today: String, n: Int): Set<String> {
             val date = LocalDate.parse(today)
-            return (0 until n).map { i ->
-                date.minus(DatePeriod(days = i)).toString()
-            }.toSet()
+            return (0 until n).map { date.minus(DatePeriod(days = it)).toString() }.toSet()
+        }
+
+        internal fun datesInMonth(year: Int, month: Int): Set<String> {
+            val start = LocalDate(year, month, 1)
+            val nextMonth = if (month == 12) LocalDate(year + 1, 1, 1) else LocalDate(year, month + 1, 1)
+            val days = mutableSetOf<String>()
+            var d = start
+            while (d < nextMonth) {
+                days.add(d.toString())
+                d = d.plus(DatePeriod(days = 1))
+            }
+            return days
         }
 
         internal fun isConsecutive(earlier: String, later: String): Boolean {
@@ -220,9 +232,7 @@ class RecordViewModel(
                 val d1 = LocalDate.parse(earlier)
                 val d2 = LocalDate.parse(later)
                 d1.plus(DatePeriod(days = 1)) == d2
-            } catch (_: Exception) {
-                false
-            }
+            } catch (_: Exception) { false }
         }
     }
 }

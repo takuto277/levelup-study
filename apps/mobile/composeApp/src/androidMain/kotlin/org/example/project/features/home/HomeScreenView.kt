@@ -21,17 +21,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// ── カラー ────────────────────────────────────
-private val BgColor = Color(0xFFF0F4FF)
-private val CardWhite = Color(0xFFFFFFFF)
-private val TextPrimary = Color(0xFF1E293B)
-private val TextSecondary = Color(0xFF64748B)
+// ── カラー（青テーマ）────────────────────────────
+private val BgColor = Color(0xFF0B1120)
+private val BgDark2 = Color(0xFF0F172A)
+private val CardWhite = Color(0xFF111B2E)
+private val TextPrimary = Color(0xFFF1F5F9)
+private val TextSecondary = Color(0xFF94A3B8)
 private val AccentBlue = Color(0xFF3B82F6)
 private val AccentIndigo = Color(0xFF6366F1)
+private val AccentCyan = Color(0xFF22D3EE)
 private val GoldYellow = Color(0xFFFFD700)
 private val FireRed = Color(0xFFEF4444)
 private val FireOrange = Color(0xFFF59E0B)
 private val EmeraldGreen = Color(0xFF10B981)
+private val BgSurface = Color(0xFF1A2744)
 
 @Composable
 fun HomeScreenView() {
@@ -51,8 +54,8 @@ fun HomeScreenView() {
             onDismiss = { showStudySheet = false }
         )
     } else {
-        Scaffold(containerColor = BgColor) { paddingValues ->
-            Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(containerColor = Color.Transparent) { paddingValues ->
+            Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(BgColor, BgDark2)))) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -191,13 +194,15 @@ fun HomeTabContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp)
-                    .background(AccentIndigo.copy(0.08f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .background(AccentBlue.copy(0.12f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("📍 次の目的地:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AccentIndigo)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(dn, fontSize = 14.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+                Text("📍", fontSize = 14.sp)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("次の目的地:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AccentCyan)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(dn, fontSize = 13.sp, fontWeight = FontWeight.Black, color = TextPrimary)
             }
         }
 
@@ -472,31 +477,29 @@ private fun HomeHeader(homeState: org.example.project.features.home.HomeUiState)
     ) {
         Row(
             modifier = Modifier
-                .shadow(4.dp, RoundedCornerShape(16.dp))
-                .background(CardWhite, RoundedCornerShape(16.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .background(CardWhite, RoundedCornerShape(14.dp))
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("📖", fontSize = 18.sp)
-            Spacer(modifier = Modifier.width(8.dp))
+            Text("📖", fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(6.dp))
             Column {
-                Text("累計勉強", fontSize = 10.sp, color = TextSecondary)
-                Text(homeState.formattedStudyTime, fontSize = 15.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+                Text("累計勉強", fontSize = 9.sp, color = TextSecondary)
+                Text(homeState.formattedStudyTime, fontSize = 14.sp, fontWeight = FontWeight.Black, color = TextPrimary)
             }
         }
 
         Row(
             modifier = Modifier
-                .shadow(4.dp, RoundedCornerShape(16.dp))
-                .background(CardWhite, RoundedCornerShape(16.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .background(CardWhite, RoundedCornerShape(14.dp))
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("💎", fontSize = 18.sp)
-            Spacer(modifier = Modifier.width(8.dp))
+            Text("💎", fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(6.dp))
             Column {
-                Text("知識の結晶", fontSize = 10.sp, color = TextSecondary)
-                Text("${homeState.stones}", fontSize = 15.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+                Text("知識の結晶", fontSize = 9.sp, color = TextSecondary)
+                Text("${homeState.stones}", fontSize = 14.sp, fontWeight = FontWeight.Black, color = TextPrimary)
             }
         }
     }
@@ -505,6 +508,9 @@ private fun HomeHeader(homeState: org.example.project.features.home.HomeUiState)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // BottomNavigationBar / NavItem / Placeholder — 変更なし
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+private val BarBg = Color(0xFF0F172A)
+private val BarStroke = Color(0xFF263859)
 
 @Composable
 fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
@@ -515,9 +521,10 @@ fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
         contentAlignment = Alignment.BottomCenter
     ) {
         Surface(
-            color = Color.White.copy(alpha = 0.95f),
-            shape = RoundedCornerShape(32.dp),
-            shadowElevation = 12.dp,
+            color = BarBg.copy(alpha = 0.96f),
+            shape = RoundedCornerShape(30.dp),
+            shadowElevation = 16.dp,
+            border = androidx.compose.foundation.BorderStroke(0.5.dp, BarStroke),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -537,9 +544,12 @@ fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
     }
 }
 
+private val NavCyan = Color(0xFF22D3EE)
+private val NavDim = Color(0xFF64748B)
+
 @Composable
 fun NavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, isSelected: Boolean, isCenter: Boolean = false, onClick: () -> Unit) {
-    val color = if (isSelected) AccentBlue else Color.Gray
+    val color = if (isSelected) NavCyan else NavDim
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -555,32 +565,31 @@ fun NavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String
             if (isCenter) {
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .offset(y = (-16).dp)
-                        .shadow(8.dp, CircleShape)
+                        .size(44.dp)
+                        .shadow(6.dp, CircleShape)
                         .background(
                             brush = Brush.linearGradient(listOf(AccentBlue, AccentIndigo)),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(28.dp))
+                    Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(22.dp))
                 }
             } else {
                 if (isSelected) {
                     Surface(
-                        color = AccentBlue.copy(alpha = 0.12f),
+                        color = AccentBlue.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.size(width = 44.dp, height = 32.dp)
+                        modifier = Modifier.size(width = 44.dp, height = 30.dp)
                     ) {}
                 }
-                Icon(icon, contentDescription = label, tint = color, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = label, tint = color, modifier = Modifier.size(22.dp))
             }
         }
         Text(
             label,
             fontSize = 10.sp,
-            color = if (isCenter) Color.DarkGray else color,
+            color = if (isCenter) Color.White else color,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             modifier = Modifier.padding(top = if (isCenter) 4.dp else 0.dp)
         )

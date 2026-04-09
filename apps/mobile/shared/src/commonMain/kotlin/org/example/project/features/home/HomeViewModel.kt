@@ -7,9 +7,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.example.project.domain.repository.UserRepository
 
 class HomeViewModel(
-    private val homeUseCase: HomeUseCase
+    private val homeUseCase: HomeUseCase,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -24,10 +26,17 @@ class HomeViewModel(
             is HomeIntent.Refresh -> loadHome()
             is HomeIntent.StartStudy -> { }
             is HomeIntent.TapMainCharacter -> { }
-            is HomeIntent.SelectDungeon -> {
-                _uiState.update { it.copy(selectedDungeonId = intent.id, selectedDungeonName = intent.name) }
-            }
+            is HomeIntent.SelectDungeon -> selectDungeon(intent.id, intent.name)
             is HomeIntent.AddGenre -> addGenre(intent.label, intent.emoji, intent.colorHex)
+        }
+    }
+
+    private fun selectDungeon(id: String, name: String) {
+        _uiState.update { it.copy(selectedDungeonId = id, selectedDungeonName = name) }
+        viewModelScope.launch {
+            try {
+                userRepository.updateSelectedDungeon(id)
+            } catch (_: Exception) { }
         }
     }
 
@@ -44,6 +53,8 @@ class HomeViewModel(
                         displayName = data.user.displayName,
                         mainCharacter = data.mainCharacter,
                         genres = data.genres,
+                        selectedDungeonId = data.user.selectedDungeonId ?: it.selectedDungeonId,
+                        selectedDungeonName = data.selectedDungeonName ?: it.selectedDungeonName,
                         isLoading = false
                     )
                 }

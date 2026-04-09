@@ -15,6 +15,7 @@ data class UserResponse(
     @SerialName("total_study_seconds") val totalStudySeconds: Long,
     val stones: Int,
     val gold: Int,
+    @SerialName("selected_dungeon_id") val selectedDungeonId: String? = null,
     @SerialName("created_at") val createdAt: String,
     @SerialName("updated_at") val updatedAt: String
 )
@@ -28,7 +29,8 @@ data class CreateUserRequest(
 
 @Serializable
 data class UpdateUserRequest(
-    @SerialName("display_name") val displayName: String
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("selected_dungeon_id") val selectedDungeonId: String? = null
 )
 
 // ── Mapper ──────────────────────────────────────
@@ -41,6 +43,7 @@ fun UserResponse.toDomain(): User = User(
     totalStudySeconds = totalStudySeconds,
     stones = stones,
     gold = gold,
+    selectedDungeonId = selectedDungeonId,
     createdAt = createdAt,
     updatedAt = updatedAt
 )

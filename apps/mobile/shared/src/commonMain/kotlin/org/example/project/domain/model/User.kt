@@ -12,6 +12,7 @@ data class User(
     val totalStudySeconds: Long,
     val stones: Int,
     val gold: Int,
+    val selectedDungeonId: String? = null,
     val createdAt: String,
     val updatedAt: String
 )

@@ -26,17 +26,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.example.project.domain.model.UserCharacter
 
-// ── カラー ────────────────────────────────────────
-private val BgColor = Color(0xFFF8FAFC)
-private val CardWhite = Color(0xFFFFFFFF)
-private val TextPrimary = Color(0xFF1E293B)
-private val TextSecondary = Color(0xFF64748B)
+// ── カラー（青テーマ）─────────────────────────────────
+private val BgColor = Color(0xFF0B1120)
+private val CardWhite = Color(0xFF111B2E)
+private val TextPrimary = Color(0xFFF1F5F9)
+private val TextSecondary = Color(0xFF94A3B8)
 private val AccentBlue = Color(0xFF3B82F6)
 private val AccentIndigo = Color(0xFF6366F1)
+private val AccentCyan = Color(0xFF22D3EE)
 private val HpRed = Color(0xFFEF4444)
 private val AtkOrange = Color(0xFFF59E0B)
 private val DefBlue = Color(0xFF3B82F6)
 private val HealGreen = Color(0xFF10B981)
+private val BgSurface = Color(0xFF1A2744)
 
 private fun rarityColor(rarity: Int): Color = when (rarity) {
     5 -> Color(0xFFFFD700)
@@ -75,54 +77,58 @@ fun PartyScreenView() {
     val viewModel = remember { org.example.project.di.getPartyViewModel() }
     val uiState by viewModel.uiState.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize().background(BgColor)) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // ヘッダー
-            PartyHeader()
+    var showCharacterPicker by remember { mutableStateOf(false) }
 
-            // コンテンツ
-            Column(
+    Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(BgColor, Color(0xFF0F172A))))) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // ヘッダー + 変更ボタン
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(colors = listOf(AccentIndigo.copy(alpha = 0.08f), Color.Transparent))
+                    )
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // メインキャラクター表示
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("🛡️", fontSize = 28.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("編成", fontSize = 28.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+                    }
+                    Text("メインキャラクターを選択しよう", fontSize = 13.sp, color = TextSecondary)
+                }
+                Button(
+                    onClick = { showCharacterPicker = true },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)
+                ) {
+                    Text("🔄 変更", fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Column(
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            ) {
                 uiState.party?.mainCharacter?.let { mainChar ->
                     MainCharacterSection(mainChar, uiState.ownedWeapons)
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // パーティスロット
-                PartySlotSection(
-                    party = uiState.party,
-                    selectedSlot = uiState.selectedSlot,
-                    onSlotClick = { viewModel.onIntent(PartyIntent.SelectSlot(it)) },
-                    onRemoveSlot = { viewModel.onIntent(PartyIntent.RemoveFromSlot(it)) }
-                )
-
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // キャラクター一覧
                 CharacterListSection(
                     characters = uiState.ownedCharacters,
-                    selectedSlot = uiState.selectedSlot,
+                    selectedSlot = null,
                     onCharacterClick = { charId ->
-                        val slot = uiState.selectedSlot
-                        if (slot != null) {
-                            viewModel.onIntent(PartyIntent.AssignCharacter(slot, charId))
-                        } else {
-                            viewModel.onIntent(PartyIntent.SelectCharacter(charId))
-                        }
+                        viewModel.onIntent(PartyIntent.SelectCharacter(charId))
                     }
                 )
 
-                // タブバー余白
                 Spacer(modifier = Modifier.height(120.dp))
             }
         }
 
-        // キャラ詳細シート
         uiState.selectedCharacter?.let { character ->
             CharacterDetailSheet(
                 character = character,
@@ -131,12 +137,52 @@ fun PartyScreenView() {
             )
         }
 
-        // スロット選択中のインジケーター
-        if (uiState.selectedSlot != null) {
-            SlotSelectionBanner(
-                slotPosition = uiState.selectedSlot!!,
-                onCancel = { viewModel.onIntent(PartyIntent.SelectSlot(0)) }
-            )
+        if (showCharacterPicker) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f))
+                    .clickable { showCharacterPicker = false },
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(CardWhite, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                        .padding(20.dp)
+                        .clickable(enabled = false) {}
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("メインキャラクターを選択", fontSize = 17.sp, fontWeight = FontWeight.Black, color = TextPrimary, modifier = Modifier.weight(1f))
+                        Text("閉じる", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AccentBlue,
+                            modifier = Modifier.clickable { showCharacterPicker = false })
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.heightIn(max = 400.dp)
+                    ) {
+                        items(uiState.ownedCharacters, key = { it.id }) { char ->
+                            val master = char.character ?: return@items
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(BgColor)
+                                    .clickable {
+                                        viewModel.onIntent(PartyIntent.AssignCharacter(1, char.id))
+                                        showCharacterPicker = false
+                                    }
+                                    .padding(vertical = 12.dp)
+                            ) {
+                                Text(characterEmoji(master.id), fontSize = 40.sp)
+                                Text(master.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                Text("Lv.${char.level}", fontSize = 11.sp, color = rarityColor(master.rarity))
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
