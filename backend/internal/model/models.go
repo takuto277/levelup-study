@@ -25,13 +25,14 @@ func ensureUUID(id *uuid.UUID) {
 // ============================================================
 
 type User struct {
-	ID                uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	DisplayName       string    `gorm:"type:varchar(50);not null"                       json:"display_name"`
-	TotalStudySeconds int64     `gorm:"not null;default:0"                              json:"total_study_seconds"`
-	Stones            int       `gorm:"not null;default:0"                              json:"stones"`
-	Gold              int       `gorm:"not null;default:0"                              json:"gold"`
-	CreatedAt         time.Time `gorm:"autoCreateTime"                                  json:"created_at"`
-	UpdatedAt         time.Time `gorm:"autoUpdateTime"                                  json:"updated_at"`
+	ID                 uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	DisplayName        string     `gorm:"type:varchar(50);not null"                       json:"display_name"`
+	TotalStudySeconds  int64      `gorm:"not null;default:0"                              json:"total_study_seconds"`
+	Stones             int        `gorm:"not null;default:0"                              json:"stones"`
+	Gold               int        `gorm:"not null;default:0"                              json:"gold"`
+	SelectedDungeonID  *uuid.UUID `gorm:"type:uuid"                                       json:"selected_dungeon_id"`
+	CreatedAt          time.Time  `gorm:"autoCreateTime"                                  json:"created_at"`
+	UpdatedAt          time.Time  `gorm:"autoUpdateTime"                                  json:"updated_at"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error { ensureUUID(&u.ID); return nil }

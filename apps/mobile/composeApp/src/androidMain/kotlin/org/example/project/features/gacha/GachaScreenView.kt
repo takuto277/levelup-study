@@ -745,7 +745,7 @@ private fun StoneCountBadge(stones: Int) {
             .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(50))
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        Icon(Icons.Default.Star, null, tint = GoldStar, modifier = Modifier.size(16.dp))
+        Text("💎", fontSize = 14.sp)
         Spacer(modifier = Modifier.width(6.dp))
         Text("$stones", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White,
             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)

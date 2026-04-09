@@ -1,29 +1,15 @@
 package org.example.project.features.study
 
-/**
- * 冒険フェーズ（勉強中のアニメーション切り替え用）
- */
 enum class AdventurePhase {
-    /** 前進中（歩きアニメ） */
     WALKING,
-    /** 敵とエンカウント */
     ENCOUNTER,
-    /** 攻撃中（ダメージ演出） */
     ATTACKING,
-    /** 敵を倒した */
     ENEMY_DEFEATED,
-    /** 休憩中（焚き火・回復） */
-    RESTING
+    RESTING,
+    PLAYER_DEAD,
+    FLOOR_CLEAR
 }
 
-/**
- * 勉強・冒険セッションの UI 状態（不変データクラス）
- *
- * すべての画面表示に必要な値はここに集約する。
- * View 側で独自に @State / mutableStateOf で値を保持してはならない。
- *
- * NOTE: StudySessionType / StudySessionStatus は StudyUiState.kt に定義済み
- */
 data class StudyQuestUiState(
     val type: StudySessionType = StudySessionType.STUDY,
     val status: StudySessionStatus = StudySessionStatus.READY,
@@ -40,10 +26,21 @@ data class StudyQuestUiState(
     val enemyHp: Int = 100,
     val enemyMaxHp: Int = 100,
     val lastDamage: Int = 0,
+    val lastPlayerDamage: Int = 0,
     val defeatedCount: Int = 0,
     val serverRewards: List<String> = emptyList(),
     val serverSynced: Boolean? = null,
     val partyLeadName: String = "冒険者",
     val partyLeadImageUrl: String = "",
-    val dungeonName: String? = null
+    val dungeonName: String? = null,
+    // 階層システム
+    val currentFloor: Int = 1,
+    val totalFloors: Int = 10,
+    val floorClearCount: Int = 0,
+    // プレイヤーHP
+    val playerHp: Int = 100,
+    val playerMaxHp: Int = 100,
+    // 獲得報酬トラッカー
+    val earnedXp: Int = 0,
+    val earnedStones: Int = 0
 )

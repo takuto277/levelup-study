@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/takuto277/levelup-study/backend/internal/model"
 	"github.com/takuto277/levelup-study/backend/internal/repository"
 )
@@ -79,7 +80,8 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		DisplayName string `json:"display_name"`
+		DisplayName       string  `json:"display_name"`
+		SelectedDungeonID *string `json:"selected_dungeon_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "リクエストの形式が不正です")
@@ -87,6 +89,16 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.DisplayName != "" {
 		user.DisplayName = req.DisplayName
+	}
+	if req.SelectedDungeonID != nil {
+		if *req.SelectedDungeonID == "" {
+			user.SelectedDungeonID = nil
+		} else {
+			parsed, err := uuid.Parse(*req.SelectedDungeonID)
+			if err == nil {
+				user.SelectedDungeonID = &parsed
+			}
+		}
 	}
 
 	if err := h.repo.Update(user); err != nil {

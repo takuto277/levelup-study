@@ -323,12 +323,8 @@ private struct DungeonCardView: View {
 
                         HStack(spacing: 8) {
                             metaChip("🕐 \(dungeon.recommendedMinutes)分")
+                            metaChip("📍 \(dungeon.totalStages)F")
                             metaChip("\(dungeon.category.emoji) \(dungeon.category.label)")
-                            HStack(spacing: 1) {
-                                ForEach(0..<dungeon.difficulty.rawValue, id: \.self) { _ in
-                                    Text("⭐").font(.system(size: 10))
-                                }
-                            }
                         }
                     }
 
@@ -341,35 +337,6 @@ private struct DungeonCardView: View {
                     }
                 }
                 .padding(16)
-
-                // プログレスバー
-                if dungeon.clearedStages > 0 && !dungeon.isCleared {
-                    VStack(spacing: 6) {
-                        HStack {
-                            Text("Stage \(dungeon.clearedStages) / \(dungeon.totalStages)")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text("\(Int(dungeon.progress * 100))%")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(dungeon.difficulty.color)
-                        }
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(Color(hex: 0xE2E8F0))
-                                    .frame(height: 6)
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(dungeon.difficulty.color)
-                                    .frame(width: geo.size.width * CGFloat(dungeon.progress), height: 6)
-                            }
-                        }
-                        .frame(height: 6)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(Color(UIColor.systemGroupedBackground).opacity(0.6))
-                }
 
                 // 報酬プレビュー（EXPのみ表示）
                 HStack(spacing: 16) {

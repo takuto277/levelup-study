@@ -914,7 +914,7 @@ private struct StoneCountBadge: View {
     let stones: Int
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "sparkles").font(.system(size: 14)).foregroundColor(.yellow)
+            Text("💎").font(.system(size: 14))
             Text("\(stones)").font(.system(size: 15, weight: .bold, design: .monospaced)).foregroundColor(.white)
         }
         .padding(.horizontal, 12).padding(.vertical, 8)

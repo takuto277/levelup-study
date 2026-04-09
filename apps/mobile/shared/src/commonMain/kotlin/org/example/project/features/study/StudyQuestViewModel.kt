@@ -8,30 +8,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.datetime.Clock
 import org.example.project.domain.repository.PartyRepository
 
-/**
- * 勉強クエスト画面の ViewModel
- *
- * - MutableStateFlow を内部保持、外部には StateFlow のみ公開
- * - UI からの入力は onIntent() に集約
- * - タイマー進行・冒険フェーズ・敵エンカウント・ログ生成すべて ViewModel が管理
- * - セッション完了時に StudyUseCase 経由で Go API に報酬リクエスト送信
- */
 class StudyQuestViewModel(
     private val studyUseCase: StudyUseCase? = null,
     private val partyRepository: PartyRepository? = null
 ) {
-
     private val _uiState = MutableStateFlow(StudyQuestUiState())
     val uiState: StateFlow<StudyQuestUiState> = _uiState.asStateFlow()
 
     private var timerJob: Job? = null
-    // タイマー進行はUIスレッド依存にしない（KMP環境でMain dispatcher未設定でも動くようにする）
     private val viewModelScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var sessionStartedAt: String? = null
 
-    init {
-        loadPartyLead()
-    }
+    init { loadPartyLead() }
 
     private fun loadPartyLead() {
         val repo = partyRepository ?: return
@@ -48,29 +36,63 @@ class StudyQuestViewModel(
                         )
                     }
                 }
-            } catch (_: Exception) {
-                // パーティ未編成時はデフォルト値のまま
-            }
+            } catch (_: Exception) { }
         }
     }
 
-    // ── 敵データ ──────────────────────────────
-    private data class EnemyData(val name: String, val emoji: String, val hp: Int)
+    // ── ダンジョン別の敵テーブル ──
+    private data class EnemyData(val name: String, val emoji: String, val hp: Int, val atk: Int)
 
-    private val enemies = listOf(
-        EnemyData("スライム", "🟢", 30),
-        EnemyData("ゴブリン", "👺", 50),
-        EnemyData("コウモリ", "🦇", 40),
-        EnemyData("スケルトン", "💀", 60),
-        EnemyData("オーク", "👹", 80),
-        EnemyData("ドラゴン", "🐉", 120),
-        EnemyData("ダークウィザード", "🧙‍♀️", 100),
-        EnemyData("ゴーレム", "🗿", 90),
-        EnemyData("キメラ", "🦁", 110),
-        EnemyData("デーモン", "😈", 150)
+    private val defaultEnemies = listOf(
+        EnemyData("スライム", "🟢", 30, 5),
+        EnemyData("ゴブリン", "👺", 50, 8),
+        EnemyData("コウモリ", "🦇", 40, 6),
+        EnemyData("スケルトン", "💀", 60, 10),
+        EnemyData("オーク", "👹", 80, 12),
+        EnemyData("ゴーレム", "🗿", 90, 14),
+        EnemyData("ダークウィザード", "🧙‍♀️", 100, 15),
+        EnemyData("キメラ", "🦁", 110, 16),
+        EnemyData("ドラゴン", "🐉", 120, 18),
+        EnemyData("デーモン", "😈", 150, 20)
     )
 
-    // ── ログメッセージ ──────────────────────────────
+    private val forestEnemies = listOf(
+        EnemyData("毒キノコ", "🍄", 25, 4),
+        EnemyData("ウルフ", "🐺", 40, 7),
+        EnemyData("トレント", "🌲", 70, 9),
+        EnemyData("フォレストスピリット", "🧚", 55, 6),
+        EnemyData("ベアー", "🐻", 90, 13)
+    )
+
+    private val caveEnemies = listOf(
+        EnemyData("コウモリ群", "🦇", 35, 5),
+        EnemyData("クリスタルゴーレム", "💎", 80, 11),
+        EnemyData("ケーブスパイダー", "🕷️", 45, 8),
+        EnemyData("ロックワーム", "🪱", 100, 14),
+        EnemyData("ミミック", "📦", 70, 10)
+    )
+
+    private val towerEnemies = listOf(
+        EnemyData("フレイムインプ", "🔥", 40, 8),
+        EnemyData("ファイアエレメンタル", "🌋", 90, 15),
+        EnemyData("サラマンダー", "🦎", 60, 10),
+        EnemyData("フェニックス", "🐦", 130, 18),
+        EnemyData("イフリート", "😈", 160, 22)
+    )
+
+    private fun getEnemiesForDungeon(dungeonName: String?): List<EnemyData> {
+        if (dungeonName == null) return defaultEnemies
+        return when {
+            dungeonName.contains("森") || dungeonName.contains("forest", true) -> forestEnemies
+            dungeonName.contains("洞窟") || dungeonName.contains("水晶") || dungeonName.contains("cave", true) -> caveEnemies
+            dungeonName.contains("塔") || dungeonName.contains("炎") || dungeonName.contains("tower", true) -> towerEnemies
+            dungeonName.contains("迷宮") || dungeonName.contains("コード") -> defaultEnemies.shuffled()
+            else -> defaultEnemies
+        }
+    }
+
+    private var currentEnemyTable: List<EnemyData> = defaultEnemies
+
     private val walkingMessages = listOf(
         "ダンジョンの奥へ進んでいる…",
         "足音が響く暗い通路を歩いている…",
@@ -87,19 +109,17 @@ class StudyQuestViewModel(
         "仲間と次の作戦を練っている…"
     )
 
-    // ── フェーズタイミング ──────────────────────────
-    // 歩き→エンカウント→攻撃(繰り返し)→討伐→歩き のサイクル
     private companion object {
-        const val WALK_DURATION = 8L       // 歩行フェーズの秒数
-        const val ENCOUNTER_DURATION = 2L  // エンカウント演出の秒数
-        const val ATTACK_INTERVAL = 3L     // 攻撃間隔（秒）
-        const val DEFEAT_DURATION = 3L     // 討伐演出の秒数
+        const val WALK_DURATION = 6L
+        const val ENCOUNTER_DURATION = 2L
+        const val ATTACK_INTERVAL = 3L
+        const val DEFEAT_DURATION = 2L
+        const val DEAD_DURATION = 3L
+        const val FLOOR_CLEAR_DURATION = 3L
     }
 
-    // フェーズ内の経過秒数をトラック
     private var phaseElapsed = 0L
 
-    // ── Intent ハンドラ ─────────────────────────────
     fun onIntent(intent: StudyQuestIntent) {
         when (intent) {
             is StudyQuestIntent.StartQuest -> startQuest(intent.studyMinutes, intent.genreId, intent.dungeonName)
@@ -110,7 +130,6 @@ class StudyQuestViewModel(
         }
     }
 
-    // ── 公開ユーティリティ（iOS 側 KMP ブリッジ用に残す） ──
     fun formatTime(seconds: Long): String {
         val m = seconds / 60
         val s = seconds % 60
@@ -123,25 +142,20 @@ class StudyQuestViewModel(
             state.targetStudyMinutes.toLong() * 60
         else
             state.targetBreakMinutes.toLong() * 60
-
         return if (state.type == StudySessionType.STUDY) {
-            if (state.elapsedSeconds <= targetSeconds) {
-                targetSeconds - state.elapsedSeconds
-            } else {
-                state.elapsedSeconds
-            }
+            if (state.elapsedSeconds <= targetSeconds) targetSeconds - state.elapsedSeconds
+            else state.elapsedSeconds
         } else {
             (targetSeconds - state.elapsedSeconds).coerceAtLeast(0)
         }
     }
 
-    // ── 内部ロジック ────────────────────────────────
-
     private fun startQuest(studyMinutes: Int, genreId: String?, dungeonName: String? = null) {
         if (_uiState.value.status == StudySessionStatus.RUNNING) return
 
         sessionStartedAt = Clock.System.now().toString()
-        val firstEnemy = enemies.random()
+        currentEnemyTable = getEnemiesForDungeon(dungeonName)
+        val firstEnemy = currentEnemyTable.random()
         phaseElapsed = 0L
 
         _uiState.update {
@@ -152,7 +166,7 @@ class StudyQuestViewModel(
                 elapsedSeconds = 0,
                 isOvertime = false,
                 currentLog = listOf(
-                    if (dungeonName != null) "「${dungeonName}」の探索を開始した！" else "冒険を開始した！"
+                    if (dungeonName != null) "「${dungeonName}」1F の探索を開始した！" else "冒険を開始した！"
                 ),
                 displayTime = formatTime(studyMinutes.toLong() * 60),
                 genreId = genreId,
@@ -162,8 +176,16 @@ class StudyQuestViewModel(
                 enemyHp = firstEnemy.hp,
                 enemyMaxHp = firstEnemy.hp,
                 lastDamage = 0,
+                lastPlayerDamage = 0,
                 defeatedCount = 0,
-                dungeonName = dungeonName
+                dungeonName = dungeonName,
+                currentFloor = 1,
+                totalFloors = 10,
+                floorClearCount = 0,
+                playerHp = 100,
+                playerMaxHp = 100,
+                earnedXp = 0,
+                earnedStones = 0
             )
         }
         startTimer()
@@ -180,16 +202,14 @@ class StudyQuestViewModel(
                 _uiState.update { it.copy(status = StudySessionStatus.RUNNING) }
                 startTimer()
             }
-            else -> { /* READY / FINISHED は何もしない */ }
+            else -> { }
         }
     }
 
     private fun endQuest() {
-        // 経過時間分の報酬で結果画面へ
         timerJob?.cancel()
         _uiState.update { it.copy(status = StudySessionStatus.FINISHED) }
 
-        // サーバーに勉強セッション完了を送信（UseCase が注入されている場合のみ）
         val useCase = studyUseCase ?: return
         val state = _uiState.value
         val endedAt = Clock.System.now().toString()
@@ -210,11 +230,8 @@ class StudyQuestViewModel(
                         serverSynced = true
                     )
                 }
-            } catch (e: Exception) {
-                // オフライン時 → ローカルに保存（TODO: 実装）
-                _uiState.update {
-                    it.copy(serverSynced = false)
-                }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(serverSynced = false) }
             }
         }
     }
@@ -242,7 +259,10 @@ class StudyQuestViewModel(
                 ),
                 displayTime = formatTime(targetSec),
                 adventurePhase = if (newType == StudySessionType.BREAK) AdventurePhase.RESTING else AdventurePhase.WALKING,
-                lastDamage = 0
+                lastDamage = 0,
+                lastPlayerDamage = 0,
+                currentFloor = if (newType == StudySessionType.STUDY) 1 else it.currentFloor,
+                playerHp = if (newType == StudySessionType.STUDY) it.playerMaxHp else it.playerHp
             )
         }
         startTimer()
@@ -257,10 +277,6 @@ class StudyQuestViewModel(
                 displayTime = formatTime(it.targetStudyMinutes.toLong() * 60)
             )
         }
-    }
-
-    private fun spawnNewEnemy(): EnemyData {
-        return enemies.random()
     }
 
     private fun startTimer() {
@@ -286,7 +302,6 @@ class StudyQuestViewModel(
                     }
 
                     if (state.type == StudySessionType.BREAK) {
-                        // 休憩中: RESTINGフェーズ、ログ追加のみ
                         var newLogs = state.currentLog
                         if (newElapsed % 15 == 0L) {
                             newLogs = (newLogs + breakMessages.random()).takeLast(4)
@@ -299,12 +314,10 @@ class StudyQuestViewModel(
                             adventurePhase = AdventurePhase.RESTING
                         )
                     } else {
-                        // 勉強中: 冒険フェーズ管理
                         advanceAdventurePhase(state, newElapsed, overTime, displaySec)
                     }
                 }
 
-                // 休憩の自動終了
                 val state = _uiState.value
                 if (state.type == StudySessionType.BREAK) {
                     val targetSeconds = state.targetBreakMinutes.toLong() * 60
@@ -330,75 +343,128 @@ class StudyQuestViewModel(
         var enemyName = state.enemyName
         var enemyEmoji = state.enemyEmoji
         var lastDamage = 0
+        var lastPlayerDamage = 0
         var defeatedCount = state.defeatedCount
+        var playerHp = state.playerHp
+        var currentFloor = state.currentFloor
+        var floorClearCount = state.floorClearCount
+        var earnedXp = state.earnedXp
+        var earnedStones = state.earnedStones
 
         when (phase) {
             AdventurePhase.WALKING -> {
                 if (phaseElapsed >= WALK_DURATION) {
-                    // エンカウント!
                     phase = AdventurePhase.ENCOUNTER
                     phaseElapsed = 0L
-                    newLogs = (newLogs + "⚠️ ${enemyName}が現れた！").takeLast(4)
+                    newLogs = (newLogs + "⚠️ ${currentFloor}F: ${enemyName}が現れた！").takeLast(5)
                 } else if (phaseElapsed % 3 == 0L) {
-                    newLogs = (newLogs + walkingMessages.random()).takeLast(4)
+                    newLogs = (newLogs + walkingMessages.random()).takeLast(5)
                 }
             }
 
             AdventurePhase.ENCOUNTER -> {
                 if (phaseElapsed >= ENCOUNTER_DURATION) {
-                    // 戦闘開始!
                     phase = AdventurePhase.ATTACKING
                     phaseElapsed = 0L
-                    newLogs = (newLogs + "⚔️ ${enemyName}に斬りかかった！").takeLast(4)
+                    newLogs = (newLogs + "⚔️ ${enemyName}に斬りかかった！").takeLast(5)
                 }
             }
 
             AdventurePhase.ATTACKING -> {
                 if (phaseElapsed % ATTACK_INTERVAL == 0L) {
-                    // ダメージ計算
-                    val baseDamage = (10..25).random()
-                    val critChance = (1..10).random()
-                    val damage = if (critChance >= 9) baseDamage * 2 else baseDamage
-                    val isCrit = critChance >= 9
+                    // プレイヤーの攻撃
+                    val baseDmg = (10..25).random()
+                    val critRoll = (1..10).random()
+                    val dmg = if (critRoll >= 9) baseDmg * 2 else baseDmg
+                    val isCrit = critRoll >= 9
+                    enemyHp = (enemyHp - dmg).coerceAtLeast(0)
+                    lastDamage = dmg
 
-                    enemyHp = (enemyHp - damage).coerceAtLeast(0)
-                    lastDamage = damage
-
-                    val dmgMsg = if (isCrit) {
-                        "💥 クリティカル！${enemyName}に${damage}のダメージ！"
-                    } else {
-                        "⚔️ ${enemyName}に${damage}のダメージを与えた！"
-                    }
-                    newLogs = (newLogs + dmgMsg).takeLast(4)
+                    val dmgMsg = if (isCrit) "💥 クリティカル！${enemyName}に${dmg}ダメージ！"
+                    else "⚔️ ${enemyName}に${dmg}ダメージ！"
+                    newLogs = (newLogs + dmgMsg).takeLast(5)
 
                     if (enemyHp <= 0) {
-                        // 敵を倒した!
                         phase = AdventurePhase.ENEMY_DEFEATED
                         phaseElapsed = 0L
                         defeatedCount++
-                        val expGain = enemyMaxHp / 2
-                        newLogs = (newLogs + "🎉 ${enemyName}を倒した！ 経験値+${expGain}").takeLast(4)
+                        val xpGain = enemyMaxHp / 2
+                        earnedXp += xpGain
+                        newLogs = (newLogs + "🎉 ${enemyName}を倒した！ EXP+${xpGain}").takeLast(5)
+                    } else {
+                        // 敵の反撃
+                        val enemyData = currentEnemyTable.find { it.name == enemyName }
+                        val enemyAtk = enemyData?.atk ?: 8
+                        val enemyDmg = (enemyAtk - 2..enemyAtk + 3).random().coerceAtLeast(1)
+                        playerHp = (playerHp - enemyDmg).coerceAtLeast(0)
+                        lastPlayerDamage = enemyDmg
+                        newLogs = (newLogs + "🔻 ${enemyName}の反撃！ ${enemyDmg}ダメージ！").takeLast(5)
+
+                        if (playerHp <= 0) {
+                            phase = AdventurePhase.PLAYER_DEAD
+                            phaseElapsed = 0L
+                            newLogs = (newLogs + "💀 力尽きた…1Fからやり直し！").takeLast(5)
+                        }
                     }
                 }
             }
 
             AdventurePhase.ENEMY_DEFEATED -> {
                 if (phaseElapsed >= DEFEAT_DURATION) {
-                    // 新しい敵を準備して歩き始める
-                    val newEnemy = spawnNewEnemy()
+                    // 1フロアにつき敵1体 → 倒したら階層クリア判定
+                    if (currentFloor >= state.totalFloors) {
+                        // 全階層クリア！
+                        phase = AdventurePhase.FLOOR_CLEAR
+                        phaseElapsed = 0L
+                        floorClearCount++
+                        val bonusStones = 5
+                        earnedStones += bonusStones
+                        newLogs = (newLogs + "🏆 全${state.totalFloors}F制覇！ 💎+${bonusStones} 1Fから再挑戦！").takeLast(5)
+                    } else {
+                        currentFloor++
+                        val newEnemy = currentEnemyTable.random()
+                        enemyName = newEnemy.name
+                        enemyEmoji = newEnemy.emoji
+                        enemyHp = newEnemy.hp
+                        enemyMaxHp = newEnemy.hp
+                        phase = AdventurePhase.WALKING
+                        phaseElapsed = 0L
+                        newLogs = (newLogs + "📍 ${currentFloor}Fへ進んだ…").takeLast(5)
+                    }
+                }
+            }
+
+            AdventurePhase.FLOOR_CLEAR -> {
+                if (phaseElapsed >= FLOOR_CLEAR_DURATION) {
+                    currentFloor = 1
+                    playerHp = state.playerMaxHp
+                    val newEnemy = currentEnemyTable.random()
                     enemyName = newEnemy.name
                     enemyEmoji = newEnemy.emoji
                     enemyHp = newEnemy.hp
                     enemyMaxHp = newEnemy.hp
                     phase = AdventurePhase.WALKING
                     phaseElapsed = 0L
-                    newLogs = (newLogs + "さらに奥へ進んでいく…").takeLast(4)
+                    newLogs = (newLogs + "1Fから再スタート！ HPも全回復した！").takeLast(5)
                 }
             }
 
-            AdventurePhase.RESTING -> {
-                // 勉強中にRESTINGにはならないが念のため
+            AdventurePhase.PLAYER_DEAD -> {
+                if (phaseElapsed >= DEAD_DURATION) {
+                    currentFloor = 1
+                    playerHp = state.playerMaxHp
+                    val newEnemy = currentEnemyTable.random()
+                    enemyName = newEnemy.name
+                    enemyEmoji = newEnemy.emoji
+                    enemyHp = newEnemy.hp
+                    enemyMaxHp = newEnemy.hp
+                    phase = AdventurePhase.WALKING
+                    phaseElapsed = 0L
+                    newLogs = (newLogs + "復活！ 1Fから再挑戦だ！").takeLast(5)
+                }
             }
+
+            AdventurePhase.RESTING -> { }
         }
 
         return state.copy(
@@ -412,7 +478,13 @@ class StudyQuestViewModel(
             enemyHp = enemyHp,
             enemyMaxHp = enemyMaxHp,
             lastDamage = lastDamage,
-            defeatedCount = defeatedCount
+            lastPlayerDamage = lastPlayerDamage,
+            defeatedCount = defeatedCount,
+            playerHp = playerHp,
+            currentFloor = currentFloor,
+            floorClearCount = floorClearCount,
+            earnedXp = earnedXp,
+            earnedStones = earnedStones
         )
     }
 

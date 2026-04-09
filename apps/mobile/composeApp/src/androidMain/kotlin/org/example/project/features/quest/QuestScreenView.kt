@@ -69,20 +69,7 @@ fun QuestScreenView() {
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // セクション: 進行中
-                val inProgress = uiState.dungeons.filter { !it.isLocked && !it.isCleared && it.clearedStages > 0 }
-                if (inProgress.isNotEmpty()) {
-                    item { SectionTitle("⚔️ 探索中のダンジョン") }
-                    items(inProgress, key = { it.id }) { dungeon ->
-                        DungeonCard(
-                            dungeon = dungeon,
-                            onClick = { viewModel.onIntent(QuestIntent.SelectDungeon(dungeon.id)) }
-                        )
-                    }
-                }
-
-                // セクション: 挑戦可能
-                val available = uiState.dungeons.filter { !it.isLocked && it.clearedStages == 0 }
+                val available = uiState.dungeons.filter { !it.isLocked }
                 if (available.isNotEmpty()) {
                     item { SectionTitle("🗺️ 挑戦可能なダンジョン") }
                     items(available, key = { it.id }) { dungeon ->
@@ -289,44 +276,7 @@ private fun DungeonCard(
                 }
             }
 
-            // プログレスバー（進行中のみ）
-            if (dungeon.clearedStages > 0 && !dungeon.isCleared) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFF8FAFC))
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Stage ${dungeon.clearedStages} / ${dungeon.totalStages}",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextSecondary
-                        )
-                        Text(
-                            "${(dungeon.progress * 100).toInt()}%",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = difficultyColor(dungeon.difficulty)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    LinearProgressIndicator(
-                        progress = { dungeon.progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp)),
-                        color = difficultyColor(dungeon.difficulty),
-                        trackColor = Color(0xFFE2E8F0)
-                    )
-                }
-            }
+            // -- プログレスバー削除済み --
 
             // 報酬プレビュー
             Row(
@@ -492,7 +442,6 @@ private fun DungeonDetailSheet(
                         Spacer(modifier = Modifier.height(12.dp))
                         DetailInfoRow("推奨時間", "🕐 ${dungeon.recommendedMinutes}分")
                         DetailInfoRow("総ステージ", "📍 ${dungeon.totalStages}ステージ")
-                        DetailInfoRow("進行状況", "⚔️ ${dungeon.clearedStages} / ${dungeon.totalStages} クリア")
                         DetailInfoRow(
                             "難易度",
                             buildString { repeat(dungeon.difficulty.stars) { append("⭐") } }

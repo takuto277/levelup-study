@@ -202,15 +202,55 @@ private fun MainQuestView(
             }
             Box(
                 modifier = Modifier
-                    .background(EmeraldGreen.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .background(DarkSurface, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
-                Text(
-                    text = "💀 ${uiState.defeatedCount}",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = EmeraldGreen
-                )
+                Text("📍 ${uiState.currentFloor}F/${uiState.totalFloors}F", fontSize = 11.sp, fontWeight = FontWeight.Black, color = Color.White)
+            }
+            Box(
+                modifier = Modifier
+                    .background(EmeraldGreen.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text("💀 ${uiState.defeatedCount}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = EmeraldGreen)
+            }
+        }
+
+        // プレイヤーHPバー
+        if (!isBreak) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("🧙‍♂️", fontSize = 16.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("HP", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+                        Text("${uiState.playerHp}/${uiState.playerMaxHp}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(DarkSurface)
+                    ) {
+                        val ratio = if (uiState.playerMaxHp > 0) uiState.playerHp.toFloat() / uiState.playerMaxHp else 0f
+                        Box(
+                            modifier = Modifier.fillMaxHeight().fillMaxWidth(ratio).background(
+                                when {
+                                    ratio > 0.5f -> EmeraldGreen
+                                    ratio > 0.25f -> FireOrange
+                                    else -> FireRed
+                                }, RoundedCornerShape(3.dp)
+                            )
+                        )
+                    }
+                }
+                if (uiState.lastPlayerDamage > 0) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("-${uiState.lastPlayerDamage}", fontSize = 14.sp, fontWeight = FontWeight.Black, color = FireRed)
+                }
             }
         }
 
@@ -594,6 +634,32 @@ private fun AdventureScene(
             AdventurePhase.RESTING -> {
                 BreakScene(pulseAlpha)
             }
+
+            AdventurePhase.PLAYER_DEAD -> {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("💀", fontSize = 48.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("力尽きた…", fontSize = 18.sp, fontWeight = FontWeight.Black, color = FireRed)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("1Fからやり直し！", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+                }
+            }
+
+            AdventurePhase.FLOOR_CLEAR -> {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("🏆", fontSize = 48.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("全階層制覇！", fontSize = 18.sp, fontWeight = FontWeight.Black, color = FireOrange)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("💎 +5  1Fから再挑戦！", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = PurpleGlow)
+                }
+            }
         }
     }
 }
@@ -732,9 +798,9 @@ private fun ResultScreen(
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             RewardItem("⏱", "集中時間", "${actualMinutes}分")
-                            RewardItem("⭐", "経験値", "+${actualMinutes * 10}")
+                            RewardItem("⭐", "経験値", "+${uiState.earnedXp}")
                             RewardItem("💀", "討伐数", "${uiState.defeatedCount}体")
-                            RewardItem("💎", "結晶", "+${actualMinutes / 5 + uiState.defeatedCount}")
+                            RewardItem("💎", "ダイヤ", "+${uiState.earnedStones}")
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                         Box(

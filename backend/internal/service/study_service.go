@@ -216,22 +216,35 @@ func (s *StudyService) ListSessions(userID uuid.UUID, limit, offset int) ([]mode
 	return s.studyRepo.ListSessionsByUser(userID, limit, offset)
 }
 
-// addXPToParty — パーティメンバー全員に経験値を分配する
+// addXPToParty — パーティメンバー全員に経験値を分配し、レベルアップ処理も行う
 func (s *StudyService) addXPToParty(tx *gorm.DB, userID uuid.UUID, totalXP int) error {
 	slots, err := s.partyRepo.GetByUser(userID)
 	if err != nil || len(slots) == 0 {
-		return nil // パーティ未編成の場合はスキップ
+		return nil
 	}
 
-	// パーティメンバーに均等配分（端数切り捨て）
 	xpPerChar := totalXP / len(slots)
 	if xpPerChar <= 0 {
 		return nil
 	}
 
+	const xpPerLevel = 100
+
 	for _, slot := range slots {
 		if err := s.charRepo.AddXP(tx, slot.UserCharacterID, xpPerChar); err != nil {
 			return err
+		}
+		var uc model.UserCharacter
+		if err := tx.First(&uc, "id = ?", slot.UserCharacterID).Error; err != nil {
+			continue
+		}
+		newLevel := uc.Level + uc.CurrentXP/xpPerLevel
+		remainXP := uc.CurrentXP % xpPerLevel
+		if newLevel > uc.Level {
+			if err := tx.Model(&model.UserCharacter{}).Where("id = ?", uc.ID).
+				Updates(map[string]interface{}{"level": newLevel, "current_xp": remainXP}).Error; err != nil {
+				return err
+			}
 		}
 	}
 	return nil

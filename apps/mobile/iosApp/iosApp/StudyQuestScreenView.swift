@@ -75,12 +75,20 @@ struct StudyQuestScreenView: View {
             enemyHp: 100,
             enemyMaxHp: 100,
             lastDamage: 0,
+            lastPlayerDamage: 0,
             defeatedCount: 0,
             serverRewards: [],
             serverSynced: nil,
             partyLeadName: "冒険者",
             partyLeadImageUrl: "",
-            dungeonName: dungeonName
+            dungeonName: dungeonName,
+            currentFloor: 1,
+            totalFloors: 10,
+            floorClearCount: 0,
+            playerHp: 100,
+            playerMaxHp: 100,
+            earnedXp: 0,
+            earnedStones: 0
         ))
     }
 
@@ -166,18 +174,67 @@ struct StudyQuestScreenView: View {
 
                 Spacer()
 
+                // 階層
+                Text("📍 \(uiState.currentFloor)F/\(uiState.totalFloors)F")
+                    .font(.system(size: 11, weight: .heavy))
+                    .foregroundColor(textWhite)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(darkSurface)
+                    .cornerRadius(10)
+
                 // 撃破数
                 Text("💀 \(uiState.defeatedCount)")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundColor(emeraldGreen)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
                     .background(emeraldGreen.opacity(0.15))
-                    .cornerRadius(12)
+                    .cornerRadius(10)
             }
             .padding(.horizontal, 24)
 
             Spacer()
+
+            // プレイヤーHPバー
+            if !isBreak {
+                HStack(spacing: 8) {
+                    Text("🧙‍♂️").font(.system(size: 16))
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text("HP")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(textMuted)
+                            Spacer()
+                            Text("\(uiState.playerHp)/\(uiState.playerMaxHp)")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(textWhite)
+                        }
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(darkSurface)
+                                    .frame(height: 6)
+                                let ratio = uiState.playerMaxHp > 0
+                                    ? CGFloat(uiState.playerHp) / CGFloat(uiState.playerMaxHp)
+                                    : 0
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(ratio > 0.5 ? emeraldGreen : (ratio > 0.25 ? fireOrange : fireRed))
+                                    .frame(width: geo.size.width * ratio, height: 6)
+                            }
+                        }
+                        .frame(height: 6)
+                    }
+                    if uiState.lastPlayerDamage > 0 {
+                        Text("-\(uiState.lastPlayerDamage)")
+                            .font(.system(size: 14, weight: .heavy))
+                            .foregroundColor(fireRed)
+                    }
+                }
+                .padding(.horizontal, 24)
+            }
+
+            Spacer().frame(height: 8)
 
             // 冒険シーン
             ZStack {
@@ -416,6 +473,28 @@ struct StudyQuestScreenView: View {
             case .resting:
                 breakSceneContent
 
+            case .playerDead:
+                VStack(spacing: 8) {
+                    Text("💀").font(.system(size: 48))
+                    Text("力尽きた…")
+                        .font(.system(size: 18, weight: .heavy))
+                        .foregroundColor(fireRed)
+                    Text("1Fからやり直し！")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(textMuted)
+                }
+
+            case .floorClear:
+                VStack(spacing: 8) {
+                    Text("🏆").font(.system(size: 48))
+                    Text("全階層制覇！")
+                        .font(.system(size: 18, weight: .heavy))
+                        .foregroundColor(fireOrange)
+                    Text("💎 +5  1Fから再挑戦！")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(purpleGlow)
+                }
+
             default:
                 EmptyView()
             }
@@ -510,11 +589,11 @@ struct StudyQuestScreenView: View {
                             Spacer()
                             rewardItem(emoji: "⏱", label: "集中時間", value: "\(actualMinutes)分")
                             Spacer()
-                            rewardItem(emoji: "⭐", label: "経験値", value: "+\(actualMinutes * 10)")
+                            rewardItem(emoji: "⭐", label: "経験値", value: "+\(uiState.earnedXp)")
                             Spacer()
                             rewardItem(emoji: "💀", label: "討伐数", value: "\(uiState.defeatedCount)体")
                             Spacer()
-                            rewardItem(emoji: "💎", label: "結晶", value: "+\(actualMinutes / 5 + Int(uiState.defeatedCount))")
+                            rewardItem(emoji: "💎", label: "ダイヤ", value: "+\(uiState.earnedStones)")
                             Spacer()
                         }
                     } else {
@@ -596,38 +675,38 @@ struct StudyQuestScreenView: View {
         if isOvertime { return "⚡" }
         if isPaused { return "⏸" }
         if isBreak { return "🏕️" }
-        switch phase {
-        case .walking: return "🚶"
-        case .encounter: return "⚠️"
-        case .attacking: return "⚔️"
-        case .enemyDefeated: return "🎉"
-        case .resting: return "🏕️"
-        default: return "⚔️"
-        }
+        if phase == .playerDead { return "💀" }
+        if phase == .floorClear { return "🏆" }
+        if phase == .walking { return "🚶" }
+        if phase == .encounter { return "⚠️" }
+        if phase == .attacking { return "⚔️" }
+        if phase == .enemyDefeated { return "🎉" }
+        if phase == .resting { return "🏕️" }
+        return "⚔️"
     }
 
     private func phaseStatusText(phase: AdventurePhase, isOvertime: Bool, isPaused: Bool, isBreak: Bool) -> String {
         if isOvertime { return "限界突破中" }
         if isPaused { return "一時停止" }
         if isBreak { return "休憩中" }
-        switch phase {
-        case .walking: return "探索中"
-        case .encounter: return "エンカウント！"
-        case .attacking: return "戦闘中"
-        case .enemyDefeated: return "討伐完了！"
-        case .resting: return "休憩中"
-        default: return "冒険中"
-        }
+        if phase == .playerDead { return "力尽きた…" }
+        if phase == .floorClear { return "全階層制覇！" }
+        if phase == .walking { return "探索中" }
+        if phase == .encounter { return "エンカウント！" }
+        if phase == .attacking { return "戦闘中" }
+        if phase == .enemyDefeated { return "討伐完了！" }
+        if phase == .resting { return "休憩中" }
+        return "冒険中"
     }
 
     private func phaseStatusColor(phase: AdventurePhase, isOvertime: Bool, isBreak: Bool) -> Color {
         if isOvertime { return purpleGlow }
         if isBreak { return breakAccent }
-        switch phase {
-        case .attacking: return fireRed
-        case .encounter: return fireOrange
-        default: return accentBlue
-        }
+        if phase == .playerDead { return fireRed }
+        if phase == .floorClear { return fireOrange }
+        if phase == .attacking { return fireRed }
+        if phase == .encounter { return fireOrange }
+        return accentBlue
     }
 
     private func rewardItem(emoji: String, label: String, value: String) -> some View {
