@@ -16,10 +16,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
 
 // ── カラー（青テーマ）────────────────────────────
 private val BgColor = Color(0xFF0B1120)
@@ -260,12 +265,27 @@ fun HomeTabContent(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // キャラクター
-                Text(
-                    "🧙‍♂️",
-                    fontSize = 100.sp,
-                    modifier = Modifier.offset(y = bounceY.dp)
-                )
+                val context = LocalContext.current
+                val playerIdleRes = remember {
+                    context.resources.getIdentifier("sprite_player_idle_1", "drawable", context.packageName)
+                }
+                if (playerIdleRes != 0) {
+                    Image(
+                        painter = painterResource(playerIdleRes),
+                        contentDescription = "Player",
+                        modifier = Modifier
+                            .size(160.dp)
+                            .offset(y = bounceY.dp),
+                        contentScale = ContentScale.Fit,
+                        filterQuality = FilterQuality.None
+                    )
+                } else {
+                    Text(
+                        "🧙‍♂️",
+                        fontSize = 100.sp,
+                        modifier = Modifier.offset(y = bounceY.dp)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 

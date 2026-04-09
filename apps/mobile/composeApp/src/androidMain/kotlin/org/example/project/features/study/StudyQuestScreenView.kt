@@ -543,43 +543,49 @@ private fun AdventureScene(
             }
 
             AdventurePhase.ATTACKING -> {
-                // 斬撃エフェクト（Canvas描画）
-                if (lastDamage > 0) {
+                val isStriking = lastDamage > 0
+
+                if (isStriking) {
                     SlashEffect(damageFlash = damageFlash, modifier = Modifier.fillMaxSize())
                 }
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
+                        .padding(horizontal = 16.dp)
                         .align(Alignment.Center),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (hasPlayerSprite) {
                         PlayerSprite(
-                            phase = "attack",
-                            size = 120.dp,
-                            modifier = Modifier.offset(x = attackShake.dp)
+                            phase = if (isStriking) "attack" else "idle",
+                            size = 110.dp,
+                            modifier = Modifier.offset(
+                                x = if (isStriking) 16.dp else walkOffset.dp * 0.4f,
+                                y = walkBounce.dp * 0.5f
+                            )
                         )
                     } else {
                         Text(
                             "🧙‍♂️",
                             fontSize = 56.sp,
-                            modifier = Modifier.offset(x = attackShake.dp)
+                            modifier = Modifier.offset(x = if (isStriking) 16.dp else walkOffset.dp * 0.4f)
                         )
                     }
 
-                    Text(
-                        "⚔️",
-                        fontSize = 28.sp,
-                        color = FireRed.copy(alpha = pulseAlpha),
-                        modifier = Modifier.offset(y = (-8).dp)
-                    )
+                    if (isStriking) {
+                        Text(
+                            "⚔️",
+                            fontSize = 28.sp,
+                            color = FireRed.copy(alpha = pulseAlpha),
+                            modifier = Modifier.offset(y = (-8).dp)
+                        )
+                    }
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         AnimatedVisibility(
-                            visible = lastDamage > 0,
+                            visible = isStriking,
                             enter = fadeIn(tween(100)) + slideInVertically { -20 },
                             exit = fadeOut(tween(500))
                         ) {
@@ -595,9 +601,10 @@ private fun AdventureScene(
                             BattleSprite(
                                 spriteKey = enemySpriteKey,
                                 spriteType = "enemy",
-                                size = 120.dp,
+                                size = 110.dp,
                                 modifier = Modifier.offset(
-                                    x = if (lastDamage > 0) attackShake.dp else 0.dp
+                                    x = if (isStriking) attackShake.dp else 0.dp,
+                                    y = walkBounce.dp * 0.3f
                                 )
                             )
                         } else {
@@ -605,7 +612,7 @@ private fun AdventureScene(
                                 enemyEmoji,
                                 fontSize = 56.sp,
                                 modifier = Modifier.offset(
-                                    x = if (lastDamage > 0) attackShake.dp else 0.dp
+                                    x = if (isStriking) attackShake.dp else 0.dp
                                 )
                             )
                         }

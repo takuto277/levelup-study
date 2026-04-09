@@ -76,10 +76,14 @@ struct DungeonBackgroundView: View {
     var body: some View {
         let bgName = dungeonBgName(dungeonName)
         if UIImage(named: bgName) != nil {
-            Image(bgName)
-                .resizable()
-                .scaledToFill()
-                .opacity(0.7)
+            GeometryReader { geo in
+                Image(bgName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+                    .opacity(0.7)
+            }
         }
     }
 }
@@ -467,15 +471,9 @@ struct StudyQuestScreenView: View {
         return ZStack {
             if hasBg {
                 DungeonBackgroundView(dungeonName: uiState.dungeonName)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 24))
-            }
-
-            VStack {
-                Spacer()
-                Rectangle()
-                    .fill(textMuted.opacity(hasBg ? 0.1 : 0.2))
-                    .frame(height: 2)
-                    .padding(.bottom, 40)
             }
 
             switch phase {
@@ -486,12 +484,11 @@ struct StudyQuestScreenView: View {
                         .foregroundColor(textMuted.opacity(0.5))
                     if hasPlayerSprites {
                         let walkFrames = playerSpritePhase("walk")
-                        if !walkFrames.isEmpty {
-                            AnimatedSpriteView(frames: walkFrames, size: 120)
+                        let frames = !walkFrames.isEmpty ? walkFrames : playerSpritePhase("idle")
+                        if !frames.isEmpty {
+                            AnimatedSpriteView(frames: frames, interval: 0.25, size: 110)
                                 .offset(x: walkPhase ? 8 : -8, y: walkPhase ? -6 : 0)
-                        } else {
-                            AnimatedSpriteView(frames: playerSpritePhase("idle"), size: 120)
-                                .offset(x: walkPhase ? 8 : -8, y: walkPhase ? -6 : 0)
+                                .scaleEffect(x: 1.0, y: walkPhase ? 1.02 : 0.98)
                         }
                     } else {
                         Text("🧙‍♂️")
@@ -515,8 +512,9 @@ struct StudyQuestScreenView: View {
                             .foregroundColor(fireOrange)
                         Spacer().frame(height: 12)
                         if hasEnemySprites {
-                            AnimatedSpriteView(frames: enemyFrames, size: 140)
+                            AnimatedSpriteView(frames: enemyFrames, interval: 0.35, size: 130)
                                 .offset(y: walkPhase ? -4 : 0)
+                                .scaleEffect(pulsePhase ? 1.05 : 0.95)
                         } else {
                             Text(uiState.enemyEmoji).font(.system(size: 72))
                         }
@@ -524,37 +522,48 @@ struct StudyQuestScreenView: View {
                 }
 
             case .attacking:
-                if uiState.lastDamage > 0 {
+                let isStriking = uiState.lastDamage > 0
+
+                if isStriking {
                     SlashEffectView(pulsePhase: pulsePhase)
                 }
 
                 HStack(spacing: 0) {
                     Spacer()
+
                     if hasPlayerSprites {
+                        let idleFrames = playerSpritePhase("idle")
                         let attackFrames = playerSpritePhase("attack")
-                        if !attackFrames.isEmpty {
-                            AnimatedSpriteView(frames: attackFrames, interval: 0.15, size: 120)
-                                .offset(x: pulsePhase ? 4 : -4)
-                        } else {
-                            AnimatedSpriteView(frames: playerSpritePhase("idle"), size: 120)
-                                .offset(x: pulsePhase ? 4 : -4)
+                        let showAttack = isStriking && !attackFrames.isEmpty
+                        let frames = showAttack ? attackFrames : idleFrames
+                        if !frames.isEmpty {
+                            AnimatedSpriteView(frames: frames, interval: showAttack ? 0.12 : 0.3, size: 110)
+                                .offset(
+                                    x: isStriking ? 16 : (walkPhase ? 3 : -3),
+                                    y: walkPhase ? -3 : 0
+                                )
+                                .scaleEffect(x: 1.0, y: walkPhase ? 1.02 : 0.98)
                         }
                     } else {
                         Text("🧙‍♂️")
                             .font(.system(size: 56))
-                            .offset(x: pulsePhase ? 4 : -4)
+                            .offset(x: isStriking ? 16 : (pulsePhase ? 3 : -3))
                     }
+
                     Spacer()
 
-                    Text("⚔️")
-                        .font(.system(size: 28))
-                        .foregroundColor(fireRed.opacity(pulsePhase ? 0.9 : 0.4))
-                        .offset(y: -8)
+                    if isStriking {
+                        Text("⚔️")
+                            .font(.system(size: 28))
+                            .foregroundColor(fireRed.opacity(pulsePhase ? 0.9 : 0.4))
+                            .offset(y: -8)
+                            .transition(.scale.combined(with: .opacity))
+                    }
 
                     Spacer()
 
                     VStack(spacing: 4) {
-                        if uiState.lastDamage > 0 {
+                        if isStriking {
                             Text("-\(uiState.lastDamage)")
                                 .font(.system(size: 22, weight: .heavy))
                                 .foregroundColor(damageRed)
@@ -562,12 +571,16 @@ struct StudyQuestScreenView: View {
                         }
 
                         if hasEnemySprites {
-                            AnimatedSpriteView(frames: enemyFrames, size: 120)
-                                .offset(x: uiState.lastDamage > 0 ? (pulsePhase ? 4 : -4) : 0)
+                            AnimatedSpriteView(frames: enemyFrames, interval: 0.35, size: 110)
+                                .offset(
+                                    x: isStriking ? (pulsePhase ? 6 : -6) : 0,
+                                    y: walkPhase ? -2 : 2
+                                )
+                                .scaleEffect(x: 1.0, y: walkPhase ? 1.01 : 0.99)
                         } else {
                             Text(uiState.enemyEmoji)
                                 .font(.system(size: 56))
-                                .offset(x: uiState.lastDamage > 0 ? (pulsePhase ? 4 : -4) : 0)
+                                .offset(x: isStriking ? (pulsePhase ? 4 : -4) : 0)
                         }
 
                         VStack(spacing: 2) {
@@ -594,7 +607,7 @@ struct StudyQuestScreenView: View {
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 16)
 
             case .enemyDefeated:
                 VStack(spacing: 4) {

@@ -114,7 +114,17 @@ struct HomeScreenView: View {
                     Triangle().fill(bgCard).frame(width: 14, height: 8)
                 }
                 Spacer().frame(height: 6)
-                Text("🧙‍♂️").font(.system(size: 90))
+                Group {
+                    if UIImage(named: "sprite_player_idle_1") != nil {
+                        Image("sprite_player_idle_1")
+                            .resizable()
+                            .interpolation(.none)
+                            .scaledToFit()
+                            .frame(width: 160, height: 160)
+                    } else {
+                        Text("🧙‍♂️").font(.system(size: 90))
+                    }
+                }
                     .offset(y: isBouncing ? -10 : 0)
                     .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: isBouncing)
                     .onAppear { isBouncing = true }
