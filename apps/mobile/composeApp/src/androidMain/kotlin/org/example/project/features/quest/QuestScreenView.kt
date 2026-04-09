@@ -58,52 +58,66 @@ private fun difficultyGradient(difficulty: DungeonDifficulty): List<Color> = whe
 @Composable
 fun QuestScreenView() {
     val viewModel = remember { org.example.project.di.getQuestViewModel() }
+    val homeVm = remember { org.example.project.di.getHomeViewModel() }
     val uiState by viewModel.uiState.collectAsState()
+    val homeState by homeVm.uiState.collectAsState()
+    val selectedId = homeState.selectedDungeonId
+
+    val available = uiState.dungeons.filter { !it.isLocked }
+
+    LaunchedEffect(available, selectedId) {
+        if (available.isNotEmpty()) {
+            val hasValid = selectedId != null && available.any { it.id == selectedId }
+            if (!hasValid) {
+                val first = available.first()
+                homeVm.onIntent(
+                    org.example.project.features.home.HomeIntent.SelectDungeon(id = first.id, name = first.name)
+                )
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(BgColor, Color(0xFF0F172A))))) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // ヘッダー
             QuestHeader()
 
-            // ダンジョン一覧
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val available = uiState.dungeons.filter { !it.isLocked }
                 if (available.isNotEmpty()) {
                     item { SectionTitle("🗺️ 挑戦可能なダンジョン") }
                     items(available, key = { it.id }) { dungeon ->
                         DungeonCard(
                             dungeon = dungeon,
+                            isSelected = dungeon.id == selectedId,
                             onClick = { viewModel.onIntent(QuestIntent.SelectDungeon(dungeon.id)) }
                         )
                     }
                 }
 
-                // セクション: ロック中
                 val locked = uiState.dungeons.filter { it.isLocked }
                 if (locked.isNotEmpty()) {
                     item { SectionTitle("🔒 未解放ダンジョン") }
                     items(locked, key = { it.id }) { dungeon ->
                         DungeonCard(
                             dungeon = dungeon,
-                            onClick = { /* ロック中はタップ無効 or 解放条件表示 */ },
+                            isSelected = false,
+                            onClick = { },
                             isLocked = true
                         )
                     }
                 }
 
-                // タブバー分の余白
                 item { Spacer(modifier = Modifier.height(100.dp)) }
             }
         }
 
         uiState.selectedDungeon?.let { dungeon ->
-            val homeVm = remember { org.example.project.di.getHomeViewModel() }
             DungeonDetailSheet(
                 dungeon = dungeon,
+                isCurrentlySelected = dungeon.id == selectedId,
                 onDismiss = { viewModel.onIntent(QuestIntent.DismissDetail) },
                 onSelect = {
                     homeVm.onIntent(
@@ -171,126 +185,76 @@ private fun SectionTitle(text: String) {
 @Composable
 private fun DungeonCard(
     dungeon: Dungeon,
+    isSelected: Boolean = false,
     onClick: () -> Unit,
     isLocked: Boolean = false
 ) {
     val alpha = if (isLocked) 0.5f else 1f
+    val bgColor = if (isSelected) AccentBlue.copy(alpha = 0.12f) else CardWhite
+    val borderColor = if (isSelected) AccentCyan.copy(alpha = 0.6f) else difficultyColor(dungeon.difficulty).copy(alpha = 0.15f)
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(alpha)
-            .shadow(
-                elevation = if (isLocked) 2.dp else 6.dp,
-                shape = RoundedCornerShape(20.dp),
-                ambientColor = difficultyColor(dungeon.difficulty).copy(alpha = 0.15f)
-            )
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable(enabled = !isLocked, onClick = onClick),
-        color = CardWhite,
-        shape = RoundedCornerShape(20.dp)
+        color = bgColor,
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(if (isSelected) 1.5.dp else 1.dp, borderColor)
     ) {
         Column {
-            // カード上部: アイコン + 情報
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // ダンジョンアイコン
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(52.dp)
                         .background(
-                            brush = Brush.linearGradient(difficultyGradient(dungeon.difficulty)),
-                            shape = RoundedCornerShape(16.dp)
+                            brush = Brush.linearGradient(difficultyGradient(dungeon.difficulty).map { it.copy(alpha = if (isSelected) 0.6f else 0.35f) }),
+                            shape = RoundedCornerShape(14.dp)
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isLocked) {
-                        Text("🔒", fontSize = 24.sp)
-                    } else {
-                        Text(dungeon.iconEmoji, fontSize = 28.sp)
-                    }
+                    Text(if (isLocked) "🔒" else dungeon.iconEmoji, fontSize = 26.sp)
                 }
 
                 Spacer(modifier = Modifier.width(14.dp))
 
-                // テキスト情報
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            dungeon.name,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            dungeon.name, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                            color = TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        // 難易度バッジ
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = difficultyColor(dungeon.difficulty).copy(alpha = 0.12f)
-                        ) {
-                            Text(
-                                dungeon.difficulty.label,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = difficultyColor(dungeon.difficulty),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                            )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(shape = RoundedCornerShape(6.dp), color = difficultyColor(dungeon.difficulty).copy(alpha = 0.2f)) {
+                            Text(dungeon.difficulty.label, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                                color = difficultyColor(dungeon.difficulty), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                         }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        dungeon.description,
-                        fontSize = 12.sp,
-                        color = TextSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    // メタ情報
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        MetaChip("🕐 ${dungeon.recommendedMinutes}分")
-                        Spacer(modifier = Modifier.width(8.dp))
-                        MetaChip("${dungeon.category.emoji} ${dungeon.category.label}")
-                        Spacer(modifier = Modifier.width(8.dp))
-                        // 難易度スター
-                        Row {
-                            repeat(dungeon.difficulty.stars) {
-                                Text("⭐", fontSize = 10.sp)
+                        if (isSelected) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Surface(shape = RoundedCornerShape(6.dp), color = AccentCyan) {
+                                Text("選択中", fontSize = 9.sp, fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                             }
                         }
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(dungeon.description, fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        MetaChip("🕐 ${dungeon.recommendedMinutes}分")
+                        MetaChip("📍 ${dungeon.totalStages}F")
+                        MetaChip("✨ ${dungeon.rewards.exp}EXP")
+                    }
                 }
 
-                // 右矢印
                 if (!isLocked) {
-                    Icon(
-                        Icons.Default.KeyboardArrowRight,
-                        contentDescription = "詳細",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
-            // -- プログレスバー削除済み --
-
-            // 報酬プレビュー
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFFAFBFC))
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                RewardChip("✨", "${dungeon.rewards.exp} EXP", ExpGreen)
-                dungeon.rewards.bonusItemName?.let { itemName ->
-                    RewardChip("🎁", itemName, Color(0xFFEC4899))
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "詳細", tint = TextSecondary, modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -300,14 +264,14 @@ private fun DungeonCard(
 @Composable
 private fun MetaChip(text: String) {
     Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = Color(0xFFF1F5F9)
+        shape = RoundedCornerShape(4.dp),
+        color = BgSurface
     ) {
         Text(
             text = text,
-            fontSize = 11.sp,
+            fontSize = 10.sp,
             color = TextSecondary,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
         )
     }
 }
@@ -330,6 +294,7 @@ private fun RewardChip(emoji: String, text: String, color: Color) {
 @Composable
 private fun DungeonDetailSheet(
     dungeon: Dungeon,
+    isCurrentlySelected: Boolean = false,
     onDismiss: () -> Unit,
     onSelect: () -> Unit = {}
 ) {
@@ -382,33 +347,23 @@ private fun DungeonDetailSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(dungeon.iconEmoji, fontSize = 64.sp)
+                        Text(dungeon.iconEmoji, fontSize = 56.sp)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            dungeon.name,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = TextPrimary
-                        )
+                        Text(dungeon.name, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = difficultyColor(dungeon.difficulty).copy(alpha = 0.15f)
-                            ) {
-                                Text(
-                                    dungeon.difficulty.label,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = difficultyColor(dungeon.difficulty),
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
-                                )
+                            Surface(shape = RoundedCornerShape(8.dp), color = difficultyColor(dungeon.difficulty).copy(alpha = 0.2f)) {
+                                Text(dungeon.difficulty.label, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                    color = difficultyColor(dungeon.difficulty), modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp))
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "${dungeon.category.emoji} ${dungeon.category.label}",
-                                fontSize = 13.sp,
-                                color = TextSecondary
-                            )
+                            Text("${dungeon.category.emoji} ${dungeon.category.label}", fontSize = 12.sp, color = TextSecondary)
+                        }
+                        if (isCurrentlySelected) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Surface(shape = RoundedCornerShape(8.dp), color = AccentCyan.copy(alpha = 0.15f)) {
+                                Text("✅ 現在選択中", fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                    color = AccentCyan, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+                            }
                         }
                     }
                 }
@@ -426,13 +381,12 @@ private fun DungeonDetailSheet(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // ダンジョン情報
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    color = Color(0xFFF8FAFC),
-                    shape = RoundedCornerShape(16.dp)
+                    color = BgSurface,
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -453,13 +407,12 @@ private fun DungeonDetailSheet(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 報酬詳細
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    color = Color(0xFFFFFBEB),
-                    shape = RoundedCornerShape(16.dp)
+                    color = BgSurface,
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -526,9 +479,9 @@ private fun DungeonDetailSheet(
                     onClick = { onSelect() },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(52.dp)
                         .padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                     contentPadding = PaddingValues(0.dp)
                 ) {
@@ -537,9 +490,9 @@ private fun DungeonDetailSheet(
                             .fillMaxSize()
                             .background(
                                 brush = Brush.linearGradient(
-                                    difficultyGradient(dungeon.difficulty)
+                                    if (isCurrentlySelected) listOf(AccentCyan, AccentBlue) else listOf(AccentBlue, AccentIndigo)
                                 ),
-                                shape = RoundedCornerShape(20.dp)
+                                shape = RoundedCornerShape(16.dp)
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -548,13 +501,14 @@ private fun DungeonDetailSheet(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Icon(
-                                Icons.Default.PlayArrow,
-                                contentDescription = "出発",
-                                tint = Color.White
+                                if (isCurrentlySelected) Icons.Default.CheckCircle else Icons.Default.PlayArrow,
+                                contentDescription = "選択",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                "このダンジョンに出発する",
-                                fontSize = 16.sp,
+                                if (isCurrentlySelected) "選択済み" else "このダンジョンを選択する",
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )

@@ -1,5 +1,88 @@
 import SwiftUI
 import Shared
+import UIKit
+
+// MARK: - Sprite Helpers
+
+private func hasSpriteAsset(_ name: String) -> Bool {
+    UIImage(named: name) != nil
+}
+
+private func playerSpritePhase(_ phase: String) -> [String] {
+    var frames: [String] = []
+    for i in 1...8 {
+        let name = "sprite_player_\(phase)_\(i)"
+        if UIImage(named: name) != nil {
+            frames.append(name)
+        }
+    }
+    return frames
+}
+
+private func enemySpriteFrames(_ key: String) -> [String] {
+    var frames: [String] = []
+    for i in 1...8 {
+        let name = "sprite_enemy_\(key)_\(i)"
+        if UIImage(named: name) != nil {
+            frames.append(name)
+        }
+    }
+    return frames
+}
+
+private func dungeonBgName(_ dungeonName: String?) -> String {
+    guard let dn = dungeonName else { return "bg_dungeon_default" }
+    if dn.contains("森") || dn.lowercased().contains("forest") { return "bg_dungeon_forest" }
+    if dn.contains("洞窟") || dn.contains("水晶") || dn.lowercased().contains("cave") { return "bg_dungeon_cave" }
+    if dn.contains("塔") || dn.contains("炎") || dn.lowercased().contains("tower") { return "bg_dungeon_tower" }
+    return "bg_dungeon_default"
+}
+
+struct AnimatedSpriteView: View {
+    let frames: [String]
+    let interval: TimeInterval
+    let size: CGFloat
+
+    @State private var currentFrame = 0
+
+    init(frames: [String], interval: TimeInterval = 0.2, size: CGFloat = 120) {
+        self.frames = frames
+        self.interval = interval
+        self.size = size
+    }
+
+    var body: some View {
+        Group {
+            if !frames.isEmpty {
+                Image(frames[currentFrame])
+                    .resizable()
+                    .interpolation(.none)
+                    .scaledToFit()
+                    .frame(width: size, height: size)
+            }
+        }
+        .onAppear {
+            guard frames.count > 1 else { return }
+            Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+                currentFrame = (currentFrame + 1) % frames.count
+            }
+        }
+    }
+}
+
+struct DungeonBackgroundView: View {
+    let dungeonName: String?
+
+    var body: some View {
+        let bgName = dungeonBgName(dungeonName)
+        if UIImage(named: bgName) != nil {
+            Image(bgName)
+                .resizable()
+                .scaledToFill()
+                .opacity(0.7)
+        }
+    }
+}
 
 // MARK: - Color Helper
 
@@ -72,6 +155,7 @@ struct StudyQuestScreenView: View {
             adventurePhase: .walking,
             enemyName: "スライム",
             enemyEmoji: "🟢",
+            enemySpriteKey: "slime",
             enemyHp: 100,
             enemyMaxHp: 100,
             lastDamage: 0,
@@ -245,37 +329,40 @@ struct StudyQuestScreenView: View {
                             : LinearGradient(colors: [Color(hex: 0x06060F), Color(hex: 0x0E1428), Color(hex: 0x1A1040)], startPoint: .top, endPoint: .bottom)
                     )
 
-                // 壁のテクスチャ（装飾）
                 if !isBreak {
-                    VStack {
-                        HStack {
-                            ForEach(0..<8, id: \.self) { _ in
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(textMuted.opacity(0.05))
-                                    .frame(width: 40, height: 24)
+                    let bgAssetName = dungeonBgName(uiState.dungeonName)
+                    if UIImage(named: bgAssetName) != nil {
+                        DungeonBackgroundView(dungeonName: uiState.dungeonName)
+                            .clipShape(RoundedRectangle(cornerRadius: 24))
+                    } else {
+                        VStack {
+                            HStack {
+                                ForEach(0..<8, id: \.self) { _ in
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(textMuted.opacity(0.05))
+                                        .frame(width: 40, height: 24)
+                                }
                             }
-                        }
-                        .padding(.top, 8)
-                        Spacer()
-                        // 松明の光
-                        HStack {
-                            Text("🔥").font(.system(size: 16)).opacity(pulsePhase ? 0.9 : 0.5)
+                            .padding(.top, 8)
                             Spacer()
-                            Text("🔥").font(.system(size: 16)).opacity(pulsePhase ? 0.5 : 0.9)
-                        }
-                        .padding(.horizontal, 16)
-                        // 地面
-                        Rectangle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color(hex: 0x2D1B0E), Color(hex: 0x1A1005)],
-                                    startPoint: .top, endPoint: .bottom
+                            HStack {
+                                Text("🔥").font(.system(size: 16)).opacity(pulsePhase ? 0.9 : 0.5)
+                                Spacer()
+                                Text("🔥").font(.system(size: 16)).opacity(pulsePhase ? 0.5 : 0.9)
+                            }
+                            .padding(.horizontal, 16)
+                            Rectangle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color(hex: 0x2D1B0E), Color(hex: 0x1A1005)],
+                                        startPoint: .top, endPoint: .bottom
+                                    )
                                 )
-                            )
-                            .frame(height: 30)
-                            .cornerRadius(0)
+                                .frame(height: 30)
+                                .cornerRadius(0)
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: 24))
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 24))
                 }
 
                 if isBreak {
@@ -370,13 +457,23 @@ struct StudyQuestScreenView: View {
 
     private var adventureScene: some View {
         let phase = uiState.adventurePhase
+        let hasPlayerSprites = !playerSpritePhase("idle").isEmpty
+        let enemyKey = uiState.enemySpriteKey
+        let enemyFrames = enemySpriteFrames(enemyKey)
+        let hasEnemySprites = !enemyFrames.isEmpty
+        let bgName = dungeonBgName(uiState.dungeonName)
+        let hasBg = UIImage(named: bgName) != nil
 
         return ZStack {
-            // 地面
+            if hasBg {
+                DungeonBackgroundView(dungeonName: uiState.dungeonName)
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+            }
+
             VStack {
                 Spacer()
                 Rectangle()
-                    .fill(textMuted.opacity(0.2))
+                    .fill(textMuted.opacity(hasBg ? 0.1 : 0.2))
                     .frame(height: 2)
                     .padding(.bottom, 40)
             }
@@ -387,9 +484,20 @@ struct StudyQuestScreenView: View {
                     Text("…")
                         .font(.system(size: 16))
                         .foregroundColor(textMuted.opacity(0.5))
-                    Text("🧙‍♂️")
-                        .font(.system(size: 64))
-                        .offset(x: walkPhase ? 8 : -8, y: walkPhase ? -6 : 0)
+                    if hasPlayerSprites {
+                        let walkFrames = playerSpritePhase("walk")
+                        if !walkFrames.isEmpty {
+                            AnimatedSpriteView(frames: walkFrames, size: 120)
+                                .offset(x: walkPhase ? 8 : -8, y: walkPhase ? -6 : 0)
+                        } else {
+                            AnimatedSpriteView(frames: playerSpritePhase("idle"), size: 120)
+                                .offset(x: walkPhase ? 8 : -8, y: walkPhase ? -6 : 0)
+                        }
+                    } else {
+                        Text("🧙‍♂️")
+                            .font(.system(size: 64))
+                            .offset(x: walkPhase ? 8 : -8, y: walkPhase ? -6 : 0)
+                    }
                     Spacer().frame(height: 8)
                     Text("探索中…")
                         .font(.system(size: 12, weight: .medium))
@@ -406,16 +514,36 @@ struct StudyQuestScreenView: View {
                             .font(.system(size: 16, weight: .heavy))
                             .foregroundColor(fireOrange)
                         Spacer().frame(height: 12)
-                        Text(uiState.enemyEmoji).font(.system(size: 72))
+                        if hasEnemySprites {
+                            AnimatedSpriteView(frames: enemyFrames, size: 140)
+                                .offset(y: walkPhase ? -4 : 0)
+                        } else {
+                            Text(uiState.enemyEmoji).font(.system(size: 72))
+                        }
                     }
                 }
 
             case .attacking:
+                if uiState.lastDamage > 0 {
+                    SlashEffectView(pulsePhase: pulsePhase)
+                }
+
                 HStack(spacing: 0) {
                     Spacer()
-                    Text("🧙‍♂️")
-                        .font(.system(size: 56))
-                        .offset(x: pulsePhase ? 4 : -4)
+                    if hasPlayerSprites {
+                        let attackFrames = playerSpritePhase("attack")
+                        if !attackFrames.isEmpty {
+                            AnimatedSpriteView(frames: attackFrames, interval: 0.15, size: 120)
+                                .offset(x: pulsePhase ? 4 : -4)
+                        } else {
+                            AnimatedSpriteView(frames: playerSpritePhase("idle"), size: 120)
+                                .offset(x: pulsePhase ? 4 : -4)
+                        }
+                    } else {
+                        Text("🧙‍♂️")
+                            .font(.system(size: 56))
+                            .offset(x: pulsePhase ? 4 : -4)
+                    }
                     Spacer()
 
                     Text("⚔️")
@@ -428,16 +556,20 @@ struct StudyQuestScreenView: View {
                     VStack(spacing: 4) {
                         if uiState.lastDamage > 0 {
                             Text("-\(uiState.lastDamage)")
-                                .font(.system(size: 20, weight: .heavy))
+                                .font(.system(size: 22, weight: .heavy))
                                 .foregroundColor(damageRed)
                                 .transition(.move(edge: .top).combined(with: .opacity))
                         }
 
-                        Text(uiState.enemyEmoji)
-                            .font(.system(size: 56))
-                            .offset(x: uiState.lastDamage > 0 ? (pulsePhase ? 4 : -4) : 0)
+                        if hasEnemySprites {
+                            AnimatedSpriteView(frames: enemyFrames, size: 120)
+                                .offset(x: uiState.lastDamage > 0 ? (pulsePhase ? 4 : -4) : 0)
+                        } else {
+                            Text(uiState.enemyEmoji)
+                                .font(.system(size: 56))
+                                .offset(x: uiState.lastDamage > 0 ? (pulsePhase ? 4 : -4) : 0)
+                        }
 
-                        // 敵HPバー
                         VStack(spacing: 2) {
                             Text(uiState.enemyName)
                                 .font(.system(size: 11, weight: .bold))
@@ -732,6 +864,29 @@ struct StudyQuestScreenView: View {
             Text(value)
                 .font(.system(size: 14, weight: .heavy))
                 .foregroundColor(textWhite)
+        }
+    }
+}
+
+private struct SlashEffectView: View {
+    let pulsePhase: Bool
+
+    var body: some View {
+        Canvas { context, size in
+            let cx = size.width * 0.65
+            let cy = size.height * 0.4
+            let len = size.width * 0.18
+            let alpha = pulsePhase ? 0.8 : 0.2
+
+            var path1 = Path()
+            path1.move(to: CGPoint(x: cx - len, y: cy - len * 0.6))
+            path1.addLine(to: CGPoint(x: cx + len, y: cy + len * 0.6))
+            context.stroke(path1, with: .color(.white.opacity(alpha)), lineWidth: 4)
+
+            var path2 = Path()
+            path2.move(to: CGPoint(x: cx - len * 0.8, y: cy + len * 0.3))
+            path2.addLine(to: CGPoint(x: cx + len * 0.8, y: cy - len * 0.3))
+            context.stroke(path2, with: .color(.white.opacity(alpha * 0.6)), lineWidth: 3)
         }
     }
 }

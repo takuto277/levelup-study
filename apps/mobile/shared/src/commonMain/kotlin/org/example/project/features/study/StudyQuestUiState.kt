@@ -23,6 +23,7 @@ data class StudyQuestUiState(
     val adventurePhase: AdventurePhase = AdventurePhase.WALKING,
     val enemyName: String = "スライム",
     val enemyEmoji: String = "👾",
+    val enemySpriteKey: String = "slime",
     val enemyHp: Int = 100,
     val enemyMaxHp: Int = 100,
     val lastDamage: Int = 0,

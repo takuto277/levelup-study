@@ -41,43 +41,43 @@ class StudyQuestViewModel(
     }
 
     // ── ダンジョン別の敵テーブル ──
-    private data class EnemyData(val name: String, val emoji: String, val hp: Int, val atk: Int)
+    private data class EnemyData(val name: String, val emoji: String, val hp: Int, val atk: Int, val spriteKey: String = "")
 
     private val defaultEnemies = listOf(
-        EnemyData("スライム", "🟢", 30, 5),
-        EnemyData("ゴブリン", "👺", 50, 8),
-        EnemyData("コウモリ", "🦇", 40, 6),
-        EnemyData("スケルトン", "💀", 60, 10),
-        EnemyData("オーク", "👹", 80, 12),
-        EnemyData("ゴーレム", "🗿", 90, 14),
-        EnemyData("ダークウィザード", "🧙‍♀️", 100, 15),
-        EnemyData("キメラ", "🦁", 110, 16),
-        EnemyData("ドラゴン", "🐉", 120, 18),
-        EnemyData("デーモン", "😈", 150, 20)
+        EnemyData("スライム", "🟢", 30, 5, "slime"),
+        EnemyData("ゴブリン", "👺", 50, 8, "goblin"),
+        EnemyData("コウモリ", "🦇", 40, 6, "bat"),
+        EnemyData("スケルトン", "💀", 60, 10, "skeleton"),
+        EnemyData("オーク", "👹", 80, 12, "orc"),
+        EnemyData("ゴーレム", "🗿", 90, 14, "golem"),
+        EnemyData("ダークウィザード", "🧙‍♀️", 100, 15, "dark_wizard"),
+        EnemyData("キメラ", "🦁", 110, 16, "chimera"),
+        EnemyData("ドラゴン", "🐉", 120, 18, "dragon"),
+        EnemyData("デーモン", "😈", 150, 20, "demon")
     )
 
     private val forestEnemies = listOf(
-        EnemyData("毒キノコ", "🍄", 25, 4),
-        EnemyData("ウルフ", "🐺", 40, 7),
-        EnemyData("トレント", "🌲", 70, 9),
-        EnemyData("フォレストスピリット", "🧚", 55, 6),
-        EnemyData("ベアー", "🐻", 90, 13)
+        EnemyData("毒キノコ", "🍄", 25, 4, "mushroom"),
+        EnemyData("ウルフ", "🐺", 40, 7, "wolf"),
+        EnemyData("トレント", "🌲", 70, 9, "treant"),
+        EnemyData("フォレストスピリット", "🧚", 55, 6, "forest_spirit"),
+        EnemyData("ベアー", "🐻", 90, 13, "bear")
     )
 
     private val caveEnemies = listOf(
-        EnemyData("コウモリ群", "🦇", 35, 5),
-        EnemyData("クリスタルゴーレム", "💎", 80, 11),
-        EnemyData("ケーブスパイダー", "🕷️", 45, 8),
-        EnemyData("ロックワーム", "🪱", 100, 14),
-        EnemyData("ミミック", "📦", 70, 10)
+        EnemyData("コウモリ群", "🦇", 35, 5, "bat"),
+        EnemyData("クリスタルゴーレム", "💎", 80, 11, "crystal_golem"),
+        EnemyData("ケーブスパイダー", "🕷️", 45, 8, "spider"),
+        EnemyData("ロックワーム", "🪱", 100, 14, "rock_worm"),
+        EnemyData("ミミック", "📦", 70, 10, "mimic")
     )
 
     private val towerEnemies = listOf(
-        EnemyData("フレイムインプ", "🔥", 40, 8),
-        EnemyData("ファイアエレメンタル", "🌋", 90, 15),
-        EnemyData("サラマンダー", "🦎", 60, 10),
-        EnemyData("フェニックス", "🐦", 130, 18),
-        EnemyData("イフリート", "😈", 160, 22)
+        EnemyData("フレイムインプ", "🔥", 40, 8, "flame_imp"),
+        EnemyData("ファイアエレメンタル", "🌋", 90, 15, "fire_elemental"),
+        EnemyData("サラマンダー", "🦎", 60, 10, "salamander"),
+        EnemyData("フェニックス", "🐦", 130, 18, "phoenix"),
+        EnemyData("イフリート", "😈", 160, 22, "ifrit")
     )
 
     private fun getEnemiesForDungeon(dungeonName: String?): List<EnemyData> {
@@ -173,6 +173,7 @@ class StudyQuestViewModel(
                 adventurePhase = AdventurePhase.WALKING,
                 enemyName = firstEnemy.name,
                 enemyEmoji = firstEnemy.emoji,
+                enemySpriteKey = firstEnemy.spriteKey,
                 enemyHp = firstEnemy.hp,
                 enemyMaxHp = firstEnemy.hp,
                 lastDamage = 0,
@@ -342,6 +343,7 @@ class StudyQuestViewModel(
         var enemyMaxHp = state.enemyMaxHp
         var enemyName = state.enemyName
         var enemyEmoji = state.enemyEmoji
+        var enemySpriteKey = state.enemySpriteKey
         var lastDamage = 0
         var lastPlayerDamage = 0
         var defeatedCount = state.defeatedCount
@@ -425,6 +427,7 @@ class StudyQuestViewModel(
                         val newEnemy = currentEnemyTable.random()
                         enemyName = newEnemy.name
                         enemyEmoji = newEnemy.emoji
+                        enemySpriteKey = newEnemy.spriteKey
                         enemyHp = newEnemy.hp
                         enemyMaxHp = newEnemy.hp
                         phase = AdventurePhase.WALKING
@@ -441,6 +444,7 @@ class StudyQuestViewModel(
                     val newEnemy = currentEnemyTable.random()
                     enemyName = newEnemy.name
                     enemyEmoji = newEnemy.emoji
+                    enemySpriteKey = newEnemy.spriteKey
                     enemyHp = newEnemy.hp
                     enemyMaxHp = newEnemy.hp
                     phase = AdventurePhase.WALKING
@@ -456,6 +460,7 @@ class StudyQuestViewModel(
                     val newEnemy = currentEnemyTable.random()
                     enemyName = newEnemy.name
                     enemyEmoji = newEnemy.emoji
+                    enemySpriteKey = newEnemy.spriteKey
                     enemyHp = newEnemy.hp
                     enemyMaxHp = newEnemy.hp
                     phase = AdventurePhase.WALKING
@@ -475,6 +480,7 @@ class StudyQuestViewModel(
             adventurePhase = phase,
             enemyName = enemyName,
             enemyEmoji = enemyEmoji,
+            enemySpriteKey = enemySpriteKey,
             enemyHp = enemyHp,
             enemyMaxHp = enemyMaxHp,
             lastDamage = lastDamage,

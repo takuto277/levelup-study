@@ -24,10 +24,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.example.project.components.BattleSprite
+import org.example.project.components.DungeonBackground
+import org.example.project.components.PlayerSprite
+import org.example.project.components.hasBackgroundResource
+import org.example.project.components.hasSpriteResource
 
 private val DarkBg = Color(0xFF0F172A)
 private val DarkCard = Color(0xFF1E293B)
@@ -269,10 +275,14 @@ private fun MainQuestView(
             contentAlignment = Alignment.Center
         ) {
             if (!isBreak) {
-                Column(modifier = Modifier.matchParentSize()) {
-                    Spacer(modifier = Modifier.weight(1f))
-                    Box(modifier = Modifier.fillMaxWidth().height(30.dp)
-                        .background(Brush.verticalGradient(listOf(Color(0xFF2D1B0E), Color(0xFF1A1005)))))
+                val context = LocalContext.current
+                val hasBgRes = remember(uiState.dungeonName) { hasBackgroundResource(context, uiState.dungeonName) }
+                if (!hasBgRes) {
+                    Column(modifier = Modifier.matchParentSize()) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        Box(modifier = Modifier.fillMaxWidth().height(30.dp)
+                            .background(Brush.verticalGradient(listOf(Color(0xFF2D1B0E), Color(0xFF1A1005)))))
+                    }
                 }
             }
             if (isBreak) {
@@ -282,9 +292,11 @@ private fun MainQuestView(
                     phase = phase,
                     enemyEmoji = uiState.enemyEmoji,
                     enemyName = uiState.enemyName,
+                    enemySpriteKey = uiState.enemySpriteKey,
                     enemyHp = uiState.enemyHp,
                     enemyMaxHp = uiState.enemyMaxHp,
                     lastDamage = uiState.lastDamage,
+                    dungeonName = uiState.dungeonName,
                     walkOffset = walkOffset,
                     walkBounce = walkBounce,
                     attackShake = attackShake,
@@ -424,23 +436,37 @@ private fun AdventureScene(
     phase: AdventurePhase,
     enemyEmoji: String,
     enemyName: String,
+    enemySpriteKey: String,
     enemyHp: Int,
     enemyMaxHp: Int,
     lastDamage: Int,
+    dungeonName: String?,
     walkOffset: Float,
     walkBounce: Float,
     attackShake: Float,
     damageFlash: Float,
     pulseAlpha: Float
 ) {
+    val context = LocalContext.current
+    val hasPlayerSprite = remember { hasSpriteResource(context, "player", "idle") }
+    val hasEnemySprite = remember(enemySpriteKey) { hasSpriteResource(context, "enemy", enemySpriteKey) }
+    val hasBg = remember(dungeonName) { hasBackgroundResource(context, dungeonName) }
+
     Box(modifier = Modifier.fillMaxSize()) {
+        if (hasBg) {
+            DungeonBackground(
+                dungeonName = dungeonName,
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))
+            )
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(2.dp)
                 .align(Alignment.BottomCenter)
                 .offset(y = (-40).dp)
-                .background(TextMuted.copy(alpha = 0.2f))
+                .background(TextMuted.copy(alpha = if (hasBg) 0.1f else 0.2f))
         )
 
         if (phase == AdventurePhase.WALKING) {
@@ -466,11 +492,19 @@ private fun AdventureScene(
                 ) {
                     Text("…", fontSize = 16.sp, color = TextMuted.copy(alpha = 0.5f))
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "🧙‍♂️",
-                        fontSize = 64.sp,
-                        modifier = Modifier.offset(x = walkOffset.dp, y = walkBounce.dp)
-                    )
+                    if (hasPlayerSprite) {
+                        PlayerSprite(
+                            phase = "walk",
+                            size = 120.dp,
+                            modifier = Modifier.offset(x = walkOffset.dp, y = walkBounce.dp)
+                        )
+                    } else {
+                        Text(
+                            "🧙‍♂️",
+                            fontSize = 64.sp,
+                            modifier = Modifier.offset(x = walkOffset.dp, y = walkBounce.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("探索中…", fontSize = 12.sp, color = TextMuted, fontWeight = FontWeight.Medium)
                 }
@@ -495,11 +529,25 @@ private fun AdventureScene(
                         color = FireOrange
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(enemyEmoji, fontSize = 72.sp)
+                    if (hasEnemySprite) {
+                        BattleSprite(
+                            spriteKey = enemySpriteKey,
+                            spriteType = "enemy",
+                            size = 140.dp,
+                            modifier = Modifier.offset(y = walkBounce.dp)
+                        )
+                    } else {
+                        Text(enemyEmoji, fontSize = 72.sp)
+                    }
                 }
             }
 
             AdventurePhase.ATTACKING -> {
+                // 斬撃エフェクト（Canvas描画）
+                if (lastDamage > 0) {
+                    SlashEffect(damageFlash = damageFlash, modifier = Modifier.fillMaxSize())
+                }
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -508,11 +556,19 @@ private fun AdventureScene(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "🧙‍♂️",
-                        fontSize = 56.sp,
-                        modifier = Modifier.offset(x = attackShake.dp)
-                    )
+                    if (hasPlayerSprite) {
+                        PlayerSprite(
+                            phase = "attack",
+                            size = 120.dp,
+                            modifier = Modifier.offset(x = attackShake.dp)
+                        )
+                    } else {
+                        Text(
+                            "🧙‍♂️",
+                            fontSize = 56.sp,
+                            modifier = Modifier.offset(x = attackShake.dp)
+                        )
+                    }
 
                     Text(
                         "⚔️",
@@ -529,19 +585,30 @@ private fun AdventureScene(
                         ) {
                             Text(
                                 "-${lastDamage}",
-                                fontSize = 20.sp,
+                                fontSize = 22.sp,
                                 fontWeight = FontWeight.Black,
                                 color = DamageRed
                             )
                         }
 
-                        Text(
-                            enemyEmoji,
-                            fontSize = 56.sp,
-                            modifier = Modifier.offset(
-                                x = if (lastDamage > 0) attackShake.dp else 0.dp
+                        if (hasEnemySprite) {
+                            BattleSprite(
+                                spriteKey = enemySpriteKey,
+                                spriteType = "enemy",
+                                size = 120.dp,
+                                modifier = Modifier.offset(
+                                    x = if (lastDamage > 0) attackShake.dp else 0.dp
+                                )
                             )
-                        )
+                        } else {
+                            Text(
+                                enemyEmoji,
+                                fontSize = 56.sp,
+                                modifier = Modifier.offset(
+                                    x = if (lastDamage > 0) attackShake.dp else 0.dp
+                                )
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(4.dp))
 
@@ -634,6 +701,31 @@ private fun AdventureScene(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SlashEffect(damageFlash: Float, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val cx = size.width * 0.65f
+        val cy = size.height * 0.4f
+        val len = size.width * 0.18f
+        val alpha = damageFlash * 0.8f
+
+        drawLine(
+            color = Color.White.copy(alpha = alpha),
+            start = Offset(cx - len, cy - len * 0.6f),
+            end = Offset(cx + len, cy + len * 0.6f),
+            strokeWidth = 4f,
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = Color.White.copy(alpha = alpha * 0.6f),
+            start = Offset(cx - len * 0.8f, cy + len * 0.3f),
+            end = Offset(cx + len * 0.8f, cy - len * 0.3f),
+            strokeWidth = 3f,
+            cap = StrokeCap.Round
+        )
     }
 }
 
