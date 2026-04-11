@@ -11,10 +11,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
-/** プレイヤー表示モード（歩き2コマ / 攻撃準備 / 攻撃） */
+/** プレイヤー表示モード（歩き2コマ / 待機 / 攻撃準備 / 攻撃） */
 enum class PlayerSpriteMode {
     /** `sprite_player_walk_1` と `sprite_player_walk_2` を交互 */
     Walking,
+    /** `sprite_player_idle_1`（無ければ prep） */
+    Idle,
     /** `sprite_player_prep_1`（無ければ idle） */
     Prep,
     /** `sprite_player_attack_1` */
@@ -96,6 +98,18 @@ fun PlayerSprite(
 
             Image(
                 painter = painterResource(frames[currentFrame]),
+                contentDescription = null,
+                modifier = modifier.size(size),
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        PlayerSpriteMode.Idle -> {
+            val idleId = drawableId(context, "sprite_player_idle_1").takeIf { it != 0 }
+                ?: drawableId(context, "sprite_player_prep_1")
+            if (idleId == 0) return
+            Image(
+                painter = painterResource(idleId),
                 contentDescription = null,
                 modifier = modifier.size(size),
                 contentScale = ContentScale.Fit

@@ -21,6 +21,8 @@ data class StudyQuestUiState(
     val displayTime: String = "25:00",
     val genreId: String? = null,
     val adventurePhase: AdventurePhase = AdventurePhase.WALKING,
+    /** 現在フェーズ内の経過秒（タイマー1秒ごとに加算。戦闘中 idle→prep→attack の周期に使用） */
+    val adventurePhaseTick: Long = 0,
     val enemyName: String = "スライム",
     val enemyEmoji: String = "👾",
     val enemySpriteKey: String = "slime",

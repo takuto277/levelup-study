@@ -295,6 +295,7 @@ private fun MainQuestView(
                     lastDamage = uiState.lastDamage,
                     dungeonName = uiState.dungeonName,
                     currentFloor = uiState.currentFloor,
+                    adventurePhaseTick = uiState.adventurePhaseTick,
                     walkOffset = walkOffset,
                     walkBounce = walkBounce,
                     pulseAlpha = pulseAlpha
@@ -445,12 +446,22 @@ private val ConfrontGap = 30.dp
 private val ConfrontPlayerSize = 108.dp
 private val ConfrontEnemySize = 112.dp
 
-/** 遭遇〜戦闘：中央付近で向かい合い、接近中は歩き、敵は1枚＋同期ボブ */
+/** 戦闘中: 1秒目 idle → 2秒目 prep → 3秒目 attack（ATTACK_INTERVAL と同期） */
+private fun combatPlayerMode(phaseTick: Long, lastDamage: Int): PlayerSpriteMode =
+    when (phaseTick % 3L) {
+        0L -> if (lastDamage > 0) PlayerSpriteMode.Attack else PlayerSpriteMode.Idle
+        1L -> PlayerSpriteMode.Idle
+        2L -> PlayerSpriteMode.Prep
+        else -> PlayerSpriteMode.Idle
+    }
+
+/** 遭遇〜戦闘：左右から中央へ接近。接近中のみ敵が上下に揺れる。戦闘中は idle→prep→attack、上下運動なし */
 @Composable
 private fun BattleConfrontationLayer(
     isAttackPhase: Boolean,
     approachProgress: Float,
     syncBob: Boolean,
+    adventurePhaseTick: Long,
     hasPlayerSprite: Boolean,
     hasEnemySprite: Boolean,
     enemySpriteKey: String,
@@ -462,7 +473,11 @@ private fun BattleConfrontationLayer(
 ) {
     val isStriking = isAttackPhase && lastDamage > 0
     val showEnemyHp = isAttackPhase || approachProgress >= 0.9f
-    val yBob = if (syncBob) (-3).dp else 2.dp
+    val enemyYOffset = if (!isAttackPhase) {
+        if (syncBob) (-3).dp else 2.dp
+    } else {
+        0.dp
+    }
     val progress = approachProgress.coerceIn(0f, 1f)
 
     Box(
@@ -492,8 +507,8 @@ private fun BattleConfrontationLayer(
             val centerX = maxWidth / 2
             val playerEndLeft = centerX - ConfrontGap / 2 - ConfrontPlayerSize
             val enemyEndLeft = centerX + ConfrontGap / 2
-            val playerStartLeft = 12.dp
-            val enemyStartLeft = maxWidth + 40.dp
+            val playerStartLeft = (-32).dp
+            val enemyStartLeft = maxWidth + 88.dp
             val playerLeft = lerp(playerStartLeft, playerEndLeft, progress)
             val enemyLeft = lerp(enemyStartLeft, enemyEndLeft, progress)
 
@@ -501,15 +516,14 @@ private fun BattleConfrontationLayer(
                 PlayerSprite(
                     mode = when {
                         !isAttackPhase -> PlayerSpriteMode.Walking
-                        isStriking -> PlayerSpriteMode.Attack
-                        else -> PlayerSpriteMode.Prep
+                        else -> combatPlayerMode(adventurePhaseTick, lastDamage)
                     },
                     size = ConfrontPlayerSize,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .offset(
                             x = playerLeft + if (isAttackPhase && isStriking) 6.dp else 0.dp,
-                            y = (-44).dp + yBob
+                            y = (-44).dp
                         )
                 )
             } else {
@@ -518,7 +532,7 @@ private fun BattleConfrontationLayer(
                     fontSize = 52.sp,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .offset(x = playerLeft, y = (-40).dp + yBob)
+                        .offset(x = playerLeft, y = (-40).dp)
                 )
             }
 
@@ -526,7 +540,7 @@ private fun BattleConfrontationLayer(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .offset(x = enemyLeft, y = (-40).dp + yBob)
+                    .offset(x = enemyLeft, y = (-40).dp + enemyYOffset)
                     .widthIn(min = 80.dp)
             ) {
                 if (hasEnemySprite) {
@@ -606,6 +620,7 @@ private fun AdventureScene(
     lastDamage: Int,
     dungeonName: String?,
     currentFloor: Int,
+    adventurePhaseTick: Long,
     walkOffset: Float,
     walkBounce: Float,
     pulseAlpha: Float
@@ -646,7 +661,7 @@ private fun AdventureScene(
 
     var syncBob by remember { mutableStateOf(false) }
     LaunchedEffect(phase) {
-        if (phase != AdventurePhase.ENCOUNTER && phase != AdventurePhase.ATTACKING) return@LaunchedEffect
+        if (phase != AdventurePhase.ENCOUNTER) return@LaunchedEffect
         while (isActive) {
             delay(320)
             syncBob = !syncBob
@@ -659,15 +674,12 @@ private fun AdventureScene(
                 dungeonName = dungeonName,
                 modifier = Modifier
                     .fillMaxSize()
-                    .offset(x = (walkOffset * 2.5f).dp)
                     .clip(RoundedCornerShape(24.dp)),
                 alpha = 0.82f
             )
         }
 
         AdventureGroundLine(modifier = Modifier.align(Alignment.BottomCenter))
-
-        val travelX = walkOffset * 12f
 
         when (phase) {
             AdventurePhase.WALKING -> {
@@ -685,8 +697,7 @@ private fun AdventureScene(
                             size = 118.dp,
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
-                                .padding(start = 20.dp, bottom = 44.dp)
-                                .offset(x = travelX.dp + 8.dp, y = walkBounce.dp * 0.6f)
+                                .padding(start = 16.dp, bottom = 44.dp)
                         )
                     } else {
                         Text(
@@ -694,8 +705,7 @@ private fun AdventureScene(
                             fontSize = 56.sp,
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
-                                .padding(start = 20.dp, bottom = 44.dp)
-                                .offset(x = travelX.dp + 8.dp, y = walkBounce.dp * 0.6f)
+                                .padding(start = 16.dp, bottom = 44.dp)
                         )
                     }
                 }
@@ -706,6 +716,7 @@ private fun AdventureScene(
                     isAttackPhase = false,
                     approachProgress = approachProgress,
                     syncBob = syncBob,
+                    adventurePhaseTick = adventurePhaseTick,
                     hasPlayerSprite = hasPlayerSprite,
                     hasEnemySprite = hasEnemySprite,
                     enemySpriteKey = enemySpriteKey,
@@ -722,6 +733,7 @@ private fun AdventureScene(
                     isAttackPhase = true,
                     approachProgress = approachProgress,
                     syncBob = syncBob,
+                    adventurePhaseTick = adventurePhaseTick,
                     hasPlayerSprite = hasPlayerSprite,
                     hasEnemySprite = hasEnemySprite,
                     enemySpriteKey = enemySpriteKey,
