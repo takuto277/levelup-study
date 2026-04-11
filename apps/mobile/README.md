@@ -18,6 +18,29 @@ This is a Kotlin Multiplatform project targeting Android, iOS.
 
 ### Build and Run Android Application
 
+#### Android SDK path (Gradle)
+
+Gradle needs `apps/mobile/local.properties` with `sdk.dir=...`. If the file is missing, copy `local.properties.example` to `local.properties` and set `sdk.dir` to your SDK path (see below).
+
+#### Android SDK path (AVD / Device Manager)
+
+Creating an emulator can fail with:
+
+> **Can't locate Android SDK installation directory for the AVD .ini file.**
+
+That means **Android Studio does not know the SDK location** (separate from Gradle’s `local.properties`). Fix it in the IDE:
+
+1. **Android Studio** → **Settings** (macOS: **Android Studio** → **Settings**) → **Languages & Frameworks** → **Android SDK**.
+2. Set **Android SDK Location** to a valid folder (default on macOS: `~/Library/Android/sdk`). If the folder is empty, use **SDK Manager** to install **Android SDK Platform** and a **System Image** for your emulator.
+3. Click **Apply** / **OK**, then **restart Android Studio** and create the AVD again.
+
+For command-line tools (`sdkmanager`, `avdmanager`), set in your shell profile:
+
+```shell
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
+```
+
 To build and run the development version of the Android app, use the run configuration from the run widget
 in your IDE’s toolbar or build it directly from the terminal:
 - on macOS/Linux
@@ -28,6 +51,19 @@ in your IDE’s toolbar or build it directly from the terminal:
   ```shell
   .\gradlew.bat :composeApp:assembleDebug
   ```
+
+#### KMP + Android Gradle Plugin (yellow `w:` lines)
+
+You may see warnings such as:
+
+- `The 'org.jetbrains.kotlin.multiplatform' plugin deprecated compatibility with Android Gradle plugin: 'com.android.application'`
+- `... 'com.android.library'`
+
+These are **forward-compatibility notices for AGP 9.0+**. With **AGP 8.x** (this repo), `./gradlew :composeApp:assembleDebug` should still end with **`BUILD SUCCESSFUL`**. They are **not** the same as a failed build.
+
+If something actually fails, look for **`BUILD FAILED`**, **`e:`** errors, or the first **red** stack trace—not these yellow warnings.
+
+**Future work (AGP 9+):** migrate `:shared` to [`com.android.kotlin.multiplatform.library`](https://developer.android.com/kotlin/multiplatform/plugin) and split `:composeApp` so the Android **application** plugin lives in a small dedicated module; see [KMP + AGP 9 migration](https://kotlinlang.org/docs/multiplatform/multiplatform-project-agp-9-migration.html).
 
 ### Build and Run iOS Application
 

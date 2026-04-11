@@ -1,0 +1,8 @@
+# Copy this file to `local.properties` in the same directory (Gradle reads it).
+# `local.properties` is gitignored — do not commit machine-specific paths.
+
+# Android SDK (required for Gradle). Typical macOS path:
+sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
+
+# Optional: same JDK as Android Studio (avoids "wrong Java" Gradle issues)
+# org.gradle.java.home=/Applications/Android Studio.app/Contents/jbr/Contents/Home
