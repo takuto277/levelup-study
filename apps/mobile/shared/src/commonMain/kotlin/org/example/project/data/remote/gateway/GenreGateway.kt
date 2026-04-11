@@ -6,6 +6,9 @@ import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import org.example.project.core.network.ApiClient
 import org.example.project.core.network.ApiRoutes
 import org.example.project.core.network.NetworkResult
 import org.example.project.data.remote.dto.GenreListResponse
@@ -33,12 +36,28 @@ class GenreGateway(private val client: HttpClient) {
 
     suspend fun deleteGenre(genreId: String): NetworkResult<Unit> =
         runCatching {
-            client.delete(ApiRoutes.masterGenre(genreId))
-            NetworkResult.Success(Unit)
+            val response: HttpResponse = client.delete(ApiRoutes.masterGenre(genreId))
+            val code = response.status.value
+            if (code in 200..299) {
+                NetworkResult.Success(Unit)
+            } else {
+                val raw = response.bodyAsText()
+                val msg = parseApiErrorMessage(raw)
+                    ?: "ジャンル削除に失敗しました (HTTP $code)"
+                NetworkResult.Error(code = code, message = msg)
+            }
         }.getOrElse { e ->
             NetworkResult.Error(message = e.message ?: "ジャンル削除に失敗しました")
         }
 }
+
+private fun parseApiErrorMessage(json: String): String? =
+    runCatching {
+        ApiClient.json.decodeFromString<ApiErrorEnvelope>(json).error
+    }.getOrNull()?.takeIf { it.isNotBlank() }
+
+@kotlinx.serialization.Serializable
+private data class ApiErrorEnvelope(val error: String = "")
 
 @kotlinx.serialization.Serializable
 data class CreateGenreRequest(

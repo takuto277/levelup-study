@@ -258,6 +258,13 @@ func (r *MasterRepository) ListStudyGenres() ([]model.MasterStudyGenre, error) {
 	return list, err
 }
 
+// CountActiveStudyGenres — 有効（is_active=true）なジャンル件数
+func (r *MasterRepository) CountActiveStudyGenres() (int64, error) {
+	var count int64
+	err := r.db.Model(&model.MasterStudyGenre{}).Where("is_active = ?", true).Count(&count).Error
+	return count, err
+}
+
 // CreateStudyGenre — ジャンルを作成する
 func (r *MasterRepository) CreateStudyGenre(g *model.MasterStudyGenre) error {
 	return r.db.Create(g).Error

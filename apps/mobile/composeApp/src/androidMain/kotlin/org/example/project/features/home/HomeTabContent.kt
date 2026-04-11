@@ -98,9 +98,13 @@ fun HomeTabContent(
     if (showAddGenreDialog) {
         GenreManageDialog(
             genres = homeState.genres,
+            apiError = homeState.error,
             newGenreLabel = newGenreLabel,
             onLabelChange = { newGenreLabel = it },
-            onDismiss = { showAddGenreDialog = false },
+            onDismiss = {
+                homeViewModel.clearError()
+                showAddGenreDialog = false
+            },
             onAdd = {
                 if (newGenreLabel.isNotEmpty()) {
                     homeViewModel.onIntent(HomeIntent.AddGenre(newGenreLabel, "", "#6B7280"))
@@ -397,6 +401,7 @@ private fun StartAdventureButton(onClick: () -> Unit) {
 @Composable
 private fun GenreManageDialog(
     genres: List<MasterStudyGenre>,
+    apiError: String?,
     newGenreLabel: String,
     onLabelChange: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -450,6 +455,15 @@ private fun GenreManageDialog(
                 item {
                     Text("ジャンル管理", fontSize = 20.sp, fontWeight = FontWeight.Black, color = HomeTheme.TextPrimary)
                     Spacer(modifier = Modifier.height(16.dp))
+                    if (!apiError.isNullOrBlank()) {
+                        Text(
+                            apiError,
+                            fontSize = 12.sp,
+                            color = HomeTheme.FireRed,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
                     Text("新しいジャンルを追加", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HomeTheme.AccentCyan)
                     Spacer(modifier = Modifier.height(8.dp))
                     val fieldBg = Color(0xFF1E293B)

@@ -107,7 +107,11 @@ struct HomeScreenView: View {
         }) {
             StudyQuestScreenView(initialStudyMinutes: studyMinutes, genreId: selectedGenreSlug, dungeonName: homeState?.selectedDungeonName)
         }
-        .sheet(isPresented: $showAddGenreSheet) { genreManageSheet }
+        .sheet(isPresented: $showAddGenreSheet, onDismiss: {
+            homeViewModel.clearError()
+        }) {
+            genreManageSheet
+        }
         .alert("削除の確認", isPresented: Binding(
             get: { genrePendingDelete != nil },
             set: { if !$0 { genrePendingDelete = nil } }
@@ -306,6 +310,12 @@ struct HomeScreenView: View {
         NavigationView {
             List {
                 Section {
+                    if let err = homeState?.error, !err.isEmpty {
+                        Text(err)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Color(hex: 0xEF4444))
+                            .listRowBackground(Color.clear)
+                    }
                     TextField(
                         "",
                         text: $newGenreLabel,

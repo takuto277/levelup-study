@@ -115,7 +115,7 @@ func (h *MasterHandler) CreateStudyGenre(w http.ResponseWriter, r *http.Request)
 }
 
 // DeleteStudyGenre — DELETE /api/v1/master/genres/{genreID}
-// ユーザー追加ジャンル（is_default = false）のみ論理削除できる。
+// 論理削除（is_active=false）。アクティブなジャンルが1件だけのときは削除不可。
 func (h *MasterHandler) DeleteStudyGenre(w http.ResponseWriter, r *http.Request) {
 	id, err := parseUUID(chi.URLParam(r, "genreID"))
 	if err != nil {
@@ -131,8 +131,17 @@ func (h *MasterHandler) DeleteStudyGenre(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusInternalServerError, "ジャンル取得に失敗しました")
 		return
 	}
-	if g.IsDefault {
-		respondError(w, http.StatusForbidden, "初期ジャンルは削除できません")
+	if !g.IsActive {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	activeCount, err := h.repo.CountActiveStudyGenres()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "ジャンル件数の取得に失敗しました")
+		return
+	}
+	if activeCount <= 1 {
+		respondError(w, http.StatusBadRequest, "ジャンルは最低1件必要です")
 		return
 	}
 	if err := h.repo.DeactivateStudyGenre(id); err != nil {

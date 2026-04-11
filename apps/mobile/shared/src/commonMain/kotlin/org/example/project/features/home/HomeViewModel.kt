@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.example.project.core.network.NetworkException
 import org.example.project.domain.repository.UserRepository
 
 class HomeViewModel(
@@ -19,6 +20,10 @@ class HomeViewModel(
 
     init {
         loadHome()
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
     }
 
     fun onIntent(intent: HomeIntent) {
@@ -85,7 +90,12 @@ class HomeViewModel(
                 homeUseCase.deleteGenre(genreId)
                 val data = homeUseCase.loadHomeData()
                 applyHomeData(data, clearLoading = false)
-            } catch (_: Exception) { }
+                _uiState.update { it.copy(error = null) }
+            } catch (e: NetworkException) {
+                _uiState.update { it.copy(error = e.message) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "ジャンルの削除に失敗しました") }
+            }
         }
     }
 }

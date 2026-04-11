@@ -59,7 +59,7 @@ type SecurityConfig struct {
 //   GET    /api/v1/master/gacha/banners                開催中バナー
 //   GET    /api/v1/master/genres                       勉強ジャンルマスタ
 //   POST   /api/v1/master/genres                       ジャンル追加
-//   DELETE /api/v1/master/genres/{genreID}             ユーザー追加ジャンル論理削除
+//   DELETE /api/v1/master/genres/{genreID}             ジャンル論理削除（アクティブ1件のとき不可）
 // ============================================================
 
 func NewRouter(
