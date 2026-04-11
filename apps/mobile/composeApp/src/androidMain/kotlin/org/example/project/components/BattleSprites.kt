@@ -23,7 +23,9 @@ enum class PlayerSpriteMode {
     /** `sprite_player_prep_1`（無ければ idle） */
     Prep,
     /** `sprite_player_attack_1` */
-    Attack
+    Attack,
+    /** `sprite_player_rest_1`（無ければ idle / prep / walk） */
+    Rest
 }
 
 private fun drawableId(context: android.content.Context, baseName: String): Int =
@@ -143,6 +145,21 @@ fun PlayerSprite(
             if (attackId == 0) return
             Image(
                 painter = painterResource(attackId),
+                contentDescription = null,
+                modifier = modifier.size(size),
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        PlayerSpriteMode.Rest -> {
+            val restId = drawableId(context, "sprite_player_rest_1").takeIf { it != 0 }
+                ?: drawableId(context, "sprite_player_idle_1").takeIf { it != 0 }
+                ?: drawableId(context, "sprite_player_prep_1").takeIf { it != 0 }
+                ?: drawableId(context, "sprite_player_walk_1").takeIf { it != 0 }
+                ?: drawableId(context, "sprite_player_walk_2")
+            if (restId == 0) return
+            Image(
+                painter = painterResource(restId),
                 contentDescription = null,
                 modifier = modifier.size(size),
                 contentScale = ContentScale.Fit

@@ -22,12 +22,48 @@ private func playerPrepAssetName() -> String? {
     return playerWalkFrameNames().first
 }
 
+@ViewBuilder
+private func breakScenePlayerSprite(size: CGFloat) -> some View {
+    if hasSpriteAsset("sprite_player_rest_1") {
+        Image("sprite_player_rest_1")
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
+            .frame(width: size, height: size)
+    } else if hasSpriteAsset("sprite_player_idle_1") {
+        Image("sprite_player_idle_1")
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
+            .frame(width: size, height: size)
+    } else if let prep = playerPrepAssetName() {
+        Image(prep)
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
+            .frame(width: size, height: size)
+    } else {
+        Text("🧙‍♂️")
+            .font(.system(size: size * 0.42))
+            .frame(width: size, height: size)
+    }
+}
+
 /// 「総合」「general」は出さず、それ以外のジャンルだけ表示用ラベルにする
 private func resolvedStudyGenreLabel(_ genreId: String?) -> String? {
     guard let raw = genreId?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
     let lower = raw.lowercased()
     if lower == "general" || lower == "総合" || raw == "総合" { return nil }
     return raw
+}
+
+/// KMM の `STUDY_QUEST_ATTACK_CYCLE_SEC` と同値（戦闘ターン周期）
+private let studyQuestAttackCycleSec: Int64 = 3
+
+private func combatTurnMod(_ phaseTick: Int64) -> Int64 {
+    var m = phaseTick % studyQuestAttackCycleSec
+    if m < 0 { m += studyQuestAttackCycleSec }
+    return m
 }
 
 private func enemySpriteFrames(_ key: String) -> [String] {
@@ -102,7 +138,7 @@ struct DungeonBackgroundView: View {
 /// 戦闘中プレイヤー: tick%3 が 1→idle, 2→prep, 0→attack（ダメージ発生時）または idle
 @ViewBuilder
 private func iosCombatPlayerSprite(phaseTick: Int64, lastDamage: Int32, size: CGFloat) -> some View {
-    let m = phaseTick % 3
+    let m = combatTurnMod(phaseTick)
     if m == 0 {
         if lastDamage > 0, UIImage(named: "sprite_player_attack_1") != nil {
             Image("sprite_player_attack_1")
@@ -171,9 +207,11 @@ private struct BattleConfrontationIOSView: View {
     let currentFloor: Int
     let totalFloors: Int32
 
+    @State private var enemyNudge: CGFloat = 0
+
     var body: some View {
         let t = min(1.0, max(0.0, approach))
-        let isStriking = isAttackPhase && lastDamage > 0
+        let isStriking = isAttackPhase && combatTurnMod(phaseTick) == 0 && lastDamage > 0
         let isBossEncounter = currentFloor >= Int(totalFloors)
         let baseEnemy: CGFloat = 118
         let eW: CGFloat = isBossEncounter ? 236 : baseEnemy
@@ -233,10 +271,21 @@ private struct BattleConfrontationIOSView: View {
                                 }
                             } else {
                                 enemySpriteOnly(eW: eW, cellH: eW, isBoss: isBossEncounter)
-                                    .offset(x: enemyLeft)
+                                    .offset(x: enemyLeft + enemyNudge)
                             }
                         }
                         .padding(.bottom, adventureFloorInset)
+                        .onChange(of: phaseTick) { _, newTick in
+                            guard isAttackPhase, combatTurnMod(newTick) == 1 else { return }
+                            withAnimation(.easeOut(duration: 0.07)) {
+                                enemyNudge = -12
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.09) {
+                                withAnimation(.easeIn(duration: 0.09)) {
+                                    enemyNudge = 0
+                                }
+                            }
+                        }
                     }
                     .frame(width: w, height: h, alignment: .bottomLeading)
                 }
@@ -297,6 +346,114 @@ private let breakGlow = Color(hex: 0x10B981)
 
 /// 背景の床帯に足を合わせる（値が大きいほどキャラが上に浮く）
 private let adventureFloorInset: CGFloat = 8
+
+private func questHpRatioColor(ratio: CGFloat) -> Color {
+    if ratio > 0.5 { return emeraldGreen }
+    if ratio > 0.25 { return fireOrange }
+    return fireRed
+}
+
+/// ダンジョン名・ジャンル・F 階バッジと同系の枠付きカプセル（暗背景でも輪郭が見えるようにする）
+private struct QuestTitleCapsule<Content: View>: View {
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        content()
+            .padding(.horizontal, 11)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(Color.white.opacity(0.12))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.28), lineWidth: 1)
+            )
+    }
+}
+
+private let questHpHeaderRowHeight: CGFloat = 18
+private let questHpBarRowTotalHeight: CGFloat = 50
+
+/// プレイヤー列・敵列で共通の HP ヘッダー＋バー＋中央ダメージフロート
+private struct QuestHpBarStripView<Header: View>: View {
+    let currentHp: Int32
+    let maxHp: Int32
+    let floatingDamage: Int32
+    let adventurePhaseTick: Int64
+    /// 0: プレイヤー攻撃秒, 1: 敵反撃秒でフロート再生
+    let floatTriggerTurnMod: Int64
+    /// 敵 HP 非表示時はバーを隠しつつ、与ダメージフロートだけ右列に出す
+    var showChrome: Bool = true
+    @ViewBuilder let header: () -> Header
+
+    @State private var floatOffsetY: CGFloat = 0
+    @State private var floatOpacity: Double = 0
+
+    private var hpFillRatio: CGFloat {
+        maxHp > 0 ? CGFloat(currentHp) / CGFloat(maxHp) : 0
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Group {
+                if showChrome {
+                    header()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Color.clear.frame(height: questHpHeaderRowHeight)
+                }
+            }
+            .frame(height: questHpHeaderRowHeight, alignment: .leading)
+
+            ZStack {
+                if showChrome {
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(darkSurface)
+                            .frame(height: 6)
+                            .overlay(alignment: .leading) {
+                                GeometryReader { geo in
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(questHpRatioColor(ratio: hpFillRatio))
+                                        .frame(width: max(0, geo.size.width * hpFillRatio), height: 6)
+                                }
+                            }
+                    }
+                    .frame(height: 30)
+                } else {
+                    Color.clear.frame(height: 30)
+                }
+
+                if floatOpacity > 0.02, floatingDamage > 0 {
+                    Text("-\(floatingDamage)")
+                        .font(.system(size: 15, weight: .heavy))
+                        .foregroundColor(damageRed)
+                        .offset(y: floatOffsetY)
+                        .opacity(floatOpacity)
+                }
+            }
+            .frame(height: 30)
+        }
+        .frame(height: questHpBarRowTotalHeight, alignment: .top)
+        .fixedSize(horizontal: false, vertical: true)
+        .onChange(of: adventurePhaseTick) { _, newTick in
+            guard combatTurnMod(newTick) == floatTriggerTurnMod, floatingDamage > 0 else { return }
+            floatOffsetY = 6
+            floatOpacity = 1
+            Task { @MainActor in
+                withAnimation(.easeOut(duration: 0.52)) {
+                    floatOffsetY = -20
+                }
+                try? await Task.sleep(nanoseconds: 180_000_000)
+                withAnimation(.easeIn(duration: 0.42)) {
+                    floatOpacity = 0
+                }
+            }
+        }
+    }
+}
 
 // MARK: - メイン
 
@@ -404,172 +561,170 @@ struct StudyQuestScreenView: View {
 
         let showEnemyHpBar = !isBreak && (phase == .encounter || phase == .attacking)
 
+        let dungeonDisplayName: String? = {
+            guard !isBreak else { return nil }
+            let fromState = uiState.dungeonName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !fromState.isEmpty { return fromState }
+            let fromInit = dungeonName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return fromInit.isEmpty ? nil : fromInit
+        }()
+
         return VStack(spacing: 0) {
             Spacer().frame(height: 52)
 
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .center, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        if isBreak {
-                            Text("🌿 休憩")
-                                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                .foregroundColor(breakAccent)
-                        } else {
-                            if let genreLabel = resolvedStudyGenreLabel(uiState.genreId) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
+                    if isBreak {
+                        Text("🌿 休憩")
+                            .font(.system(size: 12, weight: .heavy, design: .rounded))
+                            .foregroundColor(breakAccent)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(breakAccent.opacity(0.14))
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(breakAccent.opacity(0.35), lineWidth: 1)
+                            )
+                    } else {
+                        if let genreLabel = resolvedStudyGenreLabel(uiState.genreId) {
+                            QuestTitleCapsule {
                                 Text(genreLabel)
-                                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 12, weight: .heavy, design: .rounded))
                                     .foregroundColor(textWhite)
                                     .lineLimit(2)
-                                    .minimumScaleFactor(0.85)
+                                    .minimumScaleFactor(0.82)
                             }
-                            if let dn = uiState.dungeonName, !dn.isEmpty {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "leaf.fill")
-                                        .font(.system(size: 11, weight: .semibold))
-                                        .foregroundColor(fireOrange.opacity(0.9))
+                        }
+                        if let dn = dungeonDisplayName {
+                            QuestTitleCapsule {
+                                HStack(spacing: 4) {
+                                    Text("🏰")
+                                        .font(.system(size: 11))
                                     Text(dn)
-                                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                                        .foregroundColor(textMuted)
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .foregroundColor(textWhite)
                                         .lineLimit(1)
+                                        .minimumScaleFactor(0.65)
                                 }
                             }
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                    HStack(spacing: 8) {
-                        if isOvertime {
-                            Text("⚡")
-                                .font(.system(size: 12, weight: .heavy))
-                                .foregroundColor(purpleGlow)
-                                .padding(.horizontal, 9)
-                                .padding(.vertical, 6)
-                                .background(purpleGlow.opacity(0.14))
-                                .clipShape(Capsule())
-                        }
-                        if uiState.status == .paused {
-                            Text("停止中")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundColor(accentBlue)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(accentBlue.opacity(0.14))
-                                .clipShape(Capsule())
-                        }
-                        if !isBreak {
-                            Text("F\(uiState.currentFloor)/\(uiState.totalFloors)")
-                                .font(.system(size: 11, weight: .heavy, design: .rounded))
-                                .foregroundColor(textWhite)
-                                .padding(.horizontal, 11)
-                                .padding(.vertical, 6)
-                                .background(darkSurface.opacity(0.9))
-                                .clipShape(Capsule())
-                            Text("💀 \(uiState.defeatedCount)")
-                                .font(.system(size: 11, weight: .heavy, design: .rounded))
-                                .foregroundColor(emeraldGreen)
-                                .padding(.horizontal, 11)
-                                .padding(.vertical, 6)
-                                .background(emeraldGreen.opacity(0.14))
-                                .clipShape(Capsule())
-                        }
+                HStack(spacing: 8) {
+                    if isOvertime {
+                        Text("⚡")
+                            .font(.system(size: 12, weight: .heavy))
+                            .foregroundColor(purpleGlow)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 6)
+                            .background(purpleGlow.opacity(0.14))
+                            .clipShape(Capsule())
+                    }
+                    if uiState.status == .paused {
+                        Text("停止中")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(accentBlue)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(accentBlue.opacity(0.14))
+                            .clipShape(Capsule())
+                    }
+                    if !isBreak {
+                        Text("F\(uiState.currentFloor)/\(uiState.totalFloors)")
+                            .font(.system(size: 11, weight: .heavy, design: .rounded))
+                            .foregroundColor(textWhite)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 6)
+                            .background(darkSurface.opacity(0.9))
+                            .clipShape(Capsule())
+                        Text("💀 \(uiState.defeatedCount)")
+                            .font(.system(size: 11, weight: .heavy, design: .rounded))
+                            .foregroundColor(emeraldGreen)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 6)
+                            .background(emeraldGreen.opacity(0.14))
+                            .clipShape(Capsule())
                     }
                 }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.14), Color.white.opacity(0.04)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
             }
             .padding(.horizontal, 20)
 
-            Spacer()
+            Spacer().frame(height: 12)
 
-            // 探索中は敵 HP 非表示。遭遇・戦闘のみ 2 列。
-            if !isBreak {
-                HStack(alignment: .top, spacing: 8) {
-                    Text("🧙‍♂️").font(.system(size: 16))
+            Spacer(minLength: 8)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Text("HP")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(textMuted)
-                            Spacer(minLength: 0)
-                            Text("\(uiState.playerHp)/\(uiState.playerMaxHp)")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(textWhite)
-                        }
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(darkSurface)
-                                    .frame(height: 6)
-                                let ratio = uiState.playerMaxHp > 0
-                                    ? CGFloat(uiState.playerHp) / CGFloat(uiState.playerMaxHp)
-                                    : 0
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(ratio > 0.5 ? emeraldGreen : (ratio > 0.25 ? fireOrange : fireRed))
-                                    .frame(width: geo.size.width * ratio, height: 6)
-                            }
-                        }
-                        .frame(height: 6)
-                    }
-                    .frame(maxWidth: .infinity)
+            VStack(spacing: 0) {
+                if !isBreak {
+                    HStack(alignment: .center, spacing: 8) {
+                        Text("🧙‍♂️").font(.system(size: 16))
 
-                    if showEnemyHpBar {
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 4) {
-                                Text(uiState.enemyEmoji)
-                                    .font(.system(size: 12))
-                                Text(uiState.enemyName)
+                        QuestHpBarStripView(
+                            currentHp: uiState.playerHp,
+                            maxHp: uiState.playerMaxHp,
+                            floatingDamage: uiState.lastPlayerDamage,
+                            adventurePhaseTick: uiState.adventurePhaseTick,
+                            floatTriggerTurnMod: 1
+                        ) {
+                            HStack {
+                                Text("HP")
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(textMuted)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.6)
                                 Spacer(minLength: 0)
-                                Text("\(uiState.enemyHp)/\(uiState.enemyMaxHp)")
+                                Text("\(uiState.playerHp)/\(uiState.playerMaxHp)")
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(textWhite)
                             }
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    RoundedRectangle(cornerRadius: 3)
-                                        .fill(darkSurface)
-                                        .frame(height: 6)
-                                    let ratio = uiState.enemyMaxHp > 0
-                                        ? CGFloat(uiState.enemyHp) / CGFloat(uiState.enemyMaxHp)
-                                        : 0
-                                    RoundedRectangle(cornerRadius: 3)
-                                        .fill(ratio > 0.5 ? emeraldGreen : (ratio > 0.25 ? fireOrange : fireRed))
-                                        .frame(width: geo.size.width * ratio, height: 6)
+                        }
+                        .frame(maxWidth: .infinity)
+
+                        Group {
+                            if showEnemyHpBar {
+                                QuestHpBarStripView(
+                                    currentHp: uiState.enemyHp,
+                                    maxHp: uiState.enemyMaxHp,
+                                    floatingDamage: uiState.lastDamage,
+                                    adventurePhaseTick: uiState.adventurePhaseTick,
+                                    floatTriggerTurnMod: 0
+                                ) {
+                                    HStack(spacing: 4) {
+                                        Text(uiState.enemyEmoji)
+                                            .font(.system(size: 12))
+                                        Text(uiState.enemyName)
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(textMuted)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.6)
+                                        Spacer(minLength: 0)
+                                        Text("\(uiState.enemyHp)/\(uiState.enemyMaxHp)")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(textWhite)
+                                    }
+                                }
+                            } else {
+                                QuestHpBarStripView(
+                                    currentHp: 0,
+                                    maxHp: 1,
+                                    floatingDamage: uiState.lastDamage,
+                                    adventurePhaseTick: uiState.adventurePhaseTick,
+                                    floatTriggerTurnMod: 0,
+                                    showChrome: false
+                                ) {
+                                    EmptyView()
                                 }
                             }
-                            .frame(height: 6)
                         }
                         .frame(maxWidth: .infinity)
                     }
-
-                    if uiState.lastPlayerDamage > 0 {
-                        Text("-\(uiState.lastPlayerDamage)")
-                            .font(.system(size: 14, weight: .heavy))
-                            .foregroundColor(fireRed)
-                    }
+                    .frame(height: 52)
+                    .padding(.horizontal, 20)
                 }
-                .padding(.horizontal, 24)
-            }
 
-            Spacer().frame(height: 8)
+                Spacer().frame(height: 8)
 
             // 冒険シーン（大型化でダンジョン潜入感を演出）
             ZStack {
@@ -640,6 +795,10 @@ struct StudyQuestScreenView: View {
                     }
                 }
             }
+
+            }
+
+            Spacer(minLength: 8)
 
             Spacer().frame(height: 16)
 
@@ -817,28 +976,91 @@ struct StudyQuestScreenView: View {
 
     private var breakSceneContent: some View {
         ZStack {
-            // 星
-            ForEach(0..<10, id: \.self) { i in
+            ForEach(0..<13, id: \.self) { i in
                 Text("✦")
-                    .font(.system(size: CGFloat(8 + i % 4 * 3)))
-                    .foregroundColor(.white.opacity(pulsePhase ? 0.3 : 0.1))
+                    .font(.system(size: CGFloat(8 + (i % 4) * 2)))
+                    .foregroundColor(.white.opacity(pulsePhase ? 0.28 : 0.12))
                     .offset(
-                        x: CGFloat(-120 + i * 28),
-                        y: CGFloat(-60 + (i % 3) * 25)
+                        x: CGFloat(-118 + (i * 23) % 236),
+                        y: CGFloat(-56 + (i % 4) * 26)
                     )
             }
 
             VStack(spacing: 0) {
-                Text("🧙‍♂️")
-                    .font(.system(size: 48))
-                    .offset(x: -20)
-                Text("🔥")
-                    .font(.system(size: pulsePhase ? 32 : 28))
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(breakAccent.opacity(pulsePhase ? 0.95 : 0.45))
+                        .frame(width: 9, height: 9)
+                    Text("休憩中")
+                        .font(.system(size: 15, weight: .heavy))
+                        .foregroundColor(textWhite)
+                    Text("HP 回復")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(breakAccent.opacity(0.92))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(breakAccent.opacity(0.12))
+                .overlay(
+                    Capsule()
+                        .stroke(breakAccent.opacity(0.4), lineWidth: 1)
+                )
+                .clipShape(Capsule())
+
+                Spacer().frame(height: 10)
+
+                ZStack(alignment: .bottom) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(breakAccent.opacity(0.2))
+                        .frame(height: 3)
+                        .padding(.horizontal, 20)
+                    Ellipse()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    breakGlow.opacity(pulsePhase ? 0.32 : 0.18),
+                                    .clear
+                                ],
+                                center: .center,
+                                startRadius: 2,
+                                endRadius: 86
+                            )
+                        )
+                        .frame(width: 150, height: 70)
+                        .offset(y: -12)
+                    breakScenePlayerSprite(size: 148)
+                        .offset(y: pulsePhase ? -6 : -1)
+                }
+                .frame(height: 156)
+
                 Spacer().frame(height: 8)
-                Text("休憩中… 体力を回復しています")
+
+                Text("焚き火を囲んで ゆっくり休んでいます")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(breakAccent)
+                Text("タイマーが終わるまで、このままリラックス")
+                    .font(.system(size: 11))
+                    .foregroundColor(textMuted)
             }
+            .padding(.vertical, 18)
+            .padding(.horizontal, 14)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color(hex: 0x0F2818),
+                        Color(hex: 0x071209),
+                        Color(hex: 0x0D2214)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 22)
+                    .stroke(breakAccent.opacity(0.45), lineWidth: 1.5)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .padding(.horizontal, 10)
         }
     }
 

@@ -177,7 +177,6 @@ class StudyQuestViewModel(
         const val WALK_DURATION = 6L
         /** 接近演出＋向かい合い（HP表示）の秒数。UI の接近アニメと同期させる */
         const val ENCOUNTER_DURATION = 5L
-        const val ATTACK_INTERVAL = 3L
         const val DEAD_DURATION = 3L
     }
 
@@ -432,65 +431,74 @@ class StudyQuestViewModel(
             AdventurePhase.ENCOUNTER -> {
                 if (phaseElapsed >= ENCOUNTER_DURATION) {
                     phase = AdventurePhase.ATTACKING
-                    phaseElapsed = 0L
+                    // 次のタイマーで ++ されて 0 になり、先にプレイヤーターン（%3==0）が実行されるようにする
+                    phaseElapsed = -1L
                     newLogs = (newLogs + "⚔️ ${enemyName}に斬りかかった！").takeLast(5)
                 }
             }
 
             AdventurePhase.ATTACKING -> {
-                if (phaseElapsed % ATTACK_INTERVAL == 0L) {
-                    // プレイヤーの攻撃
-                    val baseDmg = (10..25).random()
-                    val critRoll = (1..10).random()
-                    val dmg = if (critRoll >= 9) baseDmg * 2 else baseDmg
-                    val isCrit = critRoll >= 9
-                    enemyHp = (enemyHp - dmg).coerceAtLeast(0)
-                    lastDamage = dmg
-
-                    val dmgMsg = if (isCrit) "💥 クリティカル！${enemyName}に${dmg}ダメージ！"
-                    else "⚔️ ${enemyName}に${dmg}ダメージ！"
-                    newLogs = (newLogs + dmgMsg).takeLast(5)
-
-                    if (enemyHp <= 0) {
-                        defeatedCount++
-                        val xpGain = enemyMaxHp / 2
-                        earnedXp += xpGain
-                        newLogs = (newLogs + "🎉 ${enemyName}を倒した！ EXP+${xpGain}").takeLast(5)
-                        lastDamage = 0
+                when (phaseElapsed % STUDY_QUEST_ATTACK_CYCLE_SEC) {
+                    0L -> {
+                        // プレイヤーターン：直前の敵ダメージ表示を消す
                         lastPlayerDamage = 0
-                        if (currentFloor >= state.totalFloors) {
-                            floorClearCount++
-                            earnedStones += 5
-                            currentFloor = 1
-                            playerHp = state.playerMaxHp
-                            newLogs = (newLogs + "🏆 全${state.totalFloors}F制覇！ 💎+5 1Fから再挑戦！").takeLast(5)
-                        } else {
-                            currentFloor++
-                            newLogs = (newLogs + "📍 ${currentFloor}Fへ進んだ…").takeLast(5)
-                        }
-                        val newEnemy = currentEnemyTable.random()
-                        enemyName = newEnemy.name
-                        enemyEmoji = newEnemy.emoji
-                        enemySpriteKey = EnemySpriteAssets.drawableKey(newEnemy.spriteKey)
-                        enemyHp = newEnemy.hp
-                        enemyMaxHp = newEnemy.hp
-                        phase = AdventurePhase.WALKING
-                        phaseElapsed = 0L
-                    } else {
-                        // 敵の反撃
-                        val enemyData = currentEnemyTable.find { it.name == enemyName }
-                        val enemyAtk = enemyData?.atk ?: 8
-                        val enemyDmg = (enemyAtk - 2..enemyAtk + 3).random().coerceAtLeast(1)
-                        playerHp = (playerHp - enemyDmg).coerceAtLeast(0)
-                        lastPlayerDamage = enemyDmg
-                        newLogs = (newLogs + "🔻 ${enemyName}の反撃！ ${enemyDmg}ダメージ！").takeLast(5)
+                        val baseDmg = (10..25).random()
+                        val critRoll = (1..10).random()
+                        val dmg = if (critRoll >= 9) baseDmg * 2 else baseDmg
+                        val isCrit = critRoll >= 9
+                        enemyHp = (enemyHp - dmg).coerceAtLeast(0)
+                        lastDamage = dmg
 
-                        if (playerHp <= 0) {
-                            phase = AdventurePhase.PLAYER_DEAD
+                        val dmgMsg = if (isCrit) "💥 クリティカル！${enemyName}に${dmg}ダメージ！"
+                        else "⚔️ ${enemyName}に${dmg}ダメージ！"
+                        newLogs = (newLogs + dmgMsg).takeLast(5)
+
+                        if (enemyHp <= 0) {
+                            defeatedCount++
+                            val xpGain = enemyMaxHp / 2
+                            earnedXp += xpGain
+                            newLogs = (newLogs + "🎉 ${enemyName}を倒した！ EXP+${xpGain}").takeLast(5)
+                            lastDamage = 0
+                            lastPlayerDamage = 0
+                            if (currentFloor >= state.totalFloors) {
+                                floorClearCount++
+                                earnedStones += 5
+                                currentFloor = 1
+                                playerHp = state.playerMaxHp
+                                newLogs = (newLogs + "🏆 全${state.totalFloors}F制覇！ 💎+5 1Fから再挑戦！").takeLast(5)
+                            } else {
+                                currentFloor++
+                                newLogs = (newLogs + "📍 ${currentFloor}Fへ進んだ…").takeLast(5)
+                            }
+                            val newEnemy = currentEnemyTable.random()
+                            enemyName = newEnemy.name
+                            enemyEmoji = newEnemy.emoji
+                            enemySpriteKey = EnemySpriteAssets.drawableKey(newEnemy.spriteKey)
+                            enemyHp = newEnemy.hp
+                            enemyMaxHp = newEnemy.hp
+                            phase = AdventurePhase.WALKING
                             phaseElapsed = 0L
-                            newLogs = (newLogs + "💀 力尽きた…1Fからやり直し！").takeLast(5)
                         }
                     }
+                    1L -> {
+                        // 敵ターン（生存時のみ）
+                        lastDamage = 0
+                        if (enemyHp > 0) {
+                            val enemyData = currentEnemyTable.find { it.name == enemyName }
+                            val enemyAtk = enemyData?.atk ?: 8
+                            val enemyDmg = (enemyAtk - 2..enemyAtk + 3).random().coerceAtLeast(1)
+                            playerHp = (playerHp - enemyDmg).coerceAtLeast(0)
+                            lastPlayerDamage = enemyDmg
+                            newLogs = (newLogs + "🔻 ${enemyName}の反撃！ ${enemyDmg}ダメージ！").takeLast(5)
+
+                            if (playerHp <= 0) {
+                                phase = AdventurePhase.PLAYER_DEAD
+                                phaseElapsed = 0L
+                                newLogs = (newLogs + "💀 力尽きた…1Fからやり直し！").takeLast(5)
+                            }
+                        }
+                    }
+                    else -> { /* 2L: 間合い */ }
                 }
             }
 

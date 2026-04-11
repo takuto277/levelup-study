@@ -21,6 +21,7 @@ import org.koin.mp.KoinPlatform
  * ```
  */
 fun initKoin() {
+    if (runCatching { KoinPlatform.getKoin() }.isSuccess) return
     startKoin {
         modules(sharedModule)
     }

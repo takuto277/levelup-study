@@ -1,5 +1,8 @@
 package org.example.project.features.study
 
+/** 戦闘ターン周期（0: プレイヤー攻撃, 1: 敵反撃, 2: 間合い）秒。ViewModel / UI で同じ値を使うこと。 */
+const val STUDY_QUEST_ATTACK_CYCLE_SEC = 3L
+
 enum class AdventurePhase {
     WALKING,
     ENCOUNTER,
