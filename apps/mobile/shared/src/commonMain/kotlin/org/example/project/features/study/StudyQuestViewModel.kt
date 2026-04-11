@@ -43,55 +43,119 @@ class StudyQuestViewModel(
     // ── ダンジョン別の敵テーブル ──
     private data class EnemyData(val name: String, val emoji: String, val hp: Int, val atk: Int, val spriteKey: String = "")
 
-    private val defaultEnemies = listOf(
+    /** 全スプライトキーに対応するマスター一覧（`EnemySpriteAssets` の bundled と一致） */
+    private val enemyCatalog: List<EnemyData> = listOf(
         EnemyData("スライム", "🟢", 30, 5, "slime"),
         EnemyData("ゴブリン", "👺", 50, 8, "goblin"),
         EnemyData("コウモリ", "🦇", 40, 6, "bat"),
         EnemyData("スケルトン", "💀", 60, 10, "skeleton"),
-        EnemyData("オーク", "👹", 80, 12, "orc"),
-        EnemyData("ゴーレム", "🗿", 90, 14, "golem"),
-        EnemyData("ダークウィザード", "🧙‍♀️", 100, 15, "dark_wizard"),
-        EnemyData("キメラ", "🦁", 110, 16, "chimera"),
         EnemyData("ドラゴン", "🐉", 120, 18, "dragon"),
-        EnemyData("デーモン", "😈", 150, 20, "demon")
+        EnemyData("オーク", "👹", 80, 12, "orc"),
+        EnemyData("ゴーレム", "🗿", 95, 14, "golem"),
+        EnemyData("リッチ", "🧙", 110, 16, "lich"),
+        EnemyData("ワイバーン", "🐲", 100, 15, "wyvern"),
+        EnemyData("ミノタウロス", "🐂", 105, 15, "minotaur"),
+        EnemyData("マンドレイク", "🌱", 35, 5, "mandrake"),
+        EnemyData("グリフォン", "🦅", 115, 16, "griffin"),
+        EnemyData("バジリスク", "🐍", 90, 13, "basilisk"),
+        EnemyData("ケルベロス", "🐕‍🦺", 125, 17, "cerberus"),
+        EnemyData("クラーケン", "🐙", 140, 17, "kraken"),
+        EnemyData("ヒドラ", "🐉", 135, 17, "hydra"),
+        EnemyData("リバイアサン", "🐋", 145, 18, "leviathan"),
+        EnemyData("バンシー", "👻", 70, 10, "banshee"),
+        EnemyData("ウィスプ", "✨", 45, 6, "wisp"),
+        EnemyData("インプ", "😈", 42, 7, "imp"),
+        EnemyData("サキュバス", "💜", 88, 12, "succubus"),
+        EnemyData("デュラハン", "🐴", 100, 14, "dullahan"),
+        EnemyData("ガーゴイル", "🗿", 85, 12, "gargoyle"),
+        EnemyData("スペクター", "👻", 65, 9, "specter"),
+        EnemyData("マミー", "🤕", 92, 12, "mummy"),
+        EnemyData("トロール", "👹", 110, 14, "troll"),
+        EnemyData("コボルド", "🦎", 48, 7, "kobold"),
+        EnemyData("ラミア", "🐍", 95, 13, "lamia"),
+        EnemyData("クリムゾンデーモン", "🔥", 155, 20, "crimson_demon"),
+        EnemyData("シャドウナイト", "🗡️", 118, 15, "shadow_knight"),
+        EnemyData("ハーピー", "🪶", 72, 10, "harpy"),
+        EnemyData("ケンタウロス", "🏹", 108, 14, "centaur"),
+        EnemyData("ドライアド", "🌳", 68, 9, "dryad"),
+        EnemyData("ナーガ", "🐍", 98, 13, "naga"),
+        EnemyData("オーガ", "👹", 115, 15, "ogre"),
+        EnemyData("サイクロプス", "👁️", 120, 16, "cyclops"),
+        EnemyData("グール", "🧟", 78, 11, "ghoul"),
+        EnemyData("レイス", "💀", 82, 11, "wraith"),
+        EnemyData("フロストジャイアント", "❄️", 130, 16, "frost_giant"),
+        EnemyData("サンドワーム", "🪱", 112, 14, "sand_worm"),
+        EnemyData("コカトリス", "🐔", 76, 11, "cockatrice"),
+        EnemyData("ワーウルフ", "🐺", 96, 13, "werewolf"),
+        EnemyData("ヴァンパイア", "🧛", 104, 14, "vampire"),
+        EnemyData("ゾンビ", "🧟‍♂️", 58, 8, "zombie"),
+        EnemyData("リザードマン", "🦎", 74, 10, "lizardman"),
+        EnemyData("ダークナイト", "⚔️", 122, 15, "dark_knight"),
+        EnemyData("ラストモンスター", "🦀", 66, 9, "rust_monster"),
+        EnemyData("ボーンドラゴン", "🦴", 128, 17, "bone_dragon"),
+        EnemyData("ナイトメア", "🐴", 106, 14, "nightmare"),
+        EnemyData("海賊の亡霊", "🏴‍☠️", 90, 12, "pirate_wraith"),
+        EnemyData("石の番人", "🗿", 88, 11, "stone_sentinel"),
+        EnemyData("サンダーバード", "⚡", 118, 15, "thunderbird"),
+        EnemyData("フェニックス", "🐦", 132, 18, "phoenix"),
+        EnemyData("巨大グモ", "🕷️", 86, 11, "giant_spider"),
+        EnemyData("アイスウィッチ", "🧊", 102, 14, "ice_witch"),
+        EnemyData("堕落した聖騎士", "⚔️", 124, 15, "corrupted_paladin"),
+        EnemyData("深淵の海蛇", "🐍", 138, 17, "abyssal_serpent"),
+        EnemyData("トレント", "🌲", 100, 12, "treant"),
+        EnemyData("キメラ", "🦁", 112, 16, "chimera"),
+        EnemyData("ミミック", "📦", 80, 11, "mimic")
     )
 
-    private val forestEnemies = listOf(
-        EnemyData("毒キノコ", "🍄", 25, 4, "mushroom"),
-        EnemyData("ウルフ", "🐺", 40, 7, "wolf"),
-        EnemyData("トレント", "🌲", 70, 9, "treant"),
-        EnemyData("フォレストスピリット", "🧚", 55, 6, "forest_spirit"),
-        EnemyData("ベアー", "🐻", 90, 13, "bear")
+    private fun poolBySpriteKeys(keys: Set<String>): List<EnemyData> {
+        val picked = enemyCatalog.filter { it.spriteKey in keys }
+        return picked.ifEmpty { enemyCatalog }
+    }
+
+    private val defaultEnemyPool = poolBySpriteKeys(
+        setOf(
+            "slime", "goblin", "bat", "skeleton", "orc", "troll", "ogre", "kobold", "zombie", "ghoul",
+            "cyclops", "minotaur", "centaur", "dark_knight", "corrupted_paladin", "mummy", "mimic",
+            "mandrake", "chimera", "shadow_knight", "dullahan", "vampire", "lizardman", "werewolf",
+            "rust_monster", "bone_dragon", "dragon", "gargoyle", "harpy", "nightmare"
+        )
     )
 
-    private val caveEnemies = listOf(
-        EnemyData("コウモリ群", "🦇", 35, 5, "bat"),
-        EnemyData("クリスタルゴーレム", "💎", 80, 11, "crystal_golem"),
-        EnemyData("ケーブスパイダー", "🕷️", 45, 8, "spider"),
-        EnemyData("ロックワーム", "🪱", 100, 14, "rock_worm"),
-        EnemyData("ミミック", "📦", 70, 10, "mimic")
+    private val forestEnemyPool = poolBySpriteKeys(
+        setOf(
+            "dryad", "treant", "mandrake", "harpy", "werewolf", "chimera", "griffin", "naga", "cockatrice",
+            "basilisk", "giant_spider", "wisp", "wyvern", "banshee", "lamia", "centaur", "ogre", "troll"
+        )
     )
 
-    private val towerEnemies = listOf(
-        EnemyData("フレイムインプ", "🔥", 40, 8, "flame_imp"),
-        EnemyData("ファイアエレメンタル", "🌋", 90, 15, "fire_elemental"),
-        EnemyData("サラマンダー", "🦎", 60, 10, "salamander"),
-        EnemyData("フェニックス", "🐦", 130, 18, "phoenix"),
-        EnemyData("イフリート", "😈", 160, 22, "ifrit")
+    private val caveEnemyPool = poolBySpriteKeys(
+        setOf(
+            "golem", "kobold", "rust_monster", "gargoyle", "specter", "skeleton", "mimic", "giant_spider",
+            "wraith", "banshee", "dullahan", "stone_sentinel", "sand_worm", "ghoul", "mummy", "bat",
+            "lich", "zombie", "cyclops"
+        )
+    )
+
+    private val towerEnemyPool = poolBySpriteKeys(
+        setOf(
+            "dragon", "phoenix", "crimson_demon", "imp", "nightmare", "ice_witch", "succubus",
+            "shadow_knight", "wisp", "bone_dragon", "banshee", "hydra", "leviathan", "thunderbird",
+            "lamia", "wyvern", "cerberus", "lich", "specter"
+        )
     )
 
     private fun getEnemiesForDungeon(dungeonName: String?): List<EnemyData> {
-        if (dungeonName == null) return defaultEnemies
+        if (dungeonName == null) return defaultEnemyPool
         return when {
-            dungeonName.contains("森") || dungeonName.contains("forest", true) -> forestEnemies
-            dungeonName.contains("洞窟") || dungeonName.contains("水晶") || dungeonName.contains("cave", true) -> caveEnemies
-            dungeonName.contains("塔") || dungeonName.contains("炎") || dungeonName.contains("tower", true) -> towerEnemies
-            dungeonName.contains("迷宮") || dungeonName.contains("コード") -> defaultEnemies.shuffled()
-            else -> defaultEnemies
+            dungeonName.contains("森") || dungeonName.contains("forest", true) -> forestEnemyPool
+            dungeonName.contains("洞窟") || dungeonName.contains("水晶") || dungeonName.contains("cave", true) -> caveEnemyPool
+            dungeonName.contains("塔") || dungeonName.contains("炎") || dungeonName.contains("tower", true) -> towerEnemyPool
+            dungeonName.contains("迷宮") || dungeonName.contains("コード") -> enemyCatalog.shuffled()
+            else -> defaultEnemyPool
         }
     }
 
-    private var currentEnemyTable: List<EnemyData> = defaultEnemies
+    private var currentEnemyTable: List<EnemyData> = defaultEnemyPool
 
     private val walkingMessages = listOf(
         "ダンジョンの奥へ進んでいる…",
@@ -173,7 +237,7 @@ class StudyQuestViewModel(
                 adventurePhaseTick = 0L,
                 enemyName = firstEnemy.name,
                 enemyEmoji = firstEnemy.emoji,
-                enemySpriteKey = firstEnemy.spriteKey,
+                enemySpriteKey = EnemySpriteAssets.drawableKey(firstEnemy.spriteKey),
                 enemyHp = firstEnemy.hp,
                 enemyMaxHp = firstEnemy.hp,
                 lastDamage = 0,
@@ -407,7 +471,7 @@ class StudyQuestViewModel(
                         val newEnemy = currentEnemyTable.random()
                         enemyName = newEnemy.name
                         enemyEmoji = newEnemy.emoji
-                        enemySpriteKey = newEnemy.spriteKey
+                        enemySpriteKey = EnemySpriteAssets.drawableKey(newEnemy.spriteKey)
                         enemyHp = newEnemy.hp
                         enemyMaxHp = newEnemy.hp
                         phase = AdventurePhase.WALKING
@@ -437,7 +501,7 @@ class StudyQuestViewModel(
                     val newEnemy = currentEnemyTable.random()
                     enemyName = newEnemy.name
                     enemyEmoji = newEnemy.emoji
-                    enemySpriteKey = newEnemy.spriteKey
+                    enemySpriteKey = EnemySpriteAssets.drawableKey(newEnemy.spriteKey)
                     enemyHp = newEnemy.hp
                     enemyMaxHp = newEnemy.hp
                     phase = AdventurePhase.WALKING

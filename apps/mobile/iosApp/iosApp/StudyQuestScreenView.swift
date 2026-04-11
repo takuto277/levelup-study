@@ -168,10 +168,15 @@ private struct BattleConfrontationIOSView: View {
     let enemyFirstFrameName: String?
     let enemyEmoji: String
     let lastDamage: Int32
+    let currentFloor: Int
+    let totalFloors: Int32
 
     var body: some View {
         let t = min(1.0, max(0.0, approach))
         let isStriking = isAttackPhase && lastDamage > 0
+        let isBossEncounter = currentFloor >= Int(totalFloors)
+        let baseEnemy: CGFloat = 118
+        let eW: CGFloat = isBossEncounter ? 236 : baseEnemy
 
         ZStack {
             Color.black.opacity(0.12)
@@ -185,11 +190,10 @@ private struct BattleConfrontationIOSView: View {
                     let centerX = w / 2
                     let gap: CGFloat = 30
                     let pW: CGFloat = 118
-                    let eW: CGFloat = 118
                     let playerEndLeft = centerX - gap / 2 - pW
-                    let enemyEndLeft = centerX + gap / 2
+                    let enemyEndLeft = centerX + gap / 2 - (eW - baseEnemy) / 2
                     let playerStart: CGFloat = -32
-                    let enemyStart = w + 88
+                    let enemyStart = w + 88 + (eW - baseEnemy)
                     let playerLeft = playerStart + (playerEndLeft - playerStart) * t
                     let enemyLeft = enemyStart + (enemyEndLeft - enemyStart) * t
                     let strikeNudge: CGFloat = isStriking ? 6 : 0
@@ -224,11 +228,11 @@ private struct BattleConfrontationIOSView: View {
                             if !isAttackPhase {
                                 TimelineView(.animation(minimumInterval: 0.32, paused: false)) { ctx in
                                     let bob = Int(ctx.date.timeIntervalSinceReferenceDate / 0.32) % 2 == 0 ? CGFloat(-3) : 2
-                                    enemySpriteOnly(eW: eW, cellH: pW)
+                                    enemySpriteOnly(eW: eW, cellH: eW, isBoss: isBossEncounter)
                                         .offset(x: enemyLeft, y: bob)
                                 }
                             } else {
-                                enemySpriteOnly(eW: eW, cellH: pW)
+                                enemySpriteOnly(eW: eW, cellH: eW, isBoss: isBossEncounter)
                                     .offset(x: enemyLeft)
                             }
                         }
@@ -241,9 +245,9 @@ private struct BattleConfrontationIOSView: View {
         }
     }
 
-    /// プレイヤーと同じ 118pt 枠の高さに揃え、下端で床に接地
+    /// 正方形セル内に収め、下端で床に接地（ボスはセル約 2 倍）
     @ViewBuilder
-    private func enemySpriteOnly(eW: CGFloat, cellH: CGFloat) -> some View {
+    private func enemySpriteOnly(eW: CGFloat, cellH: CGFloat, isBoss: Bool) -> some View {
         if let name = enemyFirstFrameName, UIImage(named: name) != nil {
             Image(name)
                 .resizable()
@@ -252,7 +256,7 @@ private struct BattleConfrontationIOSView: View {
                 .frame(width: eW, height: cellH, alignment: .bottom)
         } else {
             Text(enemyEmoji)
-                .font(.system(size: 56))
+                .font(.system(size: isBoss ? 112 : 56))
                 .frame(width: eW, height: cellH, alignment: .bottom)
         }
     }
@@ -761,7 +765,9 @@ struct StudyQuestScreenView: View {
                     playerWalkFrames: playerWalkFrameNames(),
                     enemyFirstFrameName: enemyFrames.first,
                     enemyEmoji: uiState.enemyEmoji,
-                    lastDamage: uiState.lastDamage
+                    lastDamage: uiState.lastDamage,
+                    currentFloor: Int(uiState.currentFloor),
+                    totalFloors: uiState.totalFloors
                 )
 
             case .attacking:
@@ -773,7 +779,9 @@ struct StudyQuestScreenView: View {
                     playerWalkFrames: playerWalkFrameNames(),
                     enemyFirstFrameName: enemyFrames.first,
                     enemyEmoji: uiState.enemyEmoji,
-                    lastDamage: uiState.lastDamage
+                    lastDamage: uiState.lastDamage,
+                    currentFloor: Int(uiState.currentFloor),
+                    totalFloors: uiState.totalFloors
                 )
 
             case .enemyDefeated, .floorClear:

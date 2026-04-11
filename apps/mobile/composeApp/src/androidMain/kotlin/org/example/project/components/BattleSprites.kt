@@ -1,6 +1,8 @@
 package org.example.project.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -61,12 +63,17 @@ fun BattleSprite(
         }
     }
 
-    Image(
-        painter = painterResource(frames[currentFrame]),
-        contentDescription = null,
+    Box(
         modifier = modifier.size(size),
-        contentScale = ContentScale.Fit
-    )
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Image(
+            painter = painterResource(frames[currentFrame]),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit
+        )
+    }
 }
 
 @Composable

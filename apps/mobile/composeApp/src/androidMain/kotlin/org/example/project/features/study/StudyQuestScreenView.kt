@@ -384,6 +384,7 @@ private fun MainQuestView(
                     lastDamage = uiState.lastDamage,
                     dungeonName = uiState.dungeonName,
                     currentFloor = uiState.currentFloor,
+                    totalFloors = uiState.totalFloors,
                     adventurePhaseTick = uiState.adventurePhaseTick,
                     walkOffset = walkOffset,
                     walkBounce = walkBounce,
@@ -521,6 +522,8 @@ private val ConfrontGap = 30.dp
 /** 探索時の歩きスプライト（118dp）と揃え、床位置を一致させる */
 private val ConfrontPlayerSize = 118.dp
 private val ConfrontEnemySize = 118.dp
+/** 最終階のボス遭遇時のみ（縦横おおよそ 2 倍） */
+private val ConfrontBossEnemySize = 236.dp
 
 /**
  * 背景を下基準でクロップしたときの「床帯」に足を乗せるための下端オフセット。
@@ -557,7 +560,9 @@ private fun BattleConfrontationLayer(
     hasEnemySprite: Boolean,
     enemySpriteKey: String,
     enemyEmoji: String,
-    lastDamage: Int
+    lastDamage: Int,
+    currentFloor: Int,
+    totalFloors: Int
 ) {
     val isStriking = isAttackPhase && lastDamage > 0
     val enemyBobY = if (!isAttackPhase) {
@@ -566,6 +571,8 @@ private fun BattleConfrontationLayer(
         0.dp
     }
     val progress = approachProgress.coerceIn(0f, 1f)
+    val isBossEncounter = currentFloor >= totalFloors
+    val enemySlotSize = if (isBossEncounter) ConfrontBossEnemySize else ConfrontEnemySize
 
     Box(
         modifier = Modifier
@@ -575,9 +582,9 @@ private fun BattleConfrontationLayer(
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val centerX = maxWidth / 2
             val playerEndLeft = centerX - ConfrontGap / 2 - ConfrontPlayerSize
-            val enemyEndLeft = centerX + ConfrontGap / 2
+            val enemyEndLeft = centerX + ConfrontGap / 2 - (enemySlotSize - ConfrontEnemySize) / 2
             val playerStartLeft = (-32).dp
-            val enemyStartLeft = maxWidth + 88.dp
+            val enemyStartLeft = maxWidth + 88.dp + (enemySlotSize - ConfrontEnemySize)
             val playerLeft = lerp(playerStartLeft, playerEndLeft, progress)
             val enemyLeft = lerp(enemyStartLeft, enemyEndLeft, progress)
 
@@ -604,23 +611,30 @@ private fun BattleConfrontationLayer(
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .offset(x = enemyLeft, y = enemyBobY)
-                    .padding(bottom = AdventureFloorInsetDp)
-                    .size(ConfrontEnemySize),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                if (hasEnemySprite) {
-                    BattleSprite(
-                        spriteKey = enemySpriteKey,
-                        spriteType = "enemy",
-                        size = ConfrontEnemySize,
-                        animateFrames = false
+            if (hasEnemySprite) {
+                BattleSprite(
+                    spriteKey = enemySpriteKey,
+                    spriteType = "enemy",
+                    size = enemySlotSize,
+                    animateFrames = false,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = enemyLeft, y = enemyBobY)
+                        .padding(bottom = AdventureFloorInsetDp)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = enemyLeft, y = enemyBobY)
+                        .padding(bottom = AdventureFloorInsetDp)
+                        .size(enemySlotSize),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    Text(
+                        enemyEmoji,
+                        fontSize = if (isBossEncounter) 112.sp else 56.sp
                     )
-                } else {
-                    Text(enemyEmoji, fontSize = 56.sp)
                 }
             }
         }
@@ -637,6 +651,7 @@ private fun AdventureScene(
     lastDamage: Int,
     dungeonName: String?,
     currentFloor: Int,
+    totalFloors: Int,
     adventurePhaseTick: Long,
     walkOffset: Float,
     walkBounce: Float,
@@ -729,7 +744,9 @@ private fun AdventureScene(
                     hasEnemySprite = hasEnemySprite,
                     enemySpriteKey = enemySpriteKey,
                     enemyEmoji = enemyEmoji,
-                    lastDamage = lastDamage
+                    lastDamage = lastDamage,
+                    currentFloor = currentFloor,
+                    totalFloors = totalFloors
                 )
             }
 
@@ -743,7 +760,9 @@ private fun AdventureScene(
                     hasEnemySprite = hasEnemySprite,
                     enemySpriteKey = enemySpriteKey,
                     enemyEmoji = enemyEmoji,
-                    lastDamage = lastDamage
+                    lastDamage = lastDamage,
+                    currentFloor = currentFloor,
+                    totalFloors = totalFloors
                 )
             }
 
