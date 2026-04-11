@@ -150,122 +150,106 @@ private func iosCombatPlayerSprite(phaseTick: Int64, lastDamage: Int32, size: CG
     }
 }
 
-/// 遭遇〜戦闘：キャラは探索時と同じ床ライン。HP・接近文は画面上部。接近中のみ敵スプライトが微上下
+/// 遭遇〜戦闘：探索と同じく VStack + Spacer で床帯を確保。敵 HP は画面上部のバー（親）に集約。
 private struct BattleConfrontationIOSView: View {
     let isAttackPhase: Bool
     let approach: CGFloat
     let phaseTick: Int64
     let hasPlayerSprites: Bool
     let playerWalkFrames: [String]
-    let hasEnemySprites: Bool
     let enemyFirstFrameName: String?
     let enemyEmoji: String
     let enemyName: String
-    let enemyHp: Int32
-    let enemyMaxHp: Int32
     let lastDamage: Int32
 
     var body: some View {
-        let showEnemyHp = isAttackPhase || approach >= 0.9
-        let isStriking = isAttackPhase && lastDamage > 0
         let t = min(1.0, max(0.0, approach))
+        let showApproachBanner = !isAttackPhase && approach < 0.9
+        let isStriking = isAttackPhase && lastDamage > 0
 
         ZStack {
             Color.black.opacity(0.12)
 
-            Text(isAttackPhase ? "⚔️ 戦闘中" : "⚠️ 遭遇！")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(textMuted)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .padding(.top, 8)
+            VStack(spacing: 0) {
+                Text(isAttackPhase ? "⚔️ 戦闘中" : "⚠️ 遭遇！")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(textMuted)
+                    .padding(.top, 8)
 
-            if showEnemyHp {
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(enemyName)
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(textMuted)
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(darkSurface)
-                            .frame(width: 72, height: 5)
-                        let hpRatio = enemyMaxHp > 0 ? CGFloat(enemyHp) / CGFloat(enemyMaxHp) : 0
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(hpRatio > 0.5 ? emeraldGreen : (hpRatio > 0.25 ? fireOrange : fireRed))
-                            .frame(width: 72 * hpRatio, height: 5)
+                if showApproachBanner {
+                    VStack(spacing: 2) {
+                        Text(enemyName)
+                            .font(.system(size: 12, weight: .heavy))
+                            .foregroundColor(fireOrange)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        Text("接近中…")
+                            .font(.system(size: 10))
+                            .foregroundColor(textMuted)
                     }
-                    Text("\(enemyHp)/\(enemyMaxHp)")
-                        .font(.system(size: 8))
-                        .foregroundColor(textMuted)
+                    .padding(.top, 4)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .padding(.top, 28)
-                .padding(.trailing, 8)
-            } else if !isAttackPhase {
-                VStack(spacing: 2) {
-                    Text(enemyName)
-                        .font(.system(size: 12, weight: .heavy))
-                        .foregroundColor(fireOrange)
-                    Text("接近中…")
-                        .font(.system(size: 10))
-                        .foregroundColor(textMuted)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .padding(.top, 28)
-            }
 
-            GeometryReader { geo in
-                let w = geo.size.width
-                let centerX = w / 2
-                let gap: CGFloat = 30
-                let pW: CGFloat = 118
-                let eW: CGFloat = 118
-                let playerEndLeft = centerX - gap / 2 - pW
-                let enemyEndLeft = centerX + gap / 2
-                let playerStart: CGFloat = -32
-                let enemyStart = w + 88
-                let playerLeft = playerStart + (playerEndLeft - playerStart) * t
-                let enemyLeft = enemyStart + (enemyEndLeft - enemyStart) * t
-                let strikeNudge: CGFloat = (isAttackPhase && isStriking) ? 6 : 0
+                Spacer(minLength: 0)
 
-                ZStack(alignment: .bottomLeading) {
-                    if hasPlayerSprites {
-                        if isAttackPhase {
-                            iosCombatPlayerSprite(phaseTick: phaseTick, lastDamage: lastDamage, size: pW)
-                                .offset(x: playerLeft + strikeNudge)
-                                .padding(.leading, 16)
-                                .padding(.bottom, adventureFloorInset)
-                        } else if !playerWalkFrames.isEmpty {
-                            AnimatedSpriteView(frames: playerWalkFrames, interval: 0.32, size: pW)
-                                .offset(x: playerLeft)
-                                .padding(.leading, 16)
-                                .padding(.bottom, adventureFloorInset)
+                GeometryReader { geo in
+                    let w = geo.size.width
+                    let h = geo.size.height
+                    let centerX = w / 2
+                    let gap: CGFloat = 30
+                    let pW: CGFloat = 118
+                    let eW: CGFloat = 118
+                    let playerEndLeft = centerX - gap / 2 - pW
+                    let enemyEndLeft = centerX + gap / 2
+                    let playerStart: CGFloat = -32
+                    let enemyStart = w + 88
+                    let playerLeft = playerStart + (playerEndLeft - playerStart) * t
+                    let enemyLeft = enemyStart + (enemyEndLeft - enemyStart) * t
+                    let strikeNudge: CGFloat = isStriking ? 6 : 0
+
+                    ZStack(alignment: .bottomLeading) {
+                        if hasPlayerSprites {
+                            if isAttackPhase {
+                                iosCombatPlayerSprite(phaseTick: phaseTick, lastDamage: lastDamage, size: pW)
+                                    .padding(.leading, 16)
+                                    .padding(.bottom, adventureFloorInset)
+                                    .offset(x: playerLeft + strikeNudge)
+                            } else if !playerWalkFrames.isEmpty {
+                                AnimatedSpriteView(frames: playerWalkFrames, interval: 0.32, size: 118)
+                                    .padding(.leading, 16)
+                                    .padding(.bottom, adventureFloorInset)
+                                    .offset(x: playerLeft)
+                            } else {
+                                iosCombatPlayerSprite(phaseTick: phaseTick, lastDamage: 0, size: pW)
+                                    .padding(.leading, 16)
+                                    .padding(.bottom, adventureFloorInset)
+                                    .offset(x: playerLeft)
+                            }
                         } else {
-                            iosCombatPlayerSprite(phaseTick: phaseTick, lastDamage: 0, size: pW)
-                                .offset(x: playerLeft)
+                            Text("🧙‍♂️")
+                                .font(.system(size: 52))
                                 .padding(.leading, 16)
                                 .padding(.bottom, adventureFloorInset)
+                                .offset(x: playerLeft)
                         }
-                    } else {
-                        Text("🧙‍♂️")
-                            .font(.system(size: 52))
-                            .offset(x: playerLeft)
-                            .padding(.leading, 16)
-                            .padding(.bottom, adventureFloorInset)
-                    }
 
-                    if !isAttackPhase {
-                        TimelineView(.animation(minimumInterval: 0.32, paused: false)) { ctx in
-                            let bob = Int(ctx.date.timeIntervalSinceReferenceDate / 0.32) % 2 == 0 ? CGFloat(-3) : 2
-                            enemySpriteOnly(eW: eW)
-                                .offset(x: enemyLeft, y: bob)
+                        Group {
+                            if !isAttackPhase {
+                                TimelineView(.animation(minimumInterval: 0.32, paused: false)) { ctx in
+                                    let bob = Int(ctx.date.timeIntervalSinceReferenceDate / 0.32) % 2 == 0 ? CGFloat(-3) : 2
+                                    enemySpriteOnly(eW: eW)
+                                        .offset(x: enemyLeft, y: bob)
+                                }
+                            } else {
+                                enemySpriteOnly(eW: eW)
+                                    .offset(x: enemyLeft)
+                            }
                         }
                         .padding(.bottom, adventureFloorInset)
-                    } else {
-                        enemySpriteOnly(eW: eW)
-                            .offset(x: enemyLeft)
-                            .padding(.bottom, adventureFloorInset)
                     }
+                    .frame(width: w, height: h, alignment: .bottomLeading)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
@@ -487,16 +471,17 @@ struct StudyQuestScreenView: View {
 
             Spacer()
 
-            // プレイヤーHPバー
+            // プレイヤー HP + 敵 HP（各バーは行の半分幅）
             if !isBreak {
-                HStack(spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
                     Text("🧙‍♂️").font(.system(size: 16))
+
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
                             Text("HP")
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(textMuted)
-                            Spacer()
+                            Spacer(minLength: 0)
                             Text("\(uiState.playerHp)/\(uiState.playerMaxHp)")
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundColor(textWhite)
@@ -516,6 +501,39 @@ struct StudyQuestScreenView: View {
                         }
                         .frame(height: 6)
                     }
+                    .frame(maxWidth: .infinity)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text(uiState.enemyEmoji)
+                                .font(.system(size: 12))
+                            Text(uiState.enemyName)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(textMuted)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
+                            Spacer(minLength: 0)
+                            Text("\(uiState.enemyHp)/\(uiState.enemyMaxHp)")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(textWhite)
+                        }
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(darkSurface)
+                                    .frame(height: 6)
+                                let ratio = uiState.enemyMaxHp > 0
+                                    ? CGFloat(uiState.enemyHp) / CGFloat(uiState.enemyMaxHp)
+                                    : 0
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(ratio > 0.5 ? emeraldGreen : (ratio > 0.25 ? fireOrange : fireRed))
+                                    .frame(width: geo.size.width * ratio, height: 6)
+                            }
+                        }
+                        .frame(height: 6)
+                    }
+                    .frame(maxWidth: .infinity)
+
                     if uiState.lastPlayerDamage > 0 {
                         Text("-\(uiState.lastPlayerDamage)")
                             .font(.system(size: 14, weight: .heavy))
@@ -683,7 +701,6 @@ struct StudyQuestScreenView: View {
         let hasPlayerSprites = hasPlayerWalkSprites()
         let enemyKey = uiState.enemySpriteKey
         let enemyFrames = enemySpriteFrames(enemyKey)
-        let hasEnemySprites = !enemyFrames.isEmpty
         let bgName = dungeonBgName(uiState.dungeonName)
         let hasBg = UIImage(named: bgName) != nil
         return ZStack {
@@ -724,12 +741,9 @@ struct StudyQuestScreenView: View {
                     phaseTick: uiState.adventurePhaseTick,
                     hasPlayerSprites: hasPlayerSprites,
                     playerWalkFrames: playerWalkFrameNames(),
-                    hasEnemySprites: hasEnemySprites,
                     enemyFirstFrameName: enemyFrames.first,
                     enemyEmoji: uiState.enemyEmoji,
                     enemyName: uiState.enemyName,
-                    enemyHp: uiState.enemyHp,
-                    enemyMaxHp: uiState.enemyMaxHp,
                     lastDamage: uiState.lastDamage
                 )
 
@@ -740,12 +754,9 @@ struct StudyQuestScreenView: View {
                     phaseTick: uiState.adventurePhaseTick,
                     hasPlayerSprites: hasPlayerSprites,
                     playerWalkFrames: playerWalkFrameNames(),
-                    hasEnemySprites: hasEnemySprites,
                     enemyFirstFrameName: enemyFrames.first,
                     enemyEmoji: uiState.enemyEmoji,
                     enemyName: uiState.enemyName,
-                    enemyHp: uiState.enemyHp,
-                    enemyMaxHp: uiState.enemyMaxHp,
                     lastDamage: uiState.lastDamage
                 )
 

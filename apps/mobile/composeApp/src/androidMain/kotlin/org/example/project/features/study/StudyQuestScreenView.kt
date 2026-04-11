@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
@@ -218,12 +219,10 @@ private fun MainQuestView(
             }
         }
 
-        // プレイヤーHPバー
+        // プレイヤー HP + 敵 HP（各列が行の半分を占有）
         if (!isBreak) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("🧙‍♂️", fontSize = 16.sp)
@@ -231,11 +230,20 @@ private fun MainQuestView(
                 Column(modifier = Modifier.weight(1f)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("HP", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
-                        Text("${uiState.playerHp}/${uiState.playerMaxHp}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(
+                            "${uiState.playerHp}/${uiState.playerMaxHp}",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
                     }
                     Spacer(modifier = Modifier.height(2.dp))
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(DarkSurface)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(DarkSurface)
                     ) {
                         val ratio = if (uiState.playerMaxHp > 0) uiState.playerHp.toFloat() / uiState.playerMaxHp else 0f
                         Box(
@@ -244,7 +252,53 @@ private fun MainQuestView(
                                     ratio > 0.5f -> EmeraldGreen
                                     ratio > 0.25f -> FireOrange
                                     else -> FireRed
-                                }, RoundedCornerShape(3.dp)
+                                },
+                                RoundedCornerShape(3.dp)
+                            )
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(uiState.enemyEmoji, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            uiState.enemyName,
+                            modifier = Modifier.weight(1f),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            "${uiState.enemyHp}/${uiState.enemyMaxHp}",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(DarkSurface)
+                    ) {
+                        val er = if (uiState.enemyMaxHp > 0) uiState.enemyHp.toFloat() / uiState.enemyMaxHp else 0f
+                        Box(
+                            modifier = Modifier.fillMaxHeight().fillMaxWidth(er).background(
+                                when {
+                                    er > 0.5f -> EmeraldGreen
+                                    er > 0.25f -> FireOrange
+                                    else -> FireRed
+                                },
+                                RoundedCornerShape(3.dp)
                             )
                         )
                     }
@@ -268,7 +322,7 @@ private fun MainQuestView(
                     if (isBreak) Brush.verticalGradient(listOf(Color(0xFF0A1F0A), Color(0xFF132613), Color(0xFF0A1F0A)))
                     else Brush.verticalGradient(listOf(Color(0xFF06060F), Color(0xFF0E1428), Color(0xFF1A1040)))
                 ),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.TopCenter
         ) {
             if (!isBreak) {
                 val context = LocalContext.current
@@ -448,7 +502,7 @@ private fun combatPlayerMode(phaseTick: Long, lastDamage: Int): PlayerSpriteMode
         else -> PlayerSpriteMode.Idle
     }
 
-/** 遭遇〜戦闘：キャラは探索時と同じ床ライン。HP・接近文は画面上部。接近中のみ敵スプライトが微上下 */
+/** 遭遇〜戦闘：床ラインは探索と同一。敵 HP は画面上部の共通バー（MainQuestView）に表示。 */
 @Composable
 private fun BattleConfrontationLayer(
     isAttackPhase: Boolean,
@@ -460,12 +514,10 @@ private fun BattleConfrontationLayer(
     enemySpriteKey: String,
     enemyEmoji: String,
     enemyName: String,
-    enemyHp: Int,
-    enemyMaxHp: Int,
     lastDamage: Int
 ) {
     val isStriking = isAttackPhase && lastDamage > 0
-    val showEnemyHp = isAttackPhase || approachProgress >= 0.9f
+    val showApproachBanner = !isAttackPhase && approachProgress < 0.9f
     val enemyBobY = if (!isAttackPhase) {
         if (syncBob) (-3).dp else 2.dp
     } else {
@@ -478,78 +530,41 @@ private fun BattleConfrontationLayer(
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.12f))
     ) {
-        Text(
-            if (isAttackPhase) "⚔️ 戦闘中" else "⚠️ 遭遇！",
-            fontSize = 11.sp,
-            color = TextMuted,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
-        )
-
-        if (showEnemyHp) {
-            Column(
-                horizontalAlignment = Alignment.End,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 28.dp, end = 8.dp)
-            ) {
-                Text(
-                    enemyName,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextMuted
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Box(
-                    modifier = Modifier
-                        .width(72.dp)
-                        .height(5.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(DarkSurface)
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                if (isAttackPhase) "⚔️ 戦闘中" else "⚠️ 遭遇！",
+                fontSize = 11.sp,
+                color = TextMuted,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            if (showApproachBanner) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(top = 4.dp)
                 ) {
-                    val hpRatio = if (enemyMaxHp > 0) enemyHp.toFloat() / enemyMaxHp else 0f
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(hpRatio)
-                            .background(
-                                when {
-                                    hpRatio > 0.5f -> EmeraldGreen
-                                    hpRatio > 0.25f -> FireOrange
-                                    else -> FireRed
-                                },
-                                RoundedCornerShape(3.dp)
-                            )
+                    Text(
+                        enemyName,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
+                        color = FireOrange,
+                        maxLines = 1
+                    )
+                    Text(
+                        "接近中…",
+                        fontSize = 10.sp,
+                        color = TextMuted
                     )
                 }
-                Text(
-                    "$enemyHp/$enemyMaxHp",
-                    fontSize = 8.sp,
-                    color = TextMuted
-                )
             }
-        } else if (!isAttackPhase) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 28.dp)
+            BoxWithConstraints(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
             ) {
-                Text(
-                    enemyName,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Black,
-                    color = FireOrange
-                )
-                Text(
-                    "接近中…",
-                    fontSize = 10.sp,
-                    color = TextMuted
-                )
-            }
-        }
-
-        BoxWithConstraints(Modifier.fillMaxSize()) {
             val centerX = maxWidth / 2
             val playerEndLeft = centerX - ConfrontGap / 2 - ConfrontPlayerSize
             val enemyEndLeft = centerX + ConfrontGap / 2
@@ -601,6 +616,7 @@ private fun BattleConfrontationLayer(
                         .offset(x = enemyLeft, y = enemyBobY)
                         .padding(bottom = AdventureFloorInsetDp)
                 )
+            }
             }
         }
     }
@@ -717,8 +733,6 @@ private fun AdventureScene(
                     enemySpriteKey = enemySpriteKey,
                     enemyEmoji = enemyEmoji,
                     enemyName = enemyName,
-                    enemyHp = enemyHp,
-                    enemyMaxHp = enemyMaxHp,
                     lastDamage = lastDamage
                 )
             }
@@ -734,8 +748,6 @@ private fun AdventureScene(
                     enemySpriteKey = enemySpriteKey,
                     enemyEmoji = enemyEmoji,
                     enemyName = enemyName,
-                    enemyHp = enemyHp,
-                    enemyMaxHp = enemyMaxHp,
                     lastDamage = lastDamage
                 )
             }
