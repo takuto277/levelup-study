@@ -18,11 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import kotlin.math.cos
-import kotlin.math.sin
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -35,7 +32,9 @@ import androidx.compose.ui.unit.sp
 import org.example.project.components.BattleSprite
 import org.example.project.components.DungeonBackground
 import org.example.project.components.PlayerSprite
+import org.example.project.components.PlayerSpriteMode
 import org.example.project.components.hasBackgroundResource
+import org.example.project.components.hasPlayerWalkSprite
 import org.example.project.components.hasSpriteResource
 
 private val DarkBg = Color(0xFF0F172A)
@@ -124,14 +123,6 @@ private fun MainQuestView(
     val walkBounce by infiniteTransition.animateFloat(
         initialValue = 0f, targetValue = -6f,
         animationSpec = infiniteRepeatable(tween(300), RepeatMode.Reverse), label = "walkBounce"
-    )
-    val attackShake by infiniteTransition.animateFloat(
-        initialValue = -4f, targetValue = 4f,
-        animationSpec = infiniteRepeatable(tween(80), RepeatMode.Reverse), label = "shake"
-    )
-    val damageFlash by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(200), RepeatMode.Reverse), label = "flash"
     )
     val restFlicker by infiniteTransition.animateFloat(
         initialValue = 0.6f, targetValue = 1f,
@@ -302,8 +293,6 @@ private fun MainQuestView(
                     dungeonName = uiState.dungeonName,
                     walkOffset = walkOffset,
                     walkBounce = walkBounce,
-                    attackShake = attackShake,
-                    damageFlash = damageFlash,
                     pulseAlpha = pulseAlpha
                 )
             }
@@ -435,6 +424,20 @@ private fun MainQuestView(
 }
 
 @Composable
+private fun AdventureGroundLine(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFF5C4330).copy(alpha = 0.92f), Color(0xFF1A1209).copy(alpha = 0.98f))
+                )
+            )
+    )
+}
+
+@Composable
 private fun AdventureScene(
     phase: AdventurePhase,
     enemyEmoji: String,
@@ -446,12 +449,10 @@ private fun AdventureScene(
     dungeonName: String?,
     walkOffset: Float,
     walkBounce: Float,
-    attackShake: Float,
-    damageFlash: Float,
     pulseAlpha: Float
 ) {
     val context = LocalContext.current
-    val hasPlayerSprite = remember { hasSpriteResource(context, "player", "idle") }
+    val hasPlayerSprite = remember { hasPlayerWalkSprite(context) }
     val hasEnemySprite = remember(enemySpriteKey) { hasSpriteResource(context, "enemy", enemySpriteKey) }
     val hasBg = remember(dungeonName) { hasBackgroundResource(context, dungeonName) }
 
@@ -459,57 +460,47 @@ private fun AdventureScene(
         if (hasBg) {
             DungeonBackground(
                 dungeonName = dungeonName,
-                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset(x = (walkOffset * 2.5f).dp)
+                    .clip(RoundedCornerShape(24.dp)),
+                alpha = 0.82f
             )
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .align(Alignment.BottomCenter)
-                .offset(y = (-40).dp)
-                .background(TextMuted.copy(alpha = if (hasBg) 0.1f else 0.2f))
-        )
+        AdventureGroundLine(modifier = Modifier.align(Alignment.BottomCenter))
 
-        if (phase == AdventurePhase.WALKING) {
-            for (i in 0..4) {
-                Box(
-                    modifier = Modifier
-                        .size(3.dp)
-                        .align(Alignment.BottomCenter)
-                        .offset(
-                            x = ((i * 70 - 140) + walkOffset * 3).dp,
-                            y = (-38).dp
-                        )
-                        .background(TextMuted.copy(alpha = 0.3f), CircleShape)
-                )
-            }
-        }
+        val travelX = walkOffset * 12f
 
         when (phase) {
             AdventurePhase.WALKING -> {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("…", fontSize = 16.sp, color = TextMuted.copy(alpha = 0.5f))
-                    Spacer(modifier = Modifier.height(4.dp))
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        "探索中…",
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
+                    )
                     if (hasPlayerSprite) {
                         PlayerSprite(
-                            phase = "walk",
-                            size = 120.dp,
-                            modifier = Modifier.offset(x = walkOffset.dp, y = walkBounce.dp)
+                            mode = PlayerSpriteMode.Walking,
+                            size = 118.dp,
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(start = 20.dp, bottom = 44.dp)
+                                .offset(x = travelX.dp + 8.dp, y = walkBounce.dp * 0.6f)
                         )
                     } else {
                         Text(
                             "🧙‍♂️",
-                            fontSize = 64.sp,
-                            modifier = Modifier.offset(x = walkOffset.dp, y = walkBounce.dp)
+                            fontSize = 56.sp,
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(start = 20.dp, bottom = 44.dp)
+                                .offset(x = travelX.dp + 8.dp, y = walkBounce.dp * 0.6f)
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("探索中…", fontSize = 12.sp, color = TextMuted, fontWeight = FontWeight.Medium)
                 }
             }
 
@@ -517,192 +508,136 @@ private fun AdventureScene(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(FireRed.copy(alpha = damageFlash * 0.15f))
+                        .background(Color.Black.copy(alpha = 0.12f))
                 )
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    Text("⚠️", fontSize = 32.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "${enemyName}が現れた！",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Black,
-                        color = FireOrange
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    if (hasEnemySprite) {
-                        BattleSprite(
-                            spriteKey = enemySpriteKey,
-                            spriteType = "enemy",
-                            size = 140.dp,
-                            modifier = Modifier.offset(y = walkBounce.dp)
+                    if (hasPlayerSprite) {
+                        PlayerSprite(
+                            mode = PlayerSpriteMode.Prep,
+                            size = 108.dp,
+                            modifier = Modifier
+                                .padding(start = 8.dp, bottom = 44.dp)
                         )
                     } else {
-                        Text(enemyEmoji, fontSize = 72.sp)
+                        Text("🧙‍♂️", fontSize = 52.sp, modifier = Modifier.padding(start = 8.dp, bottom = 44.dp))
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(end = 12.dp, bottom = 40.dp)
+                    ) {
+                        Text("⚠️", fontSize = 22.sp)
+                        Text(
+                            "${enemyName}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Black,
+                            color = FireOrange
+                        )
+                        Text("遭遇！", fontSize = 11.sp, color = TextMuted)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        if (hasEnemySprite) {
+                            BattleSprite(
+                                spriteKey = enemySpriteKey,
+                                spriteType = "enemy",
+                                size = 112.dp,
+                                modifier = Modifier.offset(x = walkBounce.dp * 0.4f)
+                            )
+                        } else {
+                            Text(enemyEmoji, fontSize = 64.sp)
+                        }
                     }
                 }
             }
 
             AdventurePhase.ATTACKING -> {
                 val isStriking = lastDamage > 0
-                val damagePop = remember { Animatable(1f) }
-                LaunchedEffect(lastDamage) {
-                    if (lastDamage > 0) {
-                        damagePop.snapTo(1.65f)
-                        damagePop.animateTo(1f, tween(280, easing = FastOutSlowInEasing))
-                    }
-                }
-                val shakeX = if (isStriking) attackShake * 3.2f else 0f
-                val shakeY = if (isStriking) attackShake * -1.1f else 0f
-
-                Box(
+                Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .offset(x = shakeX.dp, y = shakeY.dp)
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    if (isStriking) {
-                        Box(
+                    if (hasPlayerSprite) {
+                        PlayerSprite(
+                            mode = if (isStriking) PlayerSpriteMode.Attack else PlayerSpriteMode.Prep,
+                            size = 108.dp,
                             modifier = Modifier
-                                .fillMaxSize()
-                                .background(FireRed.copy(alpha = damageFlash * 0.38f))
+                                .padding(start = 6.dp, bottom = 44.dp)
+                                .offset(x = if (isStriking) 6.dp else 0.dp, y = walkBounce.dp * 0.25f)
                         )
-                        BattleImpactOverlay(
-                            damageFlash = damageFlash,
-                            pulseAlpha = pulseAlpha,
-                            modifier = Modifier.fillMaxSize()
+                    } else {
+                        Text(
+                            "🧙‍♂️",
+                            fontSize = 52.sp,
+                            modifier = Modifier.padding(start = 6.dp, bottom = 44.dp)
                         )
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .align(Alignment.Center),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(bottom = 52.dp)
                     ) {
-                        if (hasPlayerSprite) {
-                            PlayerSprite(
-                                phase = if (isStriking) "attack" else "idle",
-                                size = 110.dp,
-                                modifier = Modifier
-                                    .graphicsLayer {
-                                        scaleX = if (isStriking) 1.06f else 1f
-                                        scaleY = if (isStriking) 1.06f else 1f
-                                    }
-                                    .offset(
-                                        x = if (isStriking) 18.dp else walkOffset.dp * 0.4f,
-                                        y = walkBounce.dp * 0.5f
-                                    )
+                        AnimatedVisibility(
+                            visible = isStriking,
+                            enter = fadeIn(tween(120)),
+                            exit = fadeOut(tween(400))
+                        ) {
+                            Text(
+                                "-${lastDamage}",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DamageRed
+                            )
+                        }
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(end = 8.dp, bottom = 40.dp)
+                    ) {
+                        if (hasEnemySprite) {
+                            BattleSprite(
+                                spriteKey = enemySpriteKey,
+                                spriteType = "enemy",
+                                size = 108.dp,
+                                modifier = Modifier.offset(y = walkBounce.dp * 0.2f)
                             )
                         } else {
-                            Text(
-                                "🧙‍♂️",
-                                fontSize = 56.sp,
-                                modifier = Modifier.offset(x = if (isStriking) 18.dp else walkOffset.dp * 0.4f)
-                            )
+                            Text(enemyEmoji, fontSize = 52.sp)
                         }
-
-                        if (isStriking) {
-                            Text(
-                                "⚔️",
-                                fontSize = 36.sp,
-                                color = FireOrange.copy(alpha = 0.95f),
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(enemyName, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(72.dp)
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(DarkSurface)
+                        ) {
+                            val hpRatio = if (enemyMaxHp > 0) enemyHp.toFloat() / enemyMaxHp else 0f
+                            Box(
                                 modifier = Modifier
-                                    .graphicsLayer {
-                                        scaleX = 1f + pulseAlpha * 0.15f
-                                        scaleY = 1f + pulseAlpha * 0.15f
-                                        rotationZ = -12f
-                                    }
-                                    .offset(y = (-10).dp)
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(hpRatio)
+                                    .background(
+                                        when {
+                                            hpRatio > 0.5f -> EmeraldGreen
+                                            hpRatio > 0.25f -> FireOrange
+                                            else -> FireRed
+                                        },
+                                        RoundedCornerShape(3.dp)
+                                    )
                             )
                         }
-
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            AnimatedVisibility(
-                                visible = isStriking,
-                                enter = fadeIn(tween(60)) + scaleIn(initialScale = 0.5f, animationSpec = tween(120)),
-                                exit = fadeOut(tween(400))
-                            ) {
-                                Text(
-                                    "-${lastDamage}",
-                                    fontSize = 28.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = Color.White,
-                                    modifier = Modifier.graphicsLayer {
-                                        scaleX = damagePop.value
-                                        scaleY = damagePop.value
-                                    }
-                                )
-                            }
-                            if (isStriking) {
-                                Text(
-                                    "HIT!",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = FireOrange.copy(alpha = pulseAlpha),
-                                    modifier = Modifier.offset(y = (-2).dp)
-                                )
-                            }
-
-                            if (hasEnemySprite) {
-                                BattleSprite(
-                                    spriteKey = enemySpriteKey,
-                                    spriteType = "enemy",
-                                    size = 110.dp,
-                                    modifier = Modifier
-                                        .graphicsLayer {
-                                            scaleX = if (isStriking) 0.92f + pulseAlpha * 0.06f else 1f
-                                            scaleY = if (isStriking) 0.92f + pulseAlpha * 0.06f else 1f
-                                            rotationZ = if (isStriking) attackShake * 2.5f else 0f
-                                        }
-                                        .offset(
-                                            x = if (isStriking) attackShake.dp * 1.2f else 0.dp,
-                                            y = walkBounce.dp * 0.3f
-                                        )
-                                )
-                            } else {
-                                Text(
-                                    enemyEmoji,
-                                    fontSize = 56.sp,
-                                    modifier = Modifier.offset(
-                                        x = if (isStriking) attackShake.dp else 0.dp
-                                    )
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(enemyName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextMuted)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .width(80.dp)
-                                        .height(6.dp)
-                                        .clip(RoundedCornerShape(3.dp))
-                                        .background(DarkSurface)
-                                ) {
-                                    val hpRatio = if (enemyMaxHp > 0) enemyHp.toFloat() / enemyMaxHp else 0f
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxHeight()
-                                            .fillMaxWidth(hpRatio)
-                                            .background(
-                                                when {
-                                                    hpRatio > 0.5f -> EmeraldGreen
-                                                    hpRatio > 0.25f -> FireOrange
-                                                    else -> FireRed
-                                                },
-                                                RoundedCornerShape(3.dp)
-                                            )
-                                    )
-                                }
-                                Text("${enemyHp}/${enemyMaxHp}", fontSize = 9.sp, color = TextMuted)
-                            }
-                        }
+                        Text("${enemyHp}/${enemyMaxHp}", fontSize = 8.sp, color = TextMuted)
                     }
                 }
             }
@@ -764,94 +699,6 @@ private fun AdventureScene(
                     Text("💎 +5  1Fから再挑戦！", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = PurpleGlow)
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun BattleImpactOverlay(
-    damageFlash: Float,
-    pulseAlpha: Float,
-    modifier: Modifier = Modifier
-) {
-    Canvas(modifier = modifier) {
-        val cx = size.width * 0.62f
-        val cy = size.height * 0.36f
-        val len = size.width * 0.22f
-        val flash = damageFlash.coerceIn(0f, 1f)
-        val pulse = pulseAlpha.coerceIn(0f, 1f)
-
-        drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color.Transparent,
-                    Color.Black.copy(alpha = 0.55f * flash)
-                ),
-                center = Offset(size.width * 0.5f, size.height * 0.5f),
-                radius = size.maxDimension * 0.85f
-            ),
-            size = size
-        )
-
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.75f * flash),
-                    FireOrange.copy(alpha = 0.45f * flash),
-                    Color.Transparent
-                ),
-                center = Offset(cx, cy),
-                radius = len * 1.4f
-            ),
-            radius = len * 1.4f,
-            center = Offset(cx, cy)
-        )
-
-        val alphaMain = flash * 0.95f
-        drawLine(
-            color = Color.White.copy(alpha = alphaMain),
-            start = Offset(cx - len * 1.1f, cy - len * 0.55f),
-            end = Offset(cx + len * 1.1f, cy + len * 0.65f),
-            strokeWidth = 6f,
-            cap = StrokeCap.Round
-        )
-        drawLine(
-            color = FireOrange.copy(alpha = alphaMain * 0.85f),
-            start = Offset(cx - len * 0.95f, cy - len * 0.45f),
-            end = Offset(cx + len * 0.95f, cy + len * 0.55f),
-            strokeWidth = 3f,
-            cap = StrokeCap.Round
-        )
-        drawLine(
-            color = Color.White.copy(alpha = alphaMain * 0.5f),
-            start = Offset(cx - len * 0.85f, cy + len * 0.35f),
-            end = Offset(cx + len * 0.85f, cy - len * 0.35f),
-            strokeWidth = 3f,
-            cap = StrokeCap.Round
-        )
-
-        val streaks = 14
-        for (i in 0 until streaks) {
-            val angle = (i / streaks.toFloat()) * 6.28318f + pulse * 0.4f
-            val x2 = cx + cos(angle) * len * 1.8f
-            val y2 = cy + sin(angle) * len * 1.1f
-            drawLine(
-                color = Color.White.copy(alpha = 0.12f * flash + 0.08f * pulse),
-                start = Offset(cx + cos(angle) * len * 0.15f, cy + sin(angle) * len * 0.1f),
-                end = Offset(x2, y2),
-                strokeWidth = 2f,
-                cap = StrokeCap.Round
-            )
-        }
-
-        for (spark in 0..7) {
-            val sx = cx + (spark - 4) * len * 0.22f + flash * 6f
-            val sy = cy - len * 0.3f - spark * 4f * flash
-            drawCircle(
-                color = FireOrange.copy(alpha = 0.5f * flash),
-                radius = 3f + spark * 0.5f,
-                center = Offset(sx, sy)
-            )
         }
     }
 }

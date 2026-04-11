@@ -8,15 +8,18 @@ private func hasSpriteAsset(_ name: String) -> Bool {
     UIImage(named: name) != nil
 }
 
-private func playerSpritePhase(_ phase: String) -> [String] {
-    var frames: [String] = []
-    for i in 1...8 {
-        let name = "sprite_player_\(phase)_\(i)"
-        if UIImage(named: name) != nil {
-            frames.append(name)
-        }
-    }
-    return frames
+private func playerWalkFrameNames() -> [String] {
+    ["sprite_player_walk_1", "sprite_player_walk_2"].filter { UIImage(named: $0) != nil }
+}
+
+private func hasPlayerWalkSprites() -> Bool {
+    !playerWalkFrameNames().isEmpty
+}
+
+private func playerPrepAssetName() -> String? {
+    if UIImage(named: "sprite_player_prep_1") != nil { return "sprite_player_prep_1" }
+    if UIImage(named: "sprite_player_idle_1") != nil { return "sprite_player_idle_1" }
+    return playerWalkFrameNames().first
 }
 
 private func enemySpriteFrames(_ key: String) -> [String] {
@@ -82,7 +85,7 @@ struct DungeonBackgroundView: View {
                     .scaledToFill()
                     .frame(width: geo.size.width, height: geo.size.height)
                     .clipped()
-                    .opacity(0.7)
+                    .opacity(0.82)
             }
         }
     }
@@ -141,7 +144,6 @@ struct StudyQuestScreenView: View {
     @State private var pulsePhase = false
     @State private var walkPhase = false
     @State private var didStartQuest = false
-    @State private var damageNumberScale: CGFloat = 1.0
 
     init(initialStudyMinutes: Int, genreId: String? = nil, dungeonName: String? = nil) {
         self.initialStudyMinutes = initialStudyMinutes
@@ -208,14 +210,6 @@ struct StudyQuestScreenView: View {
         }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
             self.uiState = holder.viewModel.uiState.value as! StudyQuestUiState
-        }
-        .onChange(of: uiState.lastDamage) { _, newVal in
-            if newVal > 0 {
-                damageNumberScale = 1.7
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) {
-                    damageNumberScale = 1.0
-                }
-            }
         }
     }
 
@@ -470,184 +464,160 @@ struct StudyQuestScreenView: View {
 
     private var adventureScene: some View {
         let phase = uiState.adventurePhase
-        let hasPlayerSprites = !playerSpritePhase("idle").isEmpty
+        let hasPlayerSprites = hasPlayerWalkSprites()
         let enemyKey = uiState.enemySpriteKey
         let enemyFrames = enemySpriteFrames(enemyKey)
         let hasEnemySprites = !enemyFrames.isEmpty
         let bgName = dungeonBgName(uiState.dungeonName)
         let hasBg = UIImage(named: bgName) != nil
+        let travelX: CGFloat = walkPhase ? 52 : -52
 
         return ZStack {
             if hasBg {
                 DungeonBackgroundView(dungeonName: uiState.dungeonName)
+                    .offset(x: walkPhase ? 5 : -5)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 24))
             }
 
+            VStack {
+                Spacer()
+                LinearGradient(
+                    colors: [Color(hex: 0x5C4330, alpha: 0.92), Color(hex: 0x1A1209, alpha: 0.98)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 40)
+            }
+            .allowsHitTesting(false)
+
             switch phase {
             case .walking:
-                VStack(spacing: 4) {
-                    Text("…")
-                        .font(.system(size: 16))
-                        .foregroundColor(textMuted.opacity(0.5))
-                    if hasPlayerSprites {
-                        let walkFrames = playerSpritePhase("walk")
-                        let frames = !walkFrames.isEmpty ? walkFrames : playerSpritePhase("idle")
-                        if !frames.isEmpty {
-                            AnimatedSpriteView(frames: frames, interval: 0.25, size: 110)
-                                .offset(x: walkPhase ? 8 : -8, y: walkPhase ? -6 : 0)
-                                .scaleEffect(x: 1.0, y: walkPhase ? 1.02 : 0.98)
-                        }
-                    } else {
-                        Text("🧙‍♂️")
-                            .font(.system(size: 64))
-                            .offset(x: walkPhase ? 8 : -8, y: walkPhase ? -6 : 0)
-                    }
-                    Spacer().frame(height: 8)
+                VStack {
                     Text("探索中…")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(textMuted)
+                        .padding(.top, 8)
+                    Spacer()
+                    HStack(alignment: .bottom) {
+                        if hasPlayerSprites {
+                            AnimatedSpriteView(frames: playerWalkFrameNames(), interval: 0.32, size: 118)
+                                .padding(.leading, 20)
+                                .padding(.bottom, 44)
+                                .offset(x: travelX + 8, y: walkPhase ? -4 : 0)
+                        } else {
+                            Text("🧙‍♂️")
+                                .font(.system(size: 56))
+                                .padding(.leading, 20)
+                                .padding(.bottom, 44)
+                                .offset(x: travelX + 8, y: walkPhase ? -4 : 0)
+                        }
+                        Spacer()
+                    }
                 }
 
             case .encounter:
                 ZStack {
-                    Color(hex: 0xEF4444, alpha: pulsePhase ? 0.22 : 0.05)
-                        .cornerRadius(24)
-                    RadialGradient(
-                        colors: [Color.black.opacity(0.45), Color.clear],
-                        center: .center,
-                        startRadius: 20,
-                        endRadius: 200
-                    )
-                    .allowsHitTesting(false)
-                    VStack(spacing: 4) {
-                        Text("⚠️").font(.system(size: 36))
-                        Text("\(uiState.enemyName)が現れた！")
-                            .font(.system(size: 17, weight: .heavy))
-                            .foregroundColor(fireOrange)
-                        Spacer().frame(height: 12)
-                        if hasEnemySprites {
-                            AnimatedSpriteView(frames: enemyFrames, interval: 0.35, size: 130)
-                                .offset(y: walkPhase ? -6 : 0)
-                                .scaleEffect(pulsePhase ? 1.12 : 0.92)
+                    Color.black.opacity(0.12)
+                    HStack(alignment: .bottom) {
+                        if let prep = playerPrepAssetName() {
+                            Image(prep)
+                                .resizable()
+                                .interpolation(.none)
+                                .scaledToFit()
+                                .frame(width: 108, height: 108)
+                                .padding(.leading, 8)
+                                .padding(.bottom, 44)
                         } else {
-                            Text(uiState.enemyEmoji).font(.system(size: 72))
-                                .scaleEffect(pulsePhase ? 1.08 : 0.95)
+                            Text("🧙‍♂️")
+                                .font(.system(size: 52))
+                                .padding(.leading, 8)
+                                .padding(.bottom, 44)
                         }
+                        Spacer()
+                        VStack(spacing: 6) {
+                            Text("⚠️").font(.system(size: 22))
+                            Text(uiState.enemyName)
+                                .font(.system(size: 14, weight: .heavy))
+                                .foregroundColor(fireOrange)
+                            Text("遭遇！")
+                                .font(.system(size: 11))
+                                .foregroundColor(textMuted)
+                            if hasEnemySprites {
+                                AnimatedSpriteView(frames: enemyFrames, interval: 0.35, size: 112)
+                            } else {
+                                Text(uiState.enemyEmoji).font(.system(size: 64))
+                            }
+                        }
+                        .padding(.trailing, 12)
+                        .padding(.bottom, 40)
                     }
                 }
 
             case .attacking:
                 let isStriking = uiState.lastDamage > 0
-                let shakeX: CGFloat = isStriking ? (pulsePhase ? 6 : -6) : 0
-                let shakeY: CGFloat = isStriking ? (pulsePhase ? -4 : 3) : 0
-
-                ZStack {
-                    if isStriking {
-                        Color(hex: 0xEF4444, alpha: 0.38)
-                            .allowsHitTesting(false)
-                        BattleImpactView(pulsePhase: pulsePhase)
-                            .allowsHitTesting(false)
-                    }
-
-                    HStack(spacing: 0) {
-                        Spacer()
-
+                HStack(alignment: .bottom, spacing: 0) {
+                    Group {
                         if hasPlayerSprites {
-                            let idleFrames = playerSpritePhase("idle")
-                            let attackFrames = playerSpritePhase("attack")
-                            let showAttack = isStriking && !attackFrames.isEmpty
-                            let frames = showAttack ? attackFrames : idleFrames
-                            if !frames.isEmpty {
-                                AnimatedSpriteView(frames: frames, interval: showAttack ? 0.12 : 0.3, size: 110)
-                                    .offset(
-                                        x: isStriking ? 18 : (walkPhase ? 3 : -3),
-                                        y: walkPhase ? -3 : 0
-                                    )
-                                    .scaleEffect(x: isStriking ? 1.08 : 1.0, y: isStriking ? 1.08 : (walkPhase ? 1.02 : 0.98))
+                            if isStriking, UIImage(named: "sprite_player_attack_1") != nil {
+                                Image("sprite_player_attack_1")
+                                    .resizable()
+                                    .interpolation(.none)
+                                    .scaledToFit()
+                                    .frame(width: 108, height: 108)
+                            } else if let prep = playerPrepAssetName() {
+                                Image(prep)
+                                    .resizable()
+                                    .interpolation(.none)
+                                    .scaledToFit()
+                                    .frame(width: 108, height: 108)
                             }
                         } else {
-                            Text("🧙‍♂️")
-                                .font(.system(size: 56))
-                                .offset(x: isStriking ? 18 : (pulsePhase ? 3 : -3))
+                            Text("🧙‍♂️").font(.system(size: 52))
                         }
-
-                        Spacer()
-
-                        if isStriking {
-                            Text("⚔️")
-                                .font(.system(size: 36))
-                                .foregroundColor(fireOrange.opacity(0.95))
-                                .rotationEffect(.degrees(-14))
-                                .scaleEffect(pulsePhase ? 1.15 : 1.0)
-                                .offset(y: -10)
-                                .transition(.scale.combined(with: .opacity))
-                        }
-
-                        Spacer()
-
-                        VStack(spacing: 4) {
-                            if isStriking {
-                                Text("-\(uiState.lastDamage)")
-                                    .font(.system(size: 30, weight: .black))
-                                    .foregroundColor(.white)
-                                    .shadow(color: fireRed.opacity(0.9), radius: 4, x: 0, y: 0)
-                                    .shadow(color: .black.opacity(0.5), radius: 2, x: 1, y: 2)
-                                    .scaleEffect(damageNumberScale)
-                                    .transition(.asymmetric(
-                                        insertion: .scale.combined(with: .opacity),
-                                        removal: .opacity
-                                    ))
-                                Text("HIT!")
-                                    .font(.system(size: 10, weight: .heavy))
-                                    .foregroundColor(fireOrange.opacity(pulsePhase ? 1 : 0.5))
-                            }
-
-                            if hasEnemySprites {
-                                AnimatedSpriteView(frames: enemyFrames, interval: 0.35, size: 110)
-                                    .offset(
-                                        x: isStriking ? (pulsePhase ? 8 : -8) : 0,
-                                        y: walkPhase ? -2 : 2
-                                    )
-                                    .scaleEffect(
-                                        x: isStriking ? (pulsePhase ? 0.94 : 0.9) : 1.0,
-                                        y: isStriking ? (pulsePhase ? 0.94 : 0.9) : (walkPhase ? 1.01 : 0.99)
-                                    )
-                                    .rotationEffect(.degrees(isStriking ? (pulsePhase ? 4 : -4) : 0))
-                            } else {
-                                Text(uiState.enemyEmoji)
-                                    .font(.system(size: 56))
-                                    .offset(x: isStriking ? (pulsePhase ? 6 : -6) : 0)
-                            }
-
-                            VStack(spacing: 2) {
-                                Text(uiState.enemyName)
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundColor(textMuted)
-
-                                ZStack(alignment: .leading) {
-                                    RoundedRectangle(cornerRadius: 3)
-                                        .fill(darkSurface)
-                                        .frame(width: 80, height: 6)
-                                    let hpRatio = uiState.enemyMaxHp > 0
-                                        ? CGFloat(uiState.enemyHp) / CGFloat(uiState.enemyMaxHp)
-                                        : 0
-                                    RoundedRectangle(cornerRadius: 3)
-                                        .fill(hpRatio > 0.5 ? emeraldGreen : (hpRatio > 0.25 ? fireOrange : fireRed))
-                                        .frame(width: 80 * hpRatio, height: 6)
-                                }
-
-                                Text("\(uiState.enemyHp)/\(uiState.enemyMaxHp)")
-                                    .font(.system(size: 9))
-                                    .foregroundColor(textMuted)
-                            }
-                        }
-                        Spacer()
                     }
-                    .padding(.horizontal, 16)
-                    .offset(x: shakeX, y: shakeY)
+                    .padding(.leading, 6)
+                    .padding(.bottom, 44)
+                    .offset(x: isStriking ? 6 : 0, y: walkPhase ? -2 : 2)
+
+                    Spacer()
+
+                    if isStriking {
+                        Text("-\(uiState.lastDamage)")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(damageRed)
+                            .padding(.bottom, 52)
+                    }
+
+                    VStack(spacing: 4) {
+                        if hasEnemySprites {
+                            AnimatedSpriteView(frames: enemyFrames, interval: 0.35, size: 108)
+                        } else {
+                            Text(uiState.enemyEmoji).font(.system(size: 52))
+                        }
+                        Text(uiState.enemyName)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(textMuted)
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(darkSurface)
+                                .frame(width: 72, height: 5)
+                            let hpRatio = uiState.enemyMaxHp > 0
+                                ? CGFloat(uiState.enemyHp) / CGFloat(uiState.enemyMaxHp)
+                                : 0
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(hpRatio > 0.5 ? emeraldGreen : (hpRatio > 0.25 ? fireOrange : fireRed))
+                                .frame(width: 72 * hpRatio, height: 5)
+                        }
+                        Text("\(uiState.enemyHp)/\(uiState.enemyMaxHp)")
+                            .font(.system(size: 8))
+                            .foregroundColor(textMuted)
+                    }
+                    .padding(.trailing, 8)
+                    .padding(.bottom, 40)
                 }
+                .padding(.horizontal, 10)
 
             case .enemyDefeated:
                 VStack(spacing: 4) {
@@ -917,90 +887,6 @@ struct StudyQuestScreenView: View {
             Text(value)
                 .font(.system(size: 14, weight: .heavy))
                 .foregroundColor(textWhite)
-        }
-    }
-}
-
-private struct BattleImpactView: View {
-    let pulsePhase: Bool
-
-    var body: some View {
-        Canvas { context, size in
-            let cx = size.width * 0.62
-            let cy = size.height * 0.36
-            let len = size.width * 0.22
-            let flash = pulsePhase ? 1.0 : 0.35
-            let alphaMain = flash * 0.95
-
-            let vignette = Path(ellipseIn: CGRect(x: 0, y: 0, width: size.width, height: size.height))
-            context.fill(
-                vignette,
-                with: .radialGradient(
-                    Gradient(colors: [.clear, .black.opacity(0.55 * flash)]),
-                    center: CGPoint(x: size.width * 0.5, y: size.height * 0.5),
-                    startRadius: size.width * 0.15,
-                    endRadius: max(size.width, size.height) * 0.55
-                )
-            )
-
-            let burst = Path(ellipseIn: CGRect(
-                x: cx - len * 1.35,
-                y: cy - len * 1.0,
-                width: len * 2.7,
-                height: len * 2.0
-            ))
-            context.fill(
-                burst,
-                with: .radialGradient(
-                    Gradient(colors: [
-                        .white.opacity(0.72 * flash),
-                        Color(hex: 0xF59E0B, alpha: 0.45 * flash),
-                        .clear
-                    ]),
-                    center: CGPoint(x: cx, y: cy),
-                    startRadius: 0,
-                    endRadius: len * 1.5
-                )
-            )
-
-            var slash1 = Path()
-            slash1.move(to: CGPoint(x: cx - len * 1.1, y: cy - len * 0.55))
-            slash1.addLine(to: CGPoint(x: cx + len * 1.1, y: cy + len * 0.65))
-            context.stroke(slash1, with: .color(.white.opacity(alphaMain)), lineWidth: 6)
-
-            var slash2 = Path()
-            slash2.move(to: CGPoint(x: cx - len * 0.95, y: cy - len * 0.45))
-            slash2.addLine(to: CGPoint(x: cx + len * 0.95, y: cy + len * 0.55))
-            context.stroke(slash2, with: .color(Color(hex: 0xF59E0B, alpha: 0.85 * alphaMain)), lineWidth: 3)
-
-            var slash3 = Path()
-            slash3.move(to: CGPoint(x: cx - len * 0.85, y: cy + len * 0.35))
-            slash3.addLine(to: CGPoint(x: cx + len * 0.85, y: cy - len * 0.35))
-            context.stroke(slash3, with: .color(.white.opacity(alphaMain * 0.5)), lineWidth: 3)
-
-            let streaks = 14
-            for i in 0..<streaks {
-                let angle = Double(i) / Double(streaks) * (.pi * 2) + (pulsePhase ? 0.35 : 0)
-                let x1 = cx + CGFloat(cos(angle)) * len * 0.15
-                let y1 = cy + CGFloat(sin(angle)) * len * 0.1
-                let x2 = cx + CGFloat(cos(angle)) * len * 1.75
-                let y2 = cy + CGFloat(sin(angle)) * len * 1.05
-                var streak = Path()
-                streak.move(to: CGPoint(x: x1, y: y1))
-                streak.addLine(to: CGPoint(x: x2, y: y2))
-                context.stroke(
-                    streak,
-                    with: .color(.white.opacity(0.12 * flash + 0.08)),
-                    lineWidth: 2
-                )
-            }
-
-            for spark in 0..<8 {
-                let sx = cx + CGFloat(spark - 4) * len * 0.22 + flash * 6
-                let sy = cy - len * 0.3 - CGFloat(spark) * 4 * flash
-                let sparkPath = Path(ellipseIn: CGRect(x: sx - 3, y: sy - 3, width: 6 + CGFloat(spark) * 0.5, height: 6 + CGFloat(spark) * 0.5))
-                context.fill(sparkPath, with: .color(Color(hex: 0xF59E0B, alpha: 0.5 * flash)))
-            }
         }
     }
 }

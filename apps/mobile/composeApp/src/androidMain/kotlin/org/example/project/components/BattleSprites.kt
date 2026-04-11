@@ -1,17 +1,28 @@
 package org.example.project.components
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+
+/** プレイヤー表示モード（歩き2コマ / 攻撃準備 / 攻撃） */
+enum class PlayerSpriteMode {
+    /** `sprite_player_walk_1` と `sprite_player_walk_2` を交互 */
+    Walking,
+    /** `sprite_player_prep_1`（無ければ idle） */
+    Prep,
+    /** `sprite_player_attack_1` */
+    Attack
+}
+
+private fun drawableId(context: android.content.Context, baseName: String): Int =
+    context.resources.getIdentifier(baseName, "drawable", context.packageName)
 
 @Composable
 fun BattleSprite(
@@ -24,10 +35,10 @@ fun BattleSprite(
     val frames = remember(spriteKey, spriteType) {
         val prefix = "sprite_${spriteType}_${spriteKey}_"
         (1..8).mapNotNull { i ->
-            val resId = context.resources.getIdentifier("${prefix}$i", "drawable", context.packageName)
+            val resId = drawableId(context, "${prefix}$i")
             if (resId != 0) resId else null
         }.ifEmpty {
-            val single = context.resources.getIdentifier("sprite_${spriteType}_${spriteKey}_1", "drawable", context.packageName)
+            val single = drawableId(context, "sprite_${spriteType}_${spriteKey}_1")
             if (single != 0) listOf(single) else emptyList()
         }
     }
@@ -39,7 +50,7 @@ fun BattleSprite(
     if (frames.size > 1) {
         LaunchedEffect(frames) {
             while (true) {
-                delay(200L)
+                delay(280L)
                 currentFrame = (currentFrame + 1) % frames.size
             }
         }
@@ -55,44 +66,72 @@ fun BattleSprite(
 
 @Composable
 fun PlayerSprite(
-    phase: String,
+    mode: PlayerSpriteMode,
     size: Dp = 120.dp,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val frames = remember(phase) {
-        val prefix = "sprite_player_${phase}_"
-        (1..8).mapNotNull { i ->
-            val resId = context.resources.getIdentifier("${prefix}$i", "drawable", context.packageName)
-            if (resId != 0) resId else null
-        }
-    }
 
-    if (frames.isEmpty()) return
+    when (mode) {
+        PlayerSpriteMode.Walking -> {
+            val id1 = drawableId(context, "sprite_player_walk_1")
+            val id2 = drawableId(context, "sprite_player_walk_2")
+            val frames = listOfNotNull(
+                id1.takeIf { it != 0 },
+                id2.takeIf { it != 0 }
+            ).distinct()
+            if (frames.isEmpty()) return
 
-    var currentFrame by remember { mutableIntStateOf(0) }
-
-    if (frames.size > 1) {
-        LaunchedEffect(frames) {
-            while (true) {
-                delay(if (phase == "attack") 150L else 200L)
-                currentFrame = (currentFrame + 1) % frames.size
+            var currentFrame by remember { mutableIntStateOf(0) }
+            if (frames.size > 1) {
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        delay(320L)
+                        currentFrame = (currentFrame + 1) % frames.size
+                    }
+                }
             }
+
+            Image(
+                painter = painterResource(frames[currentFrame]),
+                contentDescription = null,
+                modifier = modifier.size(size),
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        PlayerSpriteMode.Prep -> {
+            val prepId = drawableId(context, "sprite_player_prep_1").takeIf { it != 0 }
+                ?: drawableId(context, "sprite_player_idle_1").takeIf { it != 0 }
+                ?: drawableId(context, "sprite_player_walk_1").takeIf { it != 0 }
+                ?: drawableId(context, "sprite_player_walk_2")
+            if (prepId == 0) return
+            Image(
+                painter = painterResource(prepId),
+                contentDescription = null,
+                modifier = modifier.size(size),
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        PlayerSpriteMode.Attack -> {
+            val attackId = drawableId(context, "sprite_player_attack_1")
+            if (attackId == 0) return
+            Image(
+                painter = painterResource(attackId),
+                contentDescription = null,
+                modifier = modifier.size(size),
+                contentScale = ContentScale.Fit
+            )
         }
     }
-
-    Image(
-        painter = painterResource(frames[currentFrame]),
-        contentDescription = null,
-        modifier = modifier.size(size),
-        contentScale = ContentScale.Fit
-    )
 }
 
 @Composable
 fun DungeonBackground(
     dungeonName: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    alpha: Float = 0.75f
 ) {
     val context = LocalContext.current
     val bgType = remember(dungeonName) {
@@ -106,7 +145,7 @@ fun DungeonBackground(
     }
 
     val resId = remember(bgType) {
-        context.resources.getIdentifier("bg_dungeon_$bgType", "drawable", context.packageName)
+        drawableId(context, "bg_dungeon_$bgType")
     }
 
     if (resId != 0) {
@@ -115,16 +154,16 @@ fun DungeonBackground(
             contentDescription = null,
             modifier = modifier,
             contentScale = ContentScale.Crop,
-            alpha = 0.7f
+            alpha = alpha
         )
     }
 }
 
-fun hasSpriteResource(context: android.content.Context, spriteType: String, key: String): Boolean {
-    return context.resources.getIdentifier(
-        "sprite_${spriteType}_${key}_1", "drawable", context.packageName
-    ) != 0
-}
+fun hasSpriteResource(context: android.content.Context, spriteType: String, key: String): Boolean =
+    drawableId(context, "sprite_${spriteType}_${key}_1") != 0
+
+fun hasPlayerWalkSprite(context: android.content.Context): Boolean =
+    drawableId(context, "sprite_player_walk_1") != 0
 
 fun hasBackgroundResource(context: android.content.Context, dungeonName: String?): Boolean {
     val bgType = when {
@@ -134,5 +173,5 @@ fun hasBackgroundResource(context: android.content.Context, dungeonName: String?
         dungeonName.contains("塔") || dungeonName.contains("炎") || dungeonName.contains("tower", true) -> "tower"
         else -> "default"
     }
-    return context.resources.getIdentifier("bg_dungeon_$bgType", "drawable", context.packageName) != 0
+    return drawableId(context, "bg_dungeon_$bgType") != 0
 }
