@@ -16,7 +16,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -276,8 +275,7 @@ fun HomeTabContent(
                         modifier = Modifier
                             .size(160.dp)
                             .offset(y = bounceY.dp),
-                        contentScale = ContentScale.Fit,
-                        filterQuality = FilterQuality.None
+                        contentScale = ContentScale.Fit
                     )
                 } else {
                     Text(
