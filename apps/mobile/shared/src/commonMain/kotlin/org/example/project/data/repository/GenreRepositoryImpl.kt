@@ -23,7 +23,8 @@ class GenreRepositoryImpl(
 
     override suspend fun createGenre(label: String, emoji: String, colorHex: String): MasterStudyGenre {
         val slug = label.lowercase().replace(" ", "_")
-        val request = CreateGenreRequest(slug = slug, label = label, emoji = emoji, color_hex = colorHex)
+        val emojiOrDefault = emoji.ifBlank { "📖" }
+        val request = CreateGenreRequest(slug = slug, label = label, emoji = emojiOrDefault, color_hex = colorHex)
         val created = gateway.createGenre(request).getOrThrow().toDomain()
         cachedGenres = null
         return created

@@ -3,10 +3,10 @@ package org.example.project.features.home
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -25,9 +26,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import kotlin.math.roundToInt
 import org.example.project.domain.model.MasterStudyGenre
 @Composable
 fun HomeTabContent(
@@ -41,7 +45,6 @@ fun HomeTabContent(
 ) {
     var showAddGenreDialog by remember { mutableStateOf(false) }
     var newGenreLabel by remember { mutableStateOf("") }
-    var newGenreEmoji by remember { mutableStateOf("📖") }
 
     val genreTriples = remember(homeState.genres) {
         if (homeState.genres.isEmpty()) listOf(Triple("general", "📚", "総合"))
@@ -97,14 +100,11 @@ fun HomeTabContent(
             genres = homeState.genres,
             newGenreLabel = newGenreLabel,
             onLabelChange = { newGenreLabel = it },
-            newGenreEmoji = newGenreEmoji,
-            onEmojiChange = { newGenreEmoji = it },
             onDismiss = { showAddGenreDialog = false },
             onAdd = {
                 if (newGenreLabel.isNotEmpty()) {
-                    homeViewModel.onIntent(HomeIntent.AddGenre(newGenreLabel, newGenreEmoji, "#6B7280"))
+                    homeViewModel.onIntent(HomeIntent.AddGenre(newGenreLabel, "", "#6B7280"))
                     newGenreLabel = ""
-                    newGenreEmoji = "📖"
                     showAddGenreDialog = false
                 }
             },
@@ -399,14 +399,12 @@ private fun GenreManageDialog(
     genres: List<MasterStudyGenre>,
     newGenreLabel: String,
     onLabelChange: (String) -> Unit,
-    newGenreEmoji: String,
-    onEmojiChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onAdd: () -> Unit,
     onDeleteGenre: (String) -> Unit
 ) {
     var pendingDelete by remember { mutableStateOf<MasterStudyGenre?>(null) }
-    val deletable = remember(genres) { genres.filter { !it.isDefault } }
+    val sortedGenres = remember(genres) { genres.sortedBy { it.sortOrder } }
 
     pendingDelete?.let { g ->
         AlertDialog(
@@ -416,7 +414,7 @@ private fun GenreManageDialog(
             textContentColor = HomeTheme.TextSecondary,
             title = { Text("削除の確認", fontWeight = FontWeight.Bold) },
             text = {
-                Text("${g.emoji} ${g.label} を削除しますか？\n記録の勉強時間は「削除済み課題」として残ります。")
+                Text("\"${g.label}\" を削除しますか？\n記録の勉強時間は「削除済み課題」として残ります。")
             },
             confirmButton = {
                 TextButton(
@@ -434,114 +432,158 @@ private fun GenreManageDialog(
         )
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 560.dp),
+                .fillMaxWidth(0.94f)
+                .fillMaxHeight(0.88f),
             shape = RoundedCornerShape(20.dp),
             color = HomeTheme.BgDark2,
             shadowElevation = 10.dp
         ) {
-            Column(
+            LazyColumn(
                 modifier = Modifier
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState())
+                    .fillMaxSize()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("ジャンル管理", fontSize = 20.sp, fontWeight = FontWeight.Black, color = HomeTheme.TextPrimary)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("追加・削除はここから", fontSize = 12.sp, color = HomeTheme.TextSecondary)
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text("新しいジャンルを追加", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HomeTheme.AccentCyan)
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = newGenreLabel,
-                    onValueChange = onLabelChange,
-                    label = { Text("ジャンル名") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = HomeTheme.TextPrimary,
-                        unfocusedTextColor = HomeTheme.TextPrimary,
-                        focusedBorderColor = HomeTheme.AccentCyan,
-                        unfocusedBorderColor = HomeTheme.BarStroke,
-                        focusedLabelColor = HomeTheme.AccentCyan,
-                        unfocusedLabelColor = HomeTheme.TextSecondary,
-                        cursorColor = HomeTheme.AccentCyan,
-                        focusedContainerColor = HomeTheme.CardWhite,
-                        unfocusedContainerColor = HomeTheme.CardWhite
-                    )
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    listOf("📖", "📐", "🧪", "🌍", "🎵", "⚽", "🎮", "✏️").forEach { emoji ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    if (newGenreEmoji == emoji) HomeTheme.AccentCyan.copy(alpha = 0.22f)
-                                    else Color.Transparent
-                                )
-                                .clickable { onEmojiChange(emoji) }
-                                .padding(6.dp)
-                        ) {
-                            Text(emoji, fontSize = 22.sp)
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = onAdd,
-                    enabled = newGenreLabel.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = HomeTheme.AccentBlue,
-                        disabledContainerColor = HomeTheme.TextSecondary.copy(alpha = 0.25f),
-                        contentColor = Color.White,
-                        disabledContentColor = HomeTheme.TextSecondary
-                    )
-                ) {
-                    Text("ジャンルを追加", fontWeight = FontWeight.Bold)
-                }
-
-                if (deletable.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    HorizontalDivider(color = HomeTheme.BarStroke)
+                item {
+                    Text("ジャンル管理", fontSize = 20.sp, fontWeight = FontWeight.Black, color = HomeTheme.TextPrimary)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("一覧は下に並びます。追加したジャンルは左にスワイプで削除できます。", fontSize = 12.sp, color = HomeTheme.TextSecondary)
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("追加したジャンルを削除", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HomeTheme.AccentCyan)
-                    Spacer(modifier = Modifier.height(10.dp))
-                    deletable.forEach { g ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(HomeTheme.CardWhite)
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "${g.emoji} ${g.label}",
-                                color = HomeTheme.TextPrimary,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                            TextButton(onClick = { pendingDelete = g }) {
-                                Text("削除", color = HomeTheme.FireRed, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Text("新しいジャンルを追加", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HomeTheme.AccentCyan)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newGenreLabel,
+                        onValueChange = onLabelChange,
+                        label = { Text("ジャンル名") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = HomeTheme.TextPrimary,
+                            unfocusedTextColor = HomeTheme.TextPrimary,
+                            focusedBorderColor = HomeTheme.AccentCyan,
+                            unfocusedBorderColor = HomeTheme.BarStroke,
+                            focusedLabelColor = HomeTheme.AccentCyan,
+                            unfocusedLabelColor = HomeTheme.TextSecondary,
+                            cursorColor = HomeTheme.AccentCyan,
+                            focusedContainerColor = HomeTheme.CardWhite,
+                            unfocusedContainerColor = HomeTheme.CardWhite
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = onAdd,
+                        enabled = newGenreLabel.isNotEmpty(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = HomeTheme.AccentBlue,
+                            disabledContainerColor = HomeTheme.TextSecondary.copy(alpha = 0.25f),
+                            contentColor = Color.White,
+                            disabledContentColor = HomeTheme.TextSecondary
+                        )
+                    ) {
+                        Text("ジャンルを追加", fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
+                    HorizontalDivider(color = HomeTheme.BarStroke)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("ジャンル一覧", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HomeTheme.AccentCyan)
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                items(sortedGenres, key = { it.id }) { g ->
+                    GenreManageSwipeRow(
+                        genre = g,
+                        onSwipeDeleteRequest = { pendingDelete = it }
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                        Text("閉じる", color = HomeTheme.TextSecondary)
                     }
                 }
+            }
+        }
+    }
+}
 
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
-                    Text("閉じる", color = HomeTheme.TextSecondary)
-                }
+@Composable
+private fun GenreManageSwipeRow(
+    genre: MasterStudyGenre,
+    onSwipeDeleteRequest: (MasterStudyGenre) -> Unit
+) {
+    val swipeable = !genre.isDefault
+    var offsetX by remember(genre.id) { mutableFloatStateOf(0f) }
+    val maxLeft = -168f
+    val triggerAt = -96f
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+    ) {
+        if (swipeable) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(HomeTheme.FireRed.copy(alpha = 0.88f)),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Text(
+                    "削除",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(end = 20.dp)
+                )
+            }
+        }
+        Row(
+            modifier = Modifier
+                .offset { IntOffset(offsetX.roundToInt(), 0) }
+                .then(
+                    if (swipeable) {
+                        Modifier.pointerInput(genre.id) {
+                            detectHorizontalDragGestures(
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    offsetX = (offsetX + dragAmount).coerceIn(maxLeft, 0f)
+                                },
+                                onDragEnd = {
+                                    if (offsetX <= triggerAt) {
+                                        onSwipeDeleteRequest(genre)
+                                    }
+                                    offsetX = 0f
+                                },
+                                onDragCancel = { offsetX = 0f }
+                            )
+                        }
+                    } else Modifier
+                )
+                .fillMaxWidth()
+                .background(HomeTheme.CardWhite)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    genre.label,
+                    color = HomeTheme.TextPrimary,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = when {
+                        genre.isDefault -> "プリセット（削除不可）"
+                        else -> "左にスワイプして削除"
+                    },
+                    fontSize = 11.sp,
+                    color = HomeTheme.TextSecondary
+                )
             }
         }
     }

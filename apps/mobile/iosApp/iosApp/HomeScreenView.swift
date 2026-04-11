@@ -63,7 +63,6 @@ struct HomeScreenView: View {
     @State private var messageIndex = 0
     @State private var showAddGenreSheet = false
     @State private var newGenreLabel = ""
-    @State private var newGenreEmoji = "📖"
     @State private var genrePendingDelete: MasterStudyGenre? = nil
 
     private let homeViewModel = KoinHelperKt.getHomeViewModel()
@@ -80,7 +79,6 @@ struct HomeScreenView: View {
         _messageIndex = State(initialValue: 0)
         _showAddGenreSheet = State(initialValue: false)
         _newGenreLabel = State(initialValue: "")
-        _newGenreEmoji = State(initialValue: "📖")
         _homeState = State(initialValue: nil)
     }
 
@@ -123,7 +121,7 @@ struct HomeScreenView: View {
             }
         } message: {
             if let g = genrePendingDelete {
-                Text("\(g.emoji) \(g.label) を削除しますか？\n記録の勉強時間は「削除済み課題」として残ります。")
+                Text("\"\(g.label)\" を削除しますか？\n記録の勉強時間は「削除済み課題」として残ります。")
             }
         }
         .onReceive(messageTimer) { _ in withAnimation(.easeInOut(duration: 0.3)) { messageIndex = (messageIndex + 1) % messages.count } }
@@ -300,41 +298,34 @@ struct HomeScreenView: View {
     }
 
     // MARK: - Genre manage sheet（追加・削除）
-    private var deletableGenres: [MasterStudyGenre] {
-        (homeState?.genres ?? []).filter { !$0.isDefault }
+    private var sortedGenresForSheet: [MasterStudyGenre] {
+        (homeState?.genres ?? []).sorted { $0.sortOrder < $1.sortOrder }
     }
 
     private var genreManageSheet: some View {
         NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("追加・削除はここから").font(.system(size: 12)).foregroundColor(textSub)
+            List {
+                Section {
+                    Text("一覧は下のセクション。カスタムは左スワイプで削除。")
+                        .font(.system(size: 12))
+                        .foregroundColor(textSub)
+                        .listRowBackground(Color.clear)
 
-                    Text("新しいジャンルを追加").font(.system(size: 13, weight: .bold)).foregroundColor(accentCyan)
-                    Text("ジャンル名").font(.system(size: 12, weight: .semibold)).foregroundColor(textSub)
-                    TextField("例: 英語、物理", text: $newGenreLabel)
+                    TextField("ジャンル名（例: 英語、物理）", text: $newGenreLabel)
                         .foregroundColor(textW)
-                        .padding(12)
-                        .background(bgCard)
-                        .cornerRadius(12)
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(accentCyan.opacity(0.35), lineWidth: 1))
-
-                    Text("絵文字").font(.system(size: 12, weight: .semibold)).foregroundColor(textSub)
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 10) {
-                        ForEach(["📖", "📐", "🧪", "🌍", "🎵", "⚽", "🎮", "✏️"], id: \.self) { e in
-                            Button(action: { newGenreEmoji = e }) {
-                                Text(e).font(.system(size: 28)).frame(maxWidth: .infinity).padding(8)
-                                    .background(newGenreEmoji == e ? accentCyan.opacity(0.22) : Color.clear).cornerRadius(10)
-                            }
-                        }
-                    }
+                        .padding(.vertical, 4)
 
                     Button(action: {
                         guard !newGenreLabel.isEmpty else { return }
-                        homeViewModel.onIntent(intent: HomeIntentAddGenre(label: newGenreLabel, emoji: newGenreEmoji, colorHex: "#6B7280"))
-                        newGenreLabel = ""; newGenreEmoji = "📖"; showAddGenreSheet = false
+                        homeViewModel.onIntent(intent: HomeIntentAddGenre(label: newGenreLabel, emoji: "", colorHex: "#6B7280"))
+                        newGenreLabel = ""
+                        showAddGenreSheet = false
                     }) {
-                        Text("ジャンルを追加").font(.system(size: 16, weight: .bold)).foregroundColor(.white).frame(maxWidth: .infinity).padding(.vertical, 14)
+                        Text("ジャンルを追加")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
                             .background(
                                 LinearGradient(
                                     colors: newGenreLabel.isEmpty ? [Color.gray.opacity(0.5), Color.gray.opacity(0.4)] : [accentBlue, accentIndigo],
@@ -342,28 +333,38 @@ struct HomeScreenView: View {
                                     endPoint: .trailing
                                 )
                             )
-                            .cornerRadius(14)
-                    }.disabled(newGenreLabel.isEmpty)
-
-                    if !deletableGenres.isEmpty {
-                        Divider().background(Color(hex: 0x263859))
-                        Text("追加したジャンルを削除").font(.system(size: 13, weight: .bold)).foregroundColor(accentCyan)
-                        ForEach(deletableGenres, id: \.id) { g in
-                            HStack {
-                                Text("\(g.emoji) \(g.label)").font(.system(size: 15, weight: .medium)).foregroundColor(textW).lineLimit(1)
-                                Spacer()
-                                Button("削除") { genrePendingDelete = g }
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundColor(Color(hex: 0xEF4444))
-                            }
-                            .padding(12)
-                            .background(bgCard)
                             .cornerRadius(12)
+                    }
+                    .disabled(newGenreLabel.isEmpty)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                    .listRowBackground(Color.clear)
+                }
+
+                Section("ジャンル一覧") {
+                    ForEach(sortedGenresForSheet, id: \.id) { g in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(g.label)
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(textW)
+                                .lineLimit(1)
+                            Text(g.isDefault ? "プリセット（削除不可）" : "左スワイプで削除")
+                                .font(.system(size: 11))
+                                .foregroundColor(textSub)
+                        }
+                        .listRowBackground(bgCard)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            if !g.isDefault {
+                                Button(role: .destructive) {
+                                    genrePendingDelete = g
+                                } label: {
+                                    Label("削除", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }
-                .padding(24)
             }
+            .scrollContentBackground(.hidden)
             .background(LinearGradient(colors: [bgDark, Color(hex: 0x0F172A)], startPoint: .top, endPoint: .bottom))
             .navigationTitle("ジャンル管理")
             .navigationBarTitleDisplayMode(.inline)
