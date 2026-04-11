@@ -432,6 +432,13 @@ private val ConfrontGap = 30.dp
 private val ConfrontPlayerSize = 108.dp
 private val ConfrontEnemySize = 112.dp
 
+/**
+ * 背景を下基準でクロップしたときの「床帯」に足を乗せるための下端オフセット。
+ * 大きいほどキャラが画面上に上がる（以前の 44dp は床から浮いていた）。
+ */
+private val AdventureFloorInsetDp = 8.dp
+
+
 /** 戦闘中: 1秒目 idle → 2秒目 prep → 3秒目 attack（ATTACK_INTERVAL と同期） */
 private fun combatPlayerMode(phaseTick: Long, lastDamage: Int): PlayerSpriteMode =
     when (phaseTick % 3L) {
@@ -509,7 +516,7 @@ private fun BattleConfrontationLayer(
                         .align(Alignment.BottomStart)
                         .offset(
                             x = playerLeft + if (isAttackPhase && isStriking) 6.dp else 0.dp,
-                            y = (-44).dp
+                            y = -AdventureFloorInsetDp
                         )
                 )
             } else {
@@ -518,7 +525,7 @@ private fun BattleConfrontationLayer(
                     fontSize = 52.sp,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .offset(x = playerLeft, y = (-40).dp)
+                        .offset(x = playerLeft, y = -AdventureFloorInsetDp)
                 )
             }
 
@@ -526,7 +533,7 @@ private fun BattleConfrontationLayer(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .offset(x = enemyLeft, y = (-40).dp + enemyYOffset)
+                    .offset(x = enemyLeft, y = -AdventureFloorInsetDp + enemyYOffset)
                     .widthIn(min = 80.dp)
             ) {
                 if (hasEnemySprite) {
@@ -681,7 +688,7 @@ private fun AdventureScene(
                             size = 118.dp,
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
-                                .padding(start = 16.dp, bottom = 44.dp)
+                                .padding(start = 16.dp, bottom = AdventureFloorInsetDp)
                         )
                     } else {
                         Text(
@@ -689,7 +696,7 @@ private fun AdventureScene(
                             fontSize = 56.sp,
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
-                                .padding(start = 16.dp, bottom = 44.dp)
+                                .padding(start = 16.dp, bottom = AdventureFloorInsetDp)
                         )
                     }
                 }

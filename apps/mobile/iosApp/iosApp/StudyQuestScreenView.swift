@@ -205,15 +205,15 @@ private struct BattleConfrontationIOSView: View {
                     if hasPlayerSprites {
                         if isAttackPhase {
                             iosCombatPlayerSprite(phaseTick: phaseTick, lastDamage: lastDamage, size: pW)
-                                .offset(x: playerLeft + strikeNudge, y: -44)
+                                .offset(x: playerLeft + strikeNudge, y: -adventureFloorInset)
                         } else if !playerWalkFrames.isEmpty {
                             AnimatedSpriteView(frames: playerWalkFrames, interval: 0.32, size: pW)
-                                .offset(x: playerLeft, y: -44)
+                                .offset(x: playerLeft, y: -adventureFloorInset)
                         }
                     } else {
                         Text("🧙‍♂️")
                             .font(.system(size: 52))
-                            .offset(x: playerLeft, y: -40)
+                            .offset(x: playerLeft, y: -adventureFloorInset)
                     }
 
                     Group {
@@ -227,7 +227,7 @@ private struct BattleConfrontationIOSView: View {
                             enemyColumn(showEnemyHp: showEnemyHp, eW: eW)
                         }
                     }
-                    .offset(x: enemyLeft, y: -40)
+                    .offset(x: enemyLeft, y: -adventureFloorInset)
                 }
             }
         }
@@ -307,6 +307,9 @@ private let breakBg = Color(hex: 0x0C1E0C)
 private let breakCard = Color(hex: 0x1A2E1A)
 private let breakAccent = Color(hex: 0x34D399)
 private let breakGlow = Color(hex: 0x10B981)
+
+/// 背景の床帯に足を合わせる（値が大きいほどキャラが上に浮く）
+private let adventureFloorInset: CGFloat = 8
 
 // MARK: - メイン
 
@@ -693,12 +696,12 @@ struct StudyQuestScreenView: View {
                         if hasPlayerSprites {
                             AnimatedSpriteView(frames: playerWalkFrameNames(), interval: 0.32, size: 118)
                                 .padding(.leading, 16)
-                                .padding(.bottom, 44)
+                                .padding(.bottom, adventureFloorInset)
                         } else {
                             Text("🧙‍♂️")
                                 .font(.system(size: 56))
                                 .padding(.leading, 16)
-                                .padding(.bottom, 44)
+                                .padding(.bottom, adventureFloorInset)
                         }
                         Spacer()
                     }
