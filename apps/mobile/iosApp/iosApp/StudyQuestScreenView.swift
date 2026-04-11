@@ -105,7 +105,7 @@ struct AnimatedSpriteView: View {
                     .resizable()
                     .interpolation(.none)
                     .scaledToFit()
-                    .frame(width: size, height: size)
+                    .frame(width: size, height: size, alignment: .bottom)
             }
         }
         .onAppear {
@@ -145,21 +145,21 @@ private func iosCombatPlayerSprite(phaseTick: Int64, lastDamage: Int32, size: CG
                 .resizable()
                 .interpolation(.none)
                 .scaledToFit()
-                .frame(width: size, height: size)
+                .frame(width: size, height: size, alignment: .bottom)
         } else if UIImage(named: "sprite_player_idle_1") != nil {
             Image("sprite_player_idle_1")
                 .resizable()
                 .interpolation(.none)
                 .scaledToFit()
-                .frame(width: size, height: size)
+                .frame(width: size, height: size, alignment: .bottom)
         } else if let prep = playerPrepAssetName() {
             Image(prep)
                 .resizable()
                 .interpolation(.none)
                 .scaledToFit()
-                .frame(width: size, height: size)
+                .frame(width: size, height: size, alignment: .bottom)
         } else {
-            Text("🧙‍♂️").font(.system(size: 52))
+            Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
         }
     } else if m == 1 {
         if UIImage(named: "sprite_player_idle_1") != nil {
@@ -167,30 +167,30 @@ private func iosCombatPlayerSprite(phaseTick: Int64, lastDamage: Int32, size: CG
                 .resizable()
                 .interpolation(.none)
                 .scaledToFit()
-                .frame(width: size, height: size)
+                .frame(width: size, height: size, alignment: .bottom)
         } else if let prep = playerPrepAssetName() {
             Image(prep)
                 .resizable()
                 .interpolation(.none)
                 .scaledToFit()
-                .frame(width: size, height: size)
+                .frame(width: size, height: size, alignment: .bottom)
         } else {
-            Text("🧙‍♂️").font(.system(size: 52))
+            Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
         }
     } else if let prep = playerPrepAssetName() {
         Image(prep)
             .resizable()
             .interpolation(.none)
             .scaledToFit()
-            .frame(width: size, height: size)
+            .frame(width: size, height: size, alignment: .bottom)
     } else if UIImage(named: "sprite_player_idle_1") != nil {
         Image("sprite_player_idle_1")
             .resizable()
             .interpolation(.none)
             .scaledToFit()
-            .frame(width: size, height: size)
+            .frame(width: size, height: size, alignment: .bottom)
     } else {
-        Text("🧙‍♂️").font(.system(size: 52))
+        Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
     }
 }
 
@@ -257,6 +257,7 @@ private struct BattleConfrontationIOSView: View {
                         } else {
                             Text("🧙‍♂️")
                                 .font(.system(size: 52))
+                                .frame(width: pW, height: pW, alignment: .bottom)
                                 .padding(.leading, 16)
                                 .padding(.bottom, adventureFloorInset)
                                 .offset(x: playerLeft)

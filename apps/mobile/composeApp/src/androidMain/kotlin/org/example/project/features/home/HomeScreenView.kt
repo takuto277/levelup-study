@@ -135,6 +135,7 @@ fun HomeScreenView() {
 // Home Tab — リッチなキャラクター + 吹き出し + 没入感
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeTabContent(
     studyMinutes: Int,
@@ -153,6 +154,16 @@ fun HomeTabContent(
         if (homeState.genres.isEmpty()) listOf(Triple("general", "📚", "総合"))
         else homeState.genres.map { Triple(it.slug, it.emoji, it.label) }
     }
+
+    LaunchedEffect(genres.map { it.first }.joinToString(), selectedGenreSlug) {
+        val slugs = genres.map { it.first }.toSet()
+        if (selectedGenreSlug !in slugs && slugs.isNotEmpty()) {
+            onGenreChange(genres.first().first)
+        }
+    }
+
+    var genreMenuExpanded by remember { mutableStateOf(false) }
+
     // アニメーション
     val infiniteTransition = rememberInfiniteTransition(label = "home")
     val bounceY by infiniteTransition.animateFloat(
@@ -419,7 +430,7 @@ fun HomeTabContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ── ジャンル選択 ──
+        // ── ジャンル（Swift と同様: メニュー風ピッカー + 右に「追加」） ──
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -428,47 +439,79 @@ fun HomeTabContent(
         ) {
             Text("📖 ジャンル", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
             Spacer(modifier = Modifier.height(8.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (row in genres.chunked(3)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+            val selectedTriple = genres.find { it.first == selectedGenreSlug } ?: genres.first()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ExposedDropdownMenuBox(
+                    expanded = genreMenuExpanded,
+                    onExpandedChange = { genreMenuExpanded = it },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = "${selectedTriple.second} ${selectedTriple.third}",
+                        onValueChange = {},
+                        readOnly = true,
+                        singleLine = true,
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = genreMenuExpanded)
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedBorderColor = AccentCyan,
+                            unfocusedBorderColor = TextSecondary.copy(alpha = 0.35f),
+                            focusedTrailingIconColor = AccentCyan,
+                            unfocusedTrailingIconColor = AccentCyan,
+                            cursorColor = AccentCyan,
+                            focusedContainerColor = CardWhite,
+                            unfocusedContainerColor = CardWhite
+                        )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = genreMenuExpanded,
+                        onDismissRequest = { genreMenuExpanded = false },
+                        containerColor = CardWhite
                     ) {
-                        row.forEach { (slug, emoji, label) ->
-                            val isSelected = selectedGenreSlug == slug
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSelected) AccentIndigo else Color(0xFFE2E8F0))
-                                    .clickable { onGenreChange(slug) }
-                                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(emoji, fontSize = 14.sp)
-                                    Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) Color.White else TextSecondary)
+                        genres.forEach { (slug, emoji, label) ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "$emoji $label",
+                                        fontWeight = if (slug == selectedGenreSlug) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (slug == selectedGenreSlug) AccentCyan else TextPrimary
+                                    )
+                                },
+                                onClick = {
+                                    onGenreChange(slug)
+                                    genreMenuExpanded = false
                                 }
-                            }
+                            )
                         }
                     }
                 }
-                Box(
+                TextButton(
+                    onClick = { showAddGenreDialog = true },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = AccentCyan),
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(AccentBlue.copy(0.1f))
-                        .clickable { showAddGenreDialog = true }
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                        .background(AccentCyan.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 2.dp, vertical = 2.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add", tint = AccentBlue, modifier = Modifier.size(16.dp))
-                        Text("追加", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AccentBlue)
-                    }
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = AccentCyan
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("追加", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
