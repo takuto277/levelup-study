@@ -148,29 +148,28 @@ private fun MainQuestView(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    if (isBreak) {
-                        Text(
-                            text = "🌿 休憩",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BreakAccent,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(BreakAccent.copy(alpha = 0.14f))
-                                .border(1.dp, BreakAccent.copy(alpha = 0.35f), RoundedCornerShape(50))
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    } else {
-                        resolvedStudyGenreLabel(uiState.genreId)?.let { label ->
-                            QuestMetaCapsule(text = label)
-                        }
+                if (isBreak) {
+                    Text(
+                        text = "🌿 休憩",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BreakAccent,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(BreakAccent.copy(alpha = 0.14f))
+                            .border(1.dp, BreakAccent.copy(alpha = 0.35f), RoundedCornerShape(50))
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                } else {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        QuestMetaCapsule(text = studyQuestGenreDisplayLabel(uiState.genreId))
                         uiState.dungeonName?.takeIf { it.isNotEmpty() }?.let { dn ->
                             QuestMetaCapsule(text = dn, leadingEmoji = "🏰")
                         }
@@ -532,12 +531,12 @@ private val ConfrontBossEnemySize = 236.dp
  */
 private val AdventureFloorInsetDp = 8.dp
 
-/** 「総合」「general」は表示しない。それ以外のジャンル ID のみ返す。 */
-private fun resolvedStudyGenreLabel(genreId: String?): String? {
+/** 冒険ヘッダー用。未設定・`general`・「総合」は「総合」と表示する。 */
+private fun studyQuestGenreDisplayLabel(genreId: String?): String {
     val raw = genreId?.trim().orEmpty()
-    if (raw.isEmpty()) return null
+    if (raw.isEmpty()) return "総合"
     val lower = raw.lowercase()
-    if (lower == "general" || raw == "総合") return null
+    if (lower == "general" || raw == "総合") return "総合"
     return raw
 }
 

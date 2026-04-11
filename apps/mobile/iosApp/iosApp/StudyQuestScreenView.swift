@@ -49,11 +49,11 @@ private func breakScenePlayerSprite(size: CGFloat) -> some View {
     }
 }
 
-/// 「総合」「general」は出さず、それ以外のジャンルだけ表示用ラベルにする
-private func resolvedStudyGenreLabel(_ genreId: String?) -> String? {
-    guard let raw = genreId?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+/// 冒険ヘッダー用。未設定・general・総合は「総合」
+private func studyQuestGenreDisplayLabel(_ genreId: String?) -> String {
+    guard let raw = genreId?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return "総合" }
     let lower = raw.lowercased()
-    if lower == "general" || lower == "総合" || raw == "総合" { return nil }
+    if lower == "general" || lower == "総合" || raw == "総合" { return "総合" }
     return raw
 }
 
@@ -610,31 +610,30 @@ struct StudyQuestScreenView: View {
         return VStack(spacing: 0) {
             Spacer().frame(height: 52)
 
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 6) {
-                    if isBreak {
-                        Text("🌿 休憩")
-                            .font(.system(size: 12, weight: .heavy, design: .rounded))
-                            .foregroundColor(breakAccent)
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 6)
-                            .background(
-                                Capsule()
-                                    .fill(breakAccent.opacity(0.14))
-                            )
-                            .overlay(
-                                Capsule()
-                                    .stroke(breakAccent.opacity(0.35), lineWidth: 1)
-                            )
-                    } else {
-                        if let genreLabel = resolvedStudyGenreLabel(uiState.genreId) {
-                            QuestTitleCapsule {
-                                Text(genreLabel)
-                                    .font(.system(size: 12, weight: .heavy, design: .rounded))
-                                    .foregroundColor(textWhite)
-                                    .lineLimit(2)
-                                    .minimumScaleFactor(0.82)
-                            }
+            HStack(alignment: .center, spacing: 8) {
+                if isBreak {
+                    Text("🌿 休憩")
+                        .font(.system(size: 12, weight: .heavy, design: .rounded))
+                        .foregroundColor(breakAccent)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(breakAccent.opacity(0.14))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(breakAccent.opacity(0.35), lineWidth: 1)
+                        )
+                    Spacer(minLength: 4)
+                } else {
+                    HStack(spacing: 6) {
+                        QuestTitleCapsule {
+                            Text(studyQuestGenreDisplayLabel(uiState.genreId))
+                                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                .foregroundColor(textWhite)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
                         }
                         if let dn = dungeonDisplayName {
                             QuestTitleCapsule {
@@ -650,8 +649,8 @@ struct StudyQuestScreenView: View {
                             }
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: 8) {
                     if isOvertime {
