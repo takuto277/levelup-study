@@ -28,7 +28,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import org.example.project.components.BattleSprite
 import org.example.project.components.DungeonBackground
 import org.example.project.components.PlayerSprite
@@ -291,6 +294,7 @@ private fun MainQuestView(
                     enemyMaxHp = uiState.enemyMaxHp,
                     lastDamage = uiState.lastDamage,
                     dungeonName = uiState.dungeonName,
+                    currentFloor = uiState.currentFloor,
                     walkOffset = walkOffset,
                     walkBounce = walkBounce,
                     pulseAlpha = pulseAlpha
@@ -437,6 +441,160 @@ private fun AdventureGroundLine(modifier: Modifier = Modifier) {
     )
 }
 
+private val ConfrontGap = 30.dp
+private val ConfrontPlayerSize = 108.dp
+private val ConfrontEnemySize = 112.dp
+
+/** 遭遇〜戦闘：中央付近で向かい合い、接近中は歩き、敵は1枚＋同期ボブ */
+@Composable
+private fun BattleConfrontationLayer(
+    isAttackPhase: Boolean,
+    approachProgress: Float,
+    syncBob: Boolean,
+    hasPlayerSprite: Boolean,
+    hasEnemySprite: Boolean,
+    enemySpriteKey: String,
+    enemyEmoji: String,
+    enemyName: String,
+    enemyHp: Int,
+    enemyMaxHp: Int,
+    lastDamage: Int
+) {
+    val isStriking = isAttackPhase && lastDamage > 0
+    val showEnemyHp = isAttackPhase || approachProgress >= 0.9f
+    val yBob = if (syncBob) (-3).dp else 2.dp
+    val progress = approachProgress.coerceIn(0f, 1f)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.12f))
+    ) {
+        Text(
+            if (isAttackPhase) "⚔️ 戦闘中" else "⚠️ 遭遇！",
+            fontSize = 11.sp,
+            color = TextMuted,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
+        )
+
+        if (isStriking) {
+            Text(
+                "-$lastDamage",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = DamageRed,
+                modifier = Modifier.align(Alignment.Center).offset(y = (-42).dp)
+            )
+        }
+
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val centerX = maxWidth / 2
+            val playerEndLeft = centerX - ConfrontGap / 2 - ConfrontPlayerSize
+            val enemyEndLeft = centerX + ConfrontGap / 2
+            val playerStartLeft = 12.dp
+            val enemyStartLeft = maxWidth + 40.dp
+            val playerLeft = lerp(playerStartLeft, playerEndLeft, progress)
+            val enemyLeft = lerp(enemyStartLeft, enemyEndLeft, progress)
+
+            if (hasPlayerSprite) {
+                PlayerSprite(
+                    mode = when {
+                        !isAttackPhase -> PlayerSpriteMode.Walking
+                        isStriking -> PlayerSpriteMode.Attack
+                        else -> PlayerSpriteMode.Prep
+                    },
+                    size = ConfrontPlayerSize,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(
+                            x = playerLeft + if (isAttackPhase && isStriking) 6.dp else 0.dp,
+                            y = (-44).dp + yBob
+                        )
+                )
+            } else {
+                Text(
+                    "🧙‍♂️",
+                    fontSize = 52.sp,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = playerLeft, y = (-40).dp + yBob)
+                )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = enemyLeft, y = (-40).dp + yBob)
+                    .widthIn(min = 80.dp)
+            ) {
+                if (hasEnemySprite) {
+                    BattleSprite(
+                        spriteKey = enemySpriteKey,
+                        spriteType = "enemy",
+                        size = ConfrontEnemySize,
+                        animateFrames = false,
+                        modifier = Modifier.offset(x = 0.dp)
+                    )
+                } else {
+                    Text(enemyEmoji, fontSize = 56.sp)
+                }
+                if (showEnemyHp) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        enemyName,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextMuted
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(72.dp)
+                            .height(5.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(DarkSurface)
+                    ) {
+                        val hpRatio = if (enemyMaxHp > 0) enemyHp.toFloat() / enemyMaxHp else 0f
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(hpRatio)
+                                .background(
+                                    when {
+                                        hpRatio > 0.5f -> EmeraldGreen
+                                        hpRatio > 0.25f -> FireOrange
+                                        else -> FireRed
+                                    },
+                                    RoundedCornerShape(3.dp)
+                                )
+                        )
+                    }
+                    Text(
+                        "$enemyHp/$enemyMaxHp",
+                        fontSize = 8.sp,
+                        color = TextMuted
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        enemyName,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
+                        color = FireOrange
+                    )
+                    Text(
+                        "接近中…",
+                        fontSize = 10.sp,
+                        color = TextMuted
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun AdventureScene(
     phase: AdventurePhase,
@@ -447,6 +605,7 @@ private fun AdventureScene(
     enemyMaxHp: Int,
     lastDamage: Int,
     dungeonName: String?,
+    currentFloor: Int,
     walkOffset: Float,
     walkBounce: Float,
     pulseAlpha: Float
@@ -455,6 +614,44 @@ private fun AdventureScene(
     val hasPlayerSprite = remember { hasPlayerWalkSprite(context) }
     val hasEnemySprite = remember(enemySpriteKey) { hasSpriteResource(context, "enemy", enemySpriteKey) }
     val hasBg = remember(dungeonName) { hasBackgroundResource(context, dungeonName) }
+
+    val encounterKey = remember(enemySpriteKey, enemyMaxHp, currentFloor) {
+        "${enemySpriteKey}_${enemyMaxHp}_$currentFloor"
+    }
+
+    var approachProgress by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(phase, encounterKey) {
+        when (phase) {
+            AdventurePhase.ENCOUNTER -> {
+                approachProgress = 0f
+                val durationMs = 2800L
+                val start = System.currentTimeMillis()
+                while (isActive) {
+                    val elapsed = System.currentTimeMillis() - start
+                    if (elapsed >= durationMs) {
+                        approachProgress = 1f
+                        break
+                    }
+                    val t = (elapsed.toFloat() / durationMs).coerceIn(0f, 1f)
+                    approachProgress = FastOutSlowInEasing.transform(t)
+                    delay(16)
+                }
+            }
+            AdventurePhase.ATTACKING -> {
+                approachProgress = 1f
+            }
+            else -> { }
+        }
+    }
+
+    var syncBob by remember { mutableStateOf(false) }
+    LaunchedEffect(phase) {
+        if (phase != AdventurePhase.ENCOUNTER && phase != AdventurePhase.ATTACKING) return@LaunchedEffect
+        while (isActive) {
+            delay(320)
+            syncBob = !syncBob
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (hasBg) {
@@ -505,141 +702,35 @@ private fun AdventureScene(
             }
 
             AdventurePhase.ENCOUNTER -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.12f))
+                BattleConfrontationLayer(
+                    isAttackPhase = false,
+                    approachProgress = approachProgress,
+                    syncBob = syncBob,
+                    hasPlayerSprite = hasPlayerSprite,
+                    hasEnemySprite = hasEnemySprite,
+                    enemySpriteKey = enemySpriteKey,
+                    enemyEmoji = enemyEmoji,
+                    enemyName = enemyName,
+                    enemyHp = enemyHp,
+                    enemyMaxHp = enemyMaxHp,
+                    lastDamage = lastDamage
                 )
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    if (hasPlayerSprite) {
-                        PlayerSprite(
-                            mode = PlayerSpriteMode.Prep,
-                            size = 108.dp,
-                            modifier = Modifier
-                                .padding(start = 8.dp, bottom = 44.dp)
-                        )
-                    } else {
-                        Text("🧙‍♂️", fontSize = 52.sp, modifier = Modifier.padding(start = 8.dp, bottom = 44.dp))
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(end = 12.dp, bottom = 40.dp)
-                    ) {
-                        Text("⚠️", fontSize = 22.sp)
-                        Text(
-                            "${enemyName}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Black,
-                            color = FireOrange
-                        )
-                        Text("遭遇！", fontSize = 11.sp, color = TextMuted)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        if (hasEnemySprite) {
-                            BattleSprite(
-                                spriteKey = enemySpriteKey,
-                                spriteType = "enemy",
-                                size = 112.dp,
-                                modifier = Modifier.offset(x = walkBounce.dp * 0.4f)
-                            )
-                        } else {
-                            Text(enemyEmoji, fontSize = 64.sp)
-                        }
-                    }
-                }
             }
 
             AdventurePhase.ATTACKING -> {
-                val isStriking = lastDamage > 0
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    if (hasPlayerSprite) {
-                        PlayerSprite(
-                            mode = if (isStriking) PlayerSpriteMode.Attack else PlayerSpriteMode.Prep,
-                            size = 108.dp,
-                            modifier = Modifier
-                                .padding(start = 6.dp, bottom = 44.dp)
-                                .offset(x = if (isStriking) 6.dp else 0.dp, y = walkBounce.dp * 0.25f)
-                        )
-                    } else {
-                        Text(
-                            "🧙‍♂️",
-                            fontSize = 52.sp,
-                            modifier = Modifier.padding(start = 6.dp, bottom = 44.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(bottom = 52.dp)
-                    ) {
-                        AnimatedVisibility(
-                            visible = isStriking,
-                            enter = fadeIn(tween(120)),
-                            exit = fadeOut(tween(400))
-                        ) {
-                            Text(
-                                "-${lastDamage}",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = DamageRed
-                            )
-                        }
-                    }
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(end = 8.dp, bottom = 40.dp)
-                    ) {
-                        if (hasEnemySprite) {
-                            BattleSprite(
-                                spriteKey = enemySpriteKey,
-                                spriteType = "enemy",
-                                size = 108.dp,
-                                modifier = Modifier.offset(y = walkBounce.dp * 0.2f)
-                            )
-                        } else {
-                            Text(enemyEmoji, fontSize = 52.sp)
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(enemyName, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Box(
-                            modifier = Modifier
-                                .width(72.dp)
-                                .height(5.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(DarkSurface)
-                        ) {
-                            val hpRatio = if (enemyMaxHp > 0) enemyHp.toFloat() / enemyMaxHp else 0f
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(hpRatio)
-                                    .background(
-                                        when {
-                                            hpRatio > 0.5f -> EmeraldGreen
-                                            hpRatio > 0.25f -> FireOrange
-                                            else -> FireRed
-                                        },
-                                        RoundedCornerShape(3.dp)
-                                    )
-                            )
-                        }
-                        Text("${enemyHp}/${enemyMaxHp}", fontSize = 8.sp, color = TextMuted)
-                    }
-                }
+                BattleConfrontationLayer(
+                    isAttackPhase = true,
+                    approachProgress = approachProgress,
+                    syncBob = syncBob,
+                    hasPlayerSprite = hasPlayerSprite,
+                    hasEnemySprite = hasEnemySprite,
+                    enemySpriteKey = enemySpriteKey,
+                    enemyEmoji = enemyEmoji,
+                    enemyName = enemyName,
+                    enemyHp = enemyHp,
+                    enemyMaxHp = enemyMaxHp,
+                    lastDamage = lastDamage
+                )
             }
 
             AdventurePhase.ENEMY_DEFEATED -> {

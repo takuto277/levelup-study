@@ -91,6 +91,134 @@ struct DungeonBackgroundView: View {
     }
 }
 
+/// 遭遇〜戦闘：左右から中央へ接近、30pt 間隔で向かい合い、HP 表示後に攻撃フェーズへ
+private struct BattleConfrontationIOSView: View {
+    let isAttackPhase: Bool
+    let approach: CGFloat
+    let hasPlayerSprites: Bool
+    let playerWalkFrames: [String]
+    let hasEnemySprites: Bool
+    let enemyFirstFrameName: String?
+    let enemyEmoji: String
+    let enemyName: String
+    let enemyHp: Int32
+    let enemyMaxHp: Int32
+    let lastDamage: Int32
+
+    var body: some View {
+        let showEnemyHp = isAttackPhase || approach >= 0.9
+        let isStriking = isAttackPhase && lastDamage > 0
+        let t = min(1.0, max(0.0, approach))
+
+        ZStack {
+            Color.black.opacity(0.12)
+
+            Text(isAttackPhase ? "⚔️ 戦闘中" : "⚠️ 遭遇！")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(textMuted)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .padding(.top, 8)
+
+            if isStriking {
+                Text("-\(lastDamage)")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(damageRed)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    .offset(y: -42)
+            }
+
+            TimelineView(.animation(minimumInterval: 0.32, paused: false)) { context in
+                let bob: CGFloat = Int(context.date.timeIntervalSinceReferenceDate / 0.32) % 2 == 0 ? -3 : 2
+
+                GeometryReader { geo in
+                    let w = geo.size.width
+                    let centerX = w / 2
+                    let gap: CGFloat = 30
+                    let pW: CGFloat = 108
+                    let eW: CGFloat = 112
+                    let playerEndLeft = centerX - gap / 2 - pW
+                    let enemyEndLeft = centerX + gap / 2
+                    let playerStart: CGFloat = 12
+                    let enemyStart = w + 40
+                    let playerLeft = playerStart + (playerEndLeft - playerStart) * t
+                    let enemyLeft = enemyStart + (enemyEndLeft - enemyStart) * t
+
+                    ZStack(alignment: .bottomLeading) {
+                        if hasPlayerSprites {
+                            if isAttackPhase {
+                                if isStriking, UIImage(named: "sprite_player_attack_1") != nil {
+                                    Image("sprite_player_attack_1")
+                                        .resizable()
+                                        .interpolation(.none)
+                                        .scaledToFit()
+                                        .frame(width: pW, height: pW)
+                                        .offset(x: playerLeft + 6, y: -44 + bob)
+                                } else if let prep = playerPrepAssetName() {
+                                    Image(prep)
+                                        .resizable()
+                                        .interpolation(.none)
+                                        .scaledToFit()
+                                        .frame(width: pW, height: pW)
+                                        .offset(x: playerLeft, y: -44 + bob)
+                                } else if !playerWalkFrames.isEmpty {
+                                    AnimatedSpriteView(frames: playerWalkFrames, interval: 0.32, size: pW)
+                                        .offset(x: playerLeft, y: -44 + bob)
+                                }
+                            } else if !playerWalkFrames.isEmpty {
+                                AnimatedSpriteView(frames: playerWalkFrames, interval: 0.32, size: pW)
+                                    .offset(x: playerLeft, y: -44 + bob)
+                            }
+                        } else {
+                            Text("🧙‍♂️")
+                                .font(.system(size: 52))
+                                .offset(x: playerLeft, y: -40 + bob)
+                        }
+
+                        VStack(spacing: 4) {
+                            if let name = enemyFirstFrameName, UIImage(named: name) != nil {
+                                Image(name)
+                                    .resizable()
+                                    .interpolation(.none)
+                                    .scaledToFit()
+                                    .frame(width: eW, height: eW)
+                            } else {
+                                Text(enemyEmoji)
+                                    .font(.system(size: 56))
+                            }
+                            if showEnemyHp {
+                                Text(enemyName)
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(textMuted)
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(darkSurface)
+                                        .frame(width: 72, height: 5)
+                                    let hpRatio = enemyMaxHp > 0 ? CGFloat(enemyHp) / CGFloat(enemyMaxHp) : 0
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(hpRatio > 0.5 ? emeraldGreen : (hpRatio > 0.25 ? fireOrange : fireRed))
+                                        .frame(width: 72 * hpRatio, height: 5)
+                                }
+                                Text("\(enemyHp)/\(enemyMaxHp)")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(textMuted)
+                            } else {
+                                Text(enemyName)
+                                    .font(.system(size: 12, weight: .heavy))
+                                    .foregroundColor(fireOrange)
+                                Text("接近中…")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(textMuted)
+                            }
+                        }
+                        .frame(width: max(eW, 80), alignment: .center)
+                        .offset(x: enemyLeft, y: -40 + bob)
+                    }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Color Helper
 
 private extension Color {
@@ -143,6 +271,8 @@ struct StudyQuestScreenView: View {
     @State private var uiState: StudyQuestUiState
     @State private var pulsePhase = false
     @State private var walkPhase = false
+    /// 遭遇シーンの左右接近（0→1）。Android の接近アニメと同じく約 2.8 秒
+    @State private var confrontationApproach: CGFloat = 0
     @State private var didStartQuest = false
 
     init(initialStudyMinutes: Int, genreId: String? = nil, dungeonName: String? = nil) {
@@ -380,6 +510,22 @@ struct StudyQuestScreenView: View {
             }
             .frame(height: 280)
             .padding(.horizontal, 16)
+            .onChange(of: uiState.adventurePhase) { _, newPhase in
+                if newPhase == .encounter {
+                    confrontationApproach = 0
+                    DispatchQueue.main.async {
+                        withAnimation(.timingCurve(0.25, 0.1, 0.25, 1.0, duration: 2.8)) {
+                            confrontationApproach = 1
+                        }
+                    }
+                } else if newPhase == .attacking {
+                    var tr = Transaction()
+                    tr.disablesAnimations = true
+                    withTransaction(tr) {
+                        confrontationApproach = 1
+                    }
+                }
+            }
 
             Spacer().frame(height: 16)
 
@@ -518,106 +664,34 @@ struct StudyQuestScreenView: View {
                 }
 
             case .encounter:
-                ZStack {
-                    Color.black.opacity(0.12)
-                    HStack(alignment: .bottom) {
-                        if let prep = playerPrepAssetName() {
-                            Image(prep)
-                                .resizable()
-                                .interpolation(.none)
-                                .scaledToFit()
-                                .frame(width: 108, height: 108)
-                                .padding(.leading, 8)
-                                .padding(.bottom, 44)
-                        } else {
-                            Text("🧙‍♂️")
-                                .font(.system(size: 52))
-                                .padding(.leading, 8)
-                                .padding(.bottom, 44)
-                        }
-                        Spacer()
-                        VStack(spacing: 6) {
-                            Text("⚠️").font(.system(size: 22))
-                            Text(uiState.enemyName)
-                                .font(.system(size: 14, weight: .heavy))
-                                .foregroundColor(fireOrange)
-                            Text("遭遇！")
-                                .font(.system(size: 11))
-                                .foregroundColor(textMuted)
-                            if hasEnemySprites {
-                                AnimatedSpriteView(frames: enemyFrames, interval: 0.35, size: 112)
-                            } else {
-                                Text(uiState.enemyEmoji).font(.system(size: 64))
-                            }
-                        }
-                        .padding(.trailing, 12)
-                        .padding(.bottom, 40)
-                    }
-                }
+                BattleConfrontationIOSView(
+                    isAttackPhase: false,
+                    approach: confrontationApproach,
+                    hasPlayerSprites: hasPlayerSprites,
+                    playerWalkFrames: playerWalkFrameNames(),
+                    hasEnemySprites: hasEnemySprites,
+                    enemyFirstFrameName: enemyFrames.first,
+                    enemyEmoji: uiState.enemyEmoji,
+                    enemyName: uiState.enemyName,
+                    enemyHp: uiState.enemyHp,
+                    enemyMaxHp: uiState.enemyMaxHp,
+                    lastDamage: uiState.lastDamage
+                )
 
             case .attacking:
-                let isStriking = uiState.lastDamage > 0
-                HStack(alignment: .bottom, spacing: 0) {
-                    Group {
-                        if hasPlayerSprites {
-                            if isStriking, UIImage(named: "sprite_player_attack_1") != nil {
-                                Image("sprite_player_attack_1")
-                                    .resizable()
-                                    .interpolation(.none)
-                                    .scaledToFit()
-                                    .frame(width: 108, height: 108)
-                            } else if let prep = playerPrepAssetName() {
-                                Image(prep)
-                                    .resizable()
-                                    .interpolation(.none)
-                                    .scaledToFit()
-                                    .frame(width: 108, height: 108)
-                            }
-                        } else {
-                            Text("🧙‍♂️").font(.system(size: 52))
-                        }
-                    }
-                    .padding(.leading, 6)
-                    .padding(.bottom, 44)
-                    .offset(x: isStriking ? 6 : 0, y: walkPhase ? -2 : 2)
-
-                    Spacer()
-
-                    if isStriking {
-                        Text("-\(uiState.lastDamage)")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(damageRed)
-                            .padding(.bottom, 52)
-                    }
-
-                    VStack(spacing: 4) {
-                        if hasEnemySprites {
-                            AnimatedSpriteView(frames: enemyFrames, interval: 0.35, size: 108)
-                        } else {
-                            Text(uiState.enemyEmoji).font(.system(size: 52))
-                        }
-                        Text(uiState.enemyName)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(textMuted)
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(darkSurface)
-                                .frame(width: 72, height: 5)
-                            let hpRatio = uiState.enemyMaxHp > 0
-                                ? CGFloat(uiState.enemyHp) / CGFloat(uiState.enemyMaxHp)
-                                : 0
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(hpRatio > 0.5 ? emeraldGreen : (hpRatio > 0.25 ? fireOrange : fireRed))
-                                .frame(width: 72 * hpRatio, height: 5)
-                        }
-                        Text("\(uiState.enemyHp)/\(uiState.enemyMaxHp)")
-                            .font(.system(size: 8))
-                            .foregroundColor(textMuted)
-                    }
-                    .padding(.trailing, 8)
-                    .padding(.bottom, 40)
-                }
-                .padding(.horizontal, 10)
+                BattleConfrontationIOSView(
+                    isAttackPhase: true,
+                    approach: confrontationApproach,
+                    hasPlayerSprites: hasPlayerSprites,
+                    playerWalkFrames: playerWalkFrameNames(),
+                    hasEnemySprites: hasEnemySprites,
+                    enemyFirstFrameName: enemyFrames.first,
+                    enemyEmoji: uiState.enemyEmoji,
+                    enemyName: uiState.enemyName,
+                    enemyHp: uiState.enemyHp,
+                    enemyMaxHp: uiState.enemyMaxHp,
+                    lastDamage: uiState.lastDamage
+                )
 
             case .enemyDefeated:
                 VStack(spacing: 4) {

@@ -111,7 +111,8 @@ class StudyQuestViewModel(
 
     private companion object {
         const val WALK_DURATION = 6L
-        const val ENCOUNTER_DURATION = 2L
+        /** 接近演出＋向かい合い（HP表示）の秒数。UI の接近アニメと同期させる */
+        const val ENCOUNTER_DURATION = 5L
         const val ATTACK_INTERVAL = 3L
         const val DEFEAT_DURATION = 2L
         const val DEAD_DURATION = 3L

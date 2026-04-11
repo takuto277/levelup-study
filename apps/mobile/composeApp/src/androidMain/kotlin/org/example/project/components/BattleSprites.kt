@@ -29,7 +29,9 @@ fun BattleSprite(
     spriteKey: String,
     spriteType: String,
     size: Dp = 120.dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** false のとき先頭フレームのみ（戦闘接近シーンの敵1枚表示用） */
+    animateFrames: Boolean = true
 ) {
     val context = LocalContext.current
     val frames = remember(spriteKey, spriteType) {
@@ -47,7 +49,7 @@ fun BattleSprite(
 
     var currentFrame by remember { mutableIntStateOf(0) }
 
-    if (frames.size > 1) {
+    if (frames.size > 1 && animateFrames) {
         LaunchedEffect(frames) {
             while (true) {
                 delay(280L)
