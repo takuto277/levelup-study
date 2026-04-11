@@ -83,7 +83,7 @@ struct DungeonBackgroundView: View {
                 Image(bgName)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: geo.size.width, height: geo.size.height)
+                    .frame(width: geo.size.width, height: geo.size.height, alignment: .bottom)
                     .clipped()
                     .opacity(0.82)
             }
@@ -680,17 +680,6 @@ struct StudyQuestScreenView: View {
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 24))
             }
-
-            VStack {
-                Spacer()
-                LinearGradient(
-                    colors: [Color(hex: 0x5C4330, alpha: 0.92), Color(hex: 0x1A1209, alpha: 0.98)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 40)
-            }
-            .allowsHitTesting(false)
 
             switch phase {
             case .walking:

@@ -3,6 +3,7 @@ package org.example.project.components
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -170,6 +171,7 @@ fun DungeonBackground(
             contentDescription = null,
             modifier = modifier,
             contentScale = ContentScale.Crop,
+            alignment = Alignment.BottomCenter,
             alpha = alpha
         )
     }

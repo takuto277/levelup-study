@@ -428,20 +428,6 @@ private fun MainQuestView(
     }
 }
 
-@Composable
-private fun AdventureGroundLine(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(40.dp)
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF5C4330).copy(alpha = 0.92f), Color(0xFF1A1209).copy(alpha = 0.98f))
-                )
-            )
-    )
-}
-
 private val ConfrontGap = 30.dp
 private val ConfrontPlayerSize = 108.dp
 private val ConfrontEnemySize = 112.dp
@@ -678,8 +664,6 @@ private fun AdventureScene(
                 alpha = 0.82f
             )
         }
-
-        AdventureGroundLine(modifier = Modifier.align(Alignment.BottomCenter))
 
         when (phase) {
             AdventurePhase.WALKING -> {
