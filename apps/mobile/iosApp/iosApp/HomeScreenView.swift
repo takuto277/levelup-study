@@ -91,23 +91,21 @@ struct HomeScreenView: View {
     var body: some View {
         VStack(spacing: 0) {
             homeHeader
-            if let dn = homeState?.selectedDungeonName {
-                destinationBanner(name: dn)
-            }
+            adventureContextRow
             Spacer()
             characterArea
             Spacer()
             timeSelector
-            Spacer().frame(height: 20)
-            genreSelector
-            Spacer().frame(height: 20)
+            Spacer().frame(height: 28)
             startButton
             Spacer().frame(height: 24)
             Spacer().frame(height: 90)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(LinearGradient(colors: [bgDark, Color(hex: 0x0F172A)], startPoint: .top, endPoint: .bottom).ignoresSafeArea())
-        .fullScreenCover(isPresented: $showStudySheet) {
+        .fullScreenCover(isPresented: $showStudySheet, onDismiss: {
+            homeViewModel.onIntent(intent: HomeIntentRefresh())
+        }) {
             StudyQuestScreenView(initialStudyMinutes: studyMinutes, genreId: selectedGenreSlug, dungeonName: homeState?.selectedDungeonName)
         }
         .sheet(isPresented: $showAddGenreSheet) { addGenreSheet }
@@ -116,6 +114,63 @@ struct HomeScreenView: View {
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in self.homeState = homeViewModel.uiState.value as? HomeUiState }
         .onChange(of: studyMinutes) { _, newValue in
             HomeStudyMinutesPersisted.save(newValue)
+        }
+    }
+
+    // MARK: - ダンジョン / ジャンル（横スクロール・勉強時間はヘッダー）
+    private var adventureContextRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                contextStatChip(title: "ダンジョン", value: homeState?.selectedDungeonName ?? "—")
+                genreMenuChip
+                Button(action: { showAddGenreSheet = true }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(accentCyan)
+                        .frame(width: 40, height: 40)
+                        .background(accentCyan.opacity(0.15))
+                        .cornerRadius(12)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+        }
+    }
+
+    private func contextStatChip(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.system(size: 9)).foregroundColor(textSub).lineLimit(1)
+            Text(value).font(.system(size: 11, weight: .bold)).foregroundColor(textW).lineLimit(1)
+        }
+        .frame(minWidth: title == "ダンジョン" ? 96 : (title == "回想" ? 56 : 64), alignment: .leading)
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .background(bgCard).cornerRadius(12)
+    }
+
+    private var genreMenuChip: some View {
+        let selected = genreList.first { $0.slug == selectedGenreSlug } ?? genreList.first!
+        return Menu {
+            ForEach(genreList, id: \.slug) { g in
+                Button(action: { selectedGenreSlug = g.slug }) {
+                    HStack {
+                        if selectedGenreSlug == g.slug {
+                            Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundColor(accentCyan)
+                        }
+                        Text("\(g.emoji) \(g.label)").foregroundColor(textW)
+                    }
+                }
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("ジャンル").font(.system(size: 9)).foregroundColor(textSub)
+                HStack(spacing: 4) {
+                    Text("\(selected.emoji) \(selected.label)").font(.system(size: 11, weight: .bold)).foregroundColor(textW).lineLimit(1)
+                    Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold)).foregroundColor(accentCyan)
+                }
+            }
+            .frame(minWidth: 108, maxWidth: 168, alignment: .leading)
+            .padding(.horizontal, 10).padding(.vertical, 8)
+            .background(bgCard).cornerRadius(12)
         }
     }
 
@@ -226,29 +281,6 @@ struct HomeScreenView: View {
         .padding(.horizontal, 32)
     }
 
-    // MARK: - Genre
-    private var genreSelector: some View {
-        VStack(spacing: 8) {
-            Text("📖 ジャンル").font(.system(size: 12, weight: .bold)).foregroundColor(textSub)
-            HStack(spacing: 8) {
-                Picker("ジャンル", selection: $selectedGenreSlug) {
-                    ForEach(genreList, id: \.slug) { g in Text("\(g.emoji) \(g.label)").tag(g.slug) }
-                }
-                .pickerStyle(.menu).tint(accentCyan)
-                .padding(.horizontal, 10).padding(.vertical, 4).background(bgCard).cornerRadius(10)
-
-                Button(action: { showAddGenreSheet = true }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus.circle.fill").font(.system(size: 14))
-                        Text("追加").font(.system(size: 11, weight: .bold))
-                    }
-                    .foregroundColor(accentCyan).padding(.horizontal, 10).padding(.vertical, 7).background(accentCyan.opacity(0.15)).cornerRadius(10)
-                }
-            }
-        }
-        .padding(.horizontal, 32)
-    }
-
     // MARK: - Add Genre Sheet
     private var addGenreSheet: some View {
         NavigationView {
@@ -280,19 +312,6 @@ struct HomeScreenView: View {
             .padding(24).navigationTitle("ジャンル追加").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { showAddGenreSheet = false } } }
         }
-    }
-
-    private func destinationBanner(name: String) -> some View {
-        HStack(spacing: 10) {
-            Text("📍").font(.system(size: 14))
-            Text("次の目的地:").font(.system(size: 11, weight: .bold)).foregroundColor(accentCyan)
-            Text(name).font(.system(size: 13, weight: .heavy)).foregroundColor(textW)
-            Spacer()
-            Image(systemName: "chevron.right").font(.system(size: 10, weight: .bold)).foregroundColor(textSub)
-        }
-        .padding(.horizontal, 14).padding(.vertical, 10)
-        .background(accentBlue.opacity(0.12)).cornerRadius(12)
-        .padding(.horizontal, 16)
     }
 
     // MARK: - Start Button

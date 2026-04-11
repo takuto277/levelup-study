@@ -45,22 +45,26 @@ class HomeViewModel(
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val data = homeUseCase.loadHomeData()
-                _uiState.update {
-                    it.copy(
-                        totalStudySeconds = data.user.totalStudySeconds,
-                        stones = data.user.stones,
-                        gold = data.user.gold,
-                        displayName = data.user.displayName,
-                        mainCharacter = data.mainCharacter,
-                        genres = data.genres,
-                        selectedDungeonId = data.user.selectedDungeonId ?: it.selectedDungeonId,
-                        selectedDungeonName = data.selectedDungeonName ?: it.selectedDungeonName,
-                        isLoading = false
-                    )
-                }
+                applyHomeData(data, clearLoading = true)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
+        }
+    }
+
+    private fun applyHomeData(data: HomeUseCase.HomeData, clearLoading: Boolean) {
+        _uiState.update {
+            it.copy(
+                totalStudySeconds = data.user.totalStudySeconds,
+                stones = data.user.stones,
+                gold = data.user.gold,
+                displayName = data.user.displayName,
+                mainCharacter = data.mainCharacter,
+                genres = data.genres,
+                selectedDungeonId = data.user.selectedDungeonId ?: it.selectedDungeonId,
+                selectedDungeonName = data.selectedDungeonName ?: it.selectedDungeonName,
+                isLoading = if (clearLoading) false else it.isLoading
+            )
         }
     }
 
@@ -69,7 +73,7 @@ class HomeViewModel(
             try {
                 homeUseCase.createGenre(label, emoji, colorHex)
                 val data = homeUseCase.loadHomeData()
-                _uiState.update { it.copy(genres = data.genres) }
+                applyHomeData(data, clearLoading = false)
             } catch (_: Exception) { }
         }
     }

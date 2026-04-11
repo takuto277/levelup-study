@@ -514,7 +514,8 @@ struct StudyQuestScreenView: View {
             playerHp: 100,
             playerMaxHp: 100,
             earnedXp: 0,
-            earnedStones: 0
+            earnedStones: 0,
+            completedStudyElapsedSeconds: 0
         ))
     }
 
@@ -524,12 +525,7 @@ struct StudyQuestScreenView: View {
 
         ZStack {
             bgColor.ignoresSafeArea()
-
-            if uiState.status == .finished {
-                resultScreen
-            } else {
-                mainQuestView
-            }
+            mainQuestView
         }
         .onAppear {
             if !didStartQuest {
@@ -546,6 +542,47 @@ struct StudyQuestScreenView: View {
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
             self.uiState = holder.viewModel.uiState.value as! StudyQuestUiState
         }
+    }
+
+    // MARK: - 休憩中：直前の勉強パートの結果（旧クエスト達成カード相当）
+
+    private var breakAfterStudySummaryBlock: some View {
+        let mins = max(1, Int(uiState.completedStudyElapsedSeconds / 60))
+        return VStack(spacing: 10) {
+            Text("📊 直前の冒険の結果")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(breakAccent)
+            HStack {
+                Spacer()
+                rewardItem(emoji: "⏱", label: "集中時間", value: "\(mins)分")
+                Spacer()
+                rewardItem(emoji: "⭐", label: "経験値", value: "+\(uiState.earnedXp)")
+                Spacer()
+                rewardItem(emoji: "💀", label: "討伐数", value: "\(uiState.defeatedCount)体")
+                Spacer()
+                rewardItem(emoji: "💎", label: "ダイヤ", value: "+\(uiState.earnedStones)")
+                Spacer()
+            }
+            if !uiState.serverRewards.isEmpty {
+                Text(uiState.serverRewards.map { "\($0)" }.joined(separator: "  "))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(textMuted)
+            }
+            if let kSynced = uiState.serverSynced {
+                let synced = kSynced.boolValue
+                Text(synced ? "サーバーに記録しました" : "サーバー未同期（あとで再試行）")
+                    .font(.system(size: 10))
+                    .foregroundColor(synced ? breakAccent : textMuted)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity)
+        .background(breakCard.opacity(0.95))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(breakAccent.opacity(0.35), lineWidth: 1)
+        )
+        .cornerRadius(18)
     }
 
     // MARK: - メインクエストビュー
@@ -654,6 +691,12 @@ struct StudyQuestScreenView: View {
                 }
             }
             .padding(.horizontal, 20)
+
+            if isBreak {
+                breakAfterStudySummaryBlock
+                    .padding(.horizontal, 20)
+                Spacer().frame(height: 10)
+            }
 
             Spacer().frame(height: 12)
 
@@ -845,34 +888,62 @@ struct StudyQuestScreenView: View {
 
             Spacer()
 
-            // ボタン（一時停止 + 終了のみ）
+            // ボタン：休憩中は「終了する」「冒険へ」のみ。勉強中は一時停止 + 終了する。
             HStack(spacing: 12) {
-                Button(action: {
-                    holder.viewModel.onIntent(intent: StudyQuestIntentTogglePause())
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: uiState.status == .running ? "pause.fill" : "play.fill")
-                            .font(.system(size: 14))
-                        Text(uiState.status == .running ? "一時停止" : "再開")
+                if isBreak {
+                    Button(action: {
+                        holder.viewModel.onIntent(intent: StudyQuestIntentStopQuest())
+                        dismiss()
+                    }) {
+                        Text("終了する")
                             .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(textMuted)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(textMuted.opacity(0.3), lineWidth: 1)
+                            )
                     }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(uiState.status == .running ? darkSurface : accentBlue)
-                    .cornerRadius(16)
-                }
-
-                Button(action: {
-                    holder.viewModel.onIntent(intent: StudyQuestIntentEndQuest())
-                }) {
-                    Text("🏁 終了する")
-                        .font(.system(size: 14, weight: .bold))
+                    Button(action: {
+                        holder.viewModel.onIntent(intent: StudyQuestIntentNextSession())
+                    }) {
+                        Text("⚔️ 冒険へ")
+                            .font(.system(size: 14, weight: .heavy))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(accentBlue)
+                            .cornerRadius(16)
+                    }
+                } else {
+                    Button(action: {
+                        holder.viewModel.onIntent(intent: StudyQuestIntentTogglePause())
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: uiState.status == .running ? "pause.fill" : "play.fill")
+                                .font(.system(size: 14))
+                            Text(uiState.status == .running ? "一時停止" : "再開")
+                                .font(.system(size: 14, weight: .bold))
+                        }
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(emeraldGreen)
+                        .background(uiState.status == .running ? darkSurface : accentBlue)
                         .cornerRadius(16)
+                    }
+
+                    Button(action: {
+                        holder.viewModel.onIntent(intent: StudyQuestIntentEndQuest())
+                    }) {
+                        Text("🏁 終了する")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(emeraldGreen)
+                            .cornerRadius(16)
+                    }
                 }
             }
             .padding(.horizontal, 24)
@@ -1039,7 +1110,7 @@ struct StudyQuestScreenView: View {
                 Text("焚き火を囲んで ゆっくり休んでいます")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(breakAccent)
-                Text("タイマーが終わるまで、このままリラックス")
+                Text("「冒険へ」で続行、「終了する」でホームへ戻れます")
                     .font(.system(size: 11))
                     .foregroundColor(textMuted)
             }
@@ -1063,139 +1134,6 @@ struct StudyQuestScreenView: View {
             .clipShape(RoundedRectangle(cornerRadius: 22))
             .padding(.horizontal, 10)
         }
-    }
-
-    // MARK: - リザルト画面
-
-    private var resultScreen: some View {
-        let isStudy = uiState.type == .study
-        let actualMinutes = max(1, Int(uiState.elapsedSeconds / 60))
-
-        return ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: 0) {
-                Spacer().frame(height: 80)
-
-                Text(isStudy ? "⚔️ QUEST CLEAR!" : "🌿 REST COMPLETE!")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(isStudy ? fireOrange.opacity(0.8) : breakAccent.opacity(0.8))
-                    .tracking(4)
-                Spacer().frame(height: 8)
-                Text(isStudy ? "クエスト達成！" : "休憩完了！")
-                    .font(.system(size: 36, weight: .heavy))
-                    .foregroundColor(textWhite)
-
-                Spacer().frame(height: 24)
-
-                ZStack {
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    (isStudy ? fireOrange : breakAccent).opacity(pulsePhase ? 0.25 : 0.1),
-                                    .clear
-                                ],
-                                center: .center,
-                                startRadius: 20,
-                                endRadius: 70
-                            )
-                        )
-                        .frame(width: 140, height: 140)
-                    Text(isStudy ? "🏆" : "✨")
-                        .font(.system(size: 72))
-                        .offset(y: pulsePhase ? -6 : 0)
-                }
-
-                Spacer().frame(height: 20)
-
-                // 報酬カード
-                VStack(spacing: 16) {
-                    if isStudy {
-                        Text("📊 冒険結果")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(textMuted)
-
-                        HStack {
-                            Spacer()
-                            rewardItem(emoji: "⏱", label: "集中時間", value: "\(actualMinutes)分")
-                            Spacer()
-                            rewardItem(emoji: "⭐", label: "経験値", value: "+\(uiState.earnedXp)")
-                            Spacer()
-                            rewardItem(emoji: "💀", label: "討伐数", value: "\(uiState.defeatedCount)体")
-                            Spacer()
-                            rewardItem(emoji: "💎", label: "ダイヤ", value: "+\(uiState.earnedStones)")
-                            Spacer()
-                        }
-                    } else {
-                        Text("🌙 休憩完了")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(textMuted)
-                    }
-
-                    HStack(spacing: 10) {
-                        Text("🧙‍♂️").font(.system(size: 28))
-                        Text(isStudy
-                            ? "「見事な集中力だ！\nその調子で強くなるぞ。」"
-                            : "「いいリフレッシュになったな。\nさあ、次の冒険に備えよう！」")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(textWhite)
-                            .lineSpacing(4)
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(isStudy ? darkSurface : Color(hex: 0x1A3A1A))
-                    .cornerRadius(12)
-                }
-                .padding(24)
-                .background(isStudy ? darkCard : breakCard)
-                .cornerRadius(24)
-                .padding(.horizontal, 32)
-
-                Spacer().frame(height: 28)
-
-                // ボタン
-                HStack(spacing: 12) {
-                    Button(action: {
-                        holder.viewModel.onIntent(intent: StudyQuestIntentStopQuest())
-                        dismiss()
-                    }) {
-                        Text("🏠 街に戻る")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(textMuted)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(textMuted.opacity(0.3), lineWidth: 1)
-                            )
-                    }
-
-                    Button(action: {
-                        holder.viewModel.onIntent(intent: StudyQuestIntentNextSession())
-                    }) {
-                        Text(isStudy ? "🌿 休憩へ" : "⚔️ 冒険へ")
-                            .font(.system(size: 14, weight: .heavy))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(isStudy ? emeraldGreen : accentBlue)
-                            .cornerRadius(16)
-                    }
-                }
-                .padding(.horizontal, 32)
-
-                Spacer().frame(height: 60)
-            }
-        }
-        .background(
-            LinearGradient(
-                colors: isStudy
-                    ? [Color(hex: 0x1A0A2E), Color(hex: 0x0F172A)]
-                    : [Color(hex: 0x0A2E1A), Color(hex: 0x0C1E0C)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        )
     }
 
     // MARK: - ヘルパー

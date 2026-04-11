@@ -249,7 +249,8 @@ class StudyQuestViewModel(
                 playerHp = 100,
                 playerMaxHp = 100,
                 earnedXp = 0,
-                earnedStones = 0
+                earnedStones = 0,
+                completedStudyElapsedSeconds = 0L
             )
         }
         startTimer()
@@ -271,63 +272,82 @@ class StudyQuestViewModel(
     }
 
     private fun endQuest() {
+        val snapshot = _uiState.value
+        val studyElapsed = snapshot.elapsedSeconds
         timerJob?.cancel()
-        _uiState.update { it.copy(status = StudySessionStatus.FINISHED) }
 
-        val useCase = studyUseCase ?: return
-        val state = _uiState.value
+        val targetBreakSec = snapshot.targetBreakMinutes.toLong() * 60
+        val genreId = snapshot.genreId
         val endedAt = Clock.System.now().toString()
-        viewModelScope.launch {
-            try {
-                val result = useCase.completeSession(
-                    category = state.genreId,
-                    startedAt = sessionStartedAt ?: endedAt,
-                    endedAt = endedAt,
-                    durationSeconds = state.elapsedSeconds.toInt(),
-                    isCompleted = state.elapsedSeconds >= state.targetStudyMinutes.toLong() * 60
-                )
-                _uiState.update {
-                    it.copy(
-                        serverRewards = result.rewards.map { r ->
-                            "${r.rewardType.name}: +${r.amount}"
-                        },
-                        serverSynced = true
+        val sessionStart = sessionStartedAt ?: endedAt
+        val targetStudySec = snapshot.targetStudyMinutes.toLong() * 60
+
+        _uiState.update {
+            it.copy(
+                type = StudySessionType.BREAK,
+                status = StudySessionStatus.RUNNING,
+                completedStudyElapsedSeconds = studyElapsed,
+                elapsedSeconds = 0,
+                isOvertime = false,
+                currentLog = listOf("休憩を開始した。"),
+                displayTime = formatTime(targetBreakSec),
+                adventurePhase = AdventurePhase.RESTING,
+                adventurePhaseTick = 0L,
+                lastDamage = 0,
+                lastPlayerDamage = 0
+            )
+        }
+
+        val useCase = studyUseCase
+        if (useCase != null) {
+            viewModelScope.launch {
+                try {
+                    val result = useCase.completeSession(
+                        category = genreId,
+                        startedAt = sessionStart,
+                        endedAt = endedAt,
+                        durationSeconds = studyElapsed.toInt(),
+                        isCompleted = studyElapsed >= targetStudySec
                     )
+                    _uiState.update {
+                        it.copy(
+                            serverRewards = result.rewards.map { r ->
+                                "${r.rewardType.name}: +${r.amount}"
+                            },
+                            serverSynced = true
+                        )
+                    }
+                } catch (_: Exception) {
+                    _uiState.update { it.copy(serverSynced = false) }
                 }
-            } catch (_: Exception) {
-                _uiState.update { it.copy(serverSynced = false) }
             }
         }
+        startTimer()
     }
 
     private fun nextSession() {
         val current = _uiState.value
-        val newType = if (current.type == StudySessionType.STUDY)
-            StudySessionType.BREAK else StudySessionType.STUDY
+        if (current.type != StudySessionType.BREAK) return
 
-        val targetSec = if (newType == StudySessionType.STUDY)
-            current.targetStudyMinutes.toLong() * 60
-        else
-            current.targetBreakMinutes.toLong() * 60
-
+        sessionStartedAt = Clock.System.now().toString()
+        val targetSec = current.targetStudyMinutes.toLong() * 60
         phaseElapsed = 0L
 
         _uiState.update {
             it.copy(
-                type = newType,
+                type = StudySessionType.STUDY,
                 status = StudySessionStatus.RUNNING,
+                completedStudyElapsedSeconds = 0L,
                 elapsedSeconds = 0,
                 isOvertime = false,
-                currentLog = listOf(
-                    if (newType == StudySessionType.BREAK) "休憩を開始した。" else "次の冒険へ出発だ！"
-                ),
+                currentLog = listOf("次の冒険へ出発だ！"),
                 displayTime = formatTime(targetSec),
-                adventurePhase = if (newType == StudySessionType.BREAK) AdventurePhase.RESTING else AdventurePhase.WALKING,
+                adventurePhase = AdventurePhase.WALKING,
                 adventurePhaseTick = 0L,
                 lastDamage = 0,
                 lastPlayerDamage = 0,
-                currentFloor = if (newType == StudySessionType.STUDY) 1 else it.currentFloor,
-                playerHp = if (newType == StudySessionType.STUDY) it.playerMaxHp else it.playerHp
+                currentFloor = 1,
+                playerHp = it.playerMaxHp
             )
         }
         startTimer()
@@ -355,6 +375,10 @@ class StudyQuestViewModel(
                     else
                         state.targetBreakMinutes.toLong() * 60
 
+                    if (state.type == StudySessionType.BREAK && state.elapsedSeconds >= targetSeconds) {
+                        return@update state
+                    }
+
                     val newElapsed = state.elapsedSeconds + 1
                     phaseElapsed++
 
@@ -380,15 +404,6 @@ class StudyQuestViewModel(
                         )
                     } else {
                         advanceAdventurePhase(state, newElapsed, overTime, displaySec)
-                    }
-                }
-
-                val state = _uiState.value
-                if (state.type == StudySessionType.BREAK) {
-                    val targetSeconds = state.targetBreakMinutes.toLong() * 60
-                    if (state.elapsedSeconds >= targetSeconds) {
-                        _uiState.update { it.copy(status = StudySessionStatus.FINISHED) }
-                        break
                     }
                 }
             }

@@ -22,8 +22,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.example.project.components.PlayerSprite
+import org.example.project.components.PlayerSpriteMode
+import org.example.project.components.hasPartyPlayerSprite
 import org.example.project.domain.model.UserCharacter
 
 // ── カラー（青テーマ）─────────────────────────────────
@@ -47,21 +52,35 @@ private fun rarityColor(rarity: Int): Color = when (rarity) {
     else -> Color(0xFF94A3B8)
 }
 
+/** とりあえず編成画面のキャラ絵はユーザー（冒険者）スプライトに統一 */
+@Composable
+private fun PartyPlayerAvatar(
+    size: Dp,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val hasSprite = remember { hasPartyPlayerSprite(context) }
+    Box(modifier = modifier.size(size), contentAlignment = Alignment.Center) {
+        if (hasSprite) {
+            PlayerSprite(
+                mode = PlayerSpriteMode.Idle,
+                size = size,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Text(
+                "🧙‍♂️",
+                fontSize = (size.value * 0.52f).coerceIn(22f, 80f).sp
+            )
+        }
+    }
+}
+
 private fun rarityGradient(rarity: Int): List<Color> = when (rarity) {
     5 -> listOf(Color(0xFFFFD700), Color(0xFFFBBF24))
     4 -> listOf(Color(0xFF8B5CF6), Color(0xFFA78BFA))
     3 -> listOf(Color(0xFF3B82F6), Color(0xFF60A5FA))
     else -> listOf(Color(0xFF94A3B8), Color(0xFFCBD5E1))
-}
-
-private fun characterEmoji(characterId: String): String = when (characterId) {
-    "char_wizard" -> "🧙‍♂️"
-    "char_knight" -> "⚔️"
-    "char_archer" -> "🏹"
-    "char_healer" -> "💚"
-    "char_ninja" -> "🥷"
-    "char_dragon" -> "🐉"
-    else -> "👤"
 }
 
 private fun weaponEmoji(weaponId: String?): String = when (weaponId) {
@@ -175,7 +194,7 @@ fun PartyScreenView() {
                                     }
                                     .padding(vertical = 12.dp)
                             ) {
-                                Text(characterEmoji(master.id), fontSize = 40.sp)
+                                PartyPlayerAvatar(size = 44.dp)
                                 Text(master.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                                 Text("Lv.${char.level}", fontSize = 11.sp, color = rarityColor(master.rarity))
                             }
@@ -264,7 +283,7 @@ private fun MainCharacterSection(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(characterEmoji(master.id), fontSize = 64.sp)
+                        PartyPlayerAvatar(size = 96.dp)
                     }
 
                     Spacer(modifier = Modifier.width(20.dp))
@@ -423,10 +442,7 @@ private fun PartySlotCard(
                     }
                 }
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    characterEmoji(master?.id ?: ""),
-                    fontSize = 32.sp
-                )
+                PartyPlayerAvatar(size = 36.dp)
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     master?.name ?: "",
@@ -586,7 +602,7 @@ private fun CharacterGridCard(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(characterEmoji(master.id), fontSize = 40.sp)
+                    PartyPlayerAvatar(size = 56.dp)
                     Spacer(modifier = Modifier.height(2.dp))
                     Row {
                         repeat(master.rarity) {
@@ -713,7 +729,7 @@ private fun CharacterDetailSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(characterEmoji(master.id), fontSize = 72.sp)
+                        PartyPlayerAvatar(size = 112.dp)
                         Spacer(modifier = Modifier.height(8.dp))
                         Row {
                             repeat(master.rarity) { Text("⭐", fontSize = 16.sp) }

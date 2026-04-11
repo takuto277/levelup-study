@@ -207,6 +207,12 @@ fun hasSpriteResource(context: android.content.Context, spriteType: String, key:
 fun hasPlayerWalkSprite(context: android.content.Context): Boolean =
     drawableId(context, "sprite_player_walk_1") != 0
 
+/** 編成画面などでプレイヤーキャラの静止画を表示できるか（idle / prep / walk のいずれか） */
+fun hasPartyPlayerSprite(context: android.content.Context): Boolean =
+    drawableId(context, "sprite_player_idle_1") != 0 ||
+        drawableId(context, "sprite_player_prep_1") != 0 ||
+        drawableId(context, "sprite_player_walk_1") != 0
+
 fun hasBackgroundResource(context: android.content.Context, dungeonName: String?): Boolean {
     val bgType = when {
         dungeonName == null -> "default"

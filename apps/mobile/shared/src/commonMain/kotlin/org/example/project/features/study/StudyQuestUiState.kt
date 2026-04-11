@@ -48,5 +48,7 @@ data class StudyQuestUiState(
     val playerMaxHp: Int = 100,
     // 獲得報酬トラッカー
     val earnedXp: Int = 0,
-    val earnedStones: Int = 0
+    val earnedStones: Int = 0,
+    /** 「終了する」で勉強パートを切った直後の経過秒。休憩画面上部の冒険結果表示用（休憩タイマーとは別） */
+    val completedStudyElapsedSeconds: Long = 0L
 )

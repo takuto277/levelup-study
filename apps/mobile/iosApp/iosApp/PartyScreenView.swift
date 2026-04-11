@@ -19,15 +19,29 @@ private let textSub = Color(hex: 0x94A3B8)
 private func rarityColor(_ r: Int) -> Color {
     switch r { case 5: return Color(hex: 0xFFD700); case 4: return Color(hex: 0xA78BFA); case 3: return Color(hex: 0x60A5FA); default: return Color(hex: 0x94A3B8) }
 }
-private func charEmoji(_ id: String) -> String {
-    switch id {
-    case "char_wizard", "a0000000-0000-0000-0000-000000000005": return "🧙‍♂️"
-    case "char_knight", "a0000000-0000-0000-0000-000000000001": return "⚔️"
-    case "char_archer", "a0000000-0000-0000-0000-000000000003": return "🏹"
-    case "char_healer", "a0000000-0000-0000-0000-000000000004": return "💚"
-    case "char_ninja", "a0000000-0000-0000-0000-000000000002": return "🥷"
-    case "char_dragon", "a0000000-0000-0000-0000-000000000006": return "🐉"
-    default: return "👤"
+/// 編成画面ではとりあえずユーザー（冒険者）スプライトを表示
+@ViewBuilder
+private func partyPlayerAvatar(size: CGFloat) -> some View {
+    if UIImage(named: "sprite_player_idle_1") != nil {
+        Image("sprite_player_idle_1")
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
+            .frame(width: size, height: size)
+    } else if UIImage(named: "sprite_player_prep_1") != nil {
+        Image("sprite_player_prep_1")
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
+            .frame(width: size, height: size)
+    } else if UIImage(named: "sprite_player_walk_1") != nil {
+        Image("sprite_player_walk_1")
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
+            .frame(width: size, height: size)
+    } else {
+        Text("🧙‍♂️").font(.system(size: size * 0.52))
     }
 }
 
@@ -88,7 +102,7 @@ struct PartyScreenView: View {
                 HStack(spacing: 18) {
                     ZStack {
                         Circle().fill(rarityColor(Int(m.rarity)).opacity(0.2)).frame(width: 90, height: 90)
-                        Text(charEmoji(m.id)).font(.system(size: 56))
+                        partyPlayerAvatar(size: 80)
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 2) { ForEach(0..<Int(m.rarity), id: \.self) { _ in Text("⭐").font(.system(size: 12)) } }
@@ -127,7 +141,7 @@ struct PartyScreenView: View {
                 let m = c.character!
                 Button(action: { holder.viewModel.onIntent(intent: PartyIntentSelectCharacter(userCharacterId: c.id)) }) {
                     VStack(spacing: 0) {
-                        VStack(spacing: 4) { Text(charEmoji(m.id)).font(.system(size: 32)); HStack(spacing: 1) { ForEach(0..<Int(m.rarity), id: \.self) { _ in Text("⭐").font(.system(size: 7)) } } }
+                        VStack(spacing: 4) { partyPlayerAvatar(size: 44); HStack(spacing: 1) { ForEach(0..<Int(m.rarity), id: \.self) { _ in Text("⭐").font(.system(size: 7)) } } }
                             .frame(maxWidth: .infinity).padding(.vertical, 10).background(rarityColor(Int(m.rarity)).opacity(0.1))
                         VStack(spacing: 2) {
                             Text(m.name).font(.system(size: 11, weight: .bold)).foregroundColor(textW).lineLimit(1)
@@ -151,7 +165,7 @@ struct PartyScreenView: View {
                         ForEach(uiState.ownedCharacters, id: \.id) { c in
                             let m = c.character!
                             Button(action: { holder.viewModel.onIntent(intent: PartyIntentAssignCharacter(slotPosition: 1, userCharacterId: c.id)); showPicker = false }) {
-                                VStack(spacing: 4) { Text(charEmoji(m.id)).font(.system(size: 36)); Text(m.name).font(.system(size: 11, weight: .bold)).foregroundColor(textW); Text("Lv.\(c.level)").font(.system(size: 10)).foregroundColor(rarityColor(Int(m.rarity))) }
+                                VStack(spacing: 4) { partyPlayerAvatar(size: 40); Text(m.name).font(.system(size: 11, weight: .bold)).foregroundColor(textW); Text("Lv.\(c.level)").font(.system(size: 10)).foregroundColor(rarityColor(Int(m.rarity))) }
                                     .frame(maxWidth: .infinity).padding(.vertical, 10).background(bgSurface).cornerRadius(12)
                             }.buttonStyle(.plain)
                         }
@@ -173,7 +187,7 @@ struct PartyScreenView: View {
                 RoundedRectangle(cornerRadius: 2).fill(Color(hex: 0x475569)).frame(width: 40, height: 4).padding(.top, 12)
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 14) {
-                        VStack(spacing: 6) { Text(charEmoji(m.id)).font(.system(size: 64)); HStack(spacing: 2) { ForEach(0..<Int(m.rarity), id: \.self) { _ in Text("⭐").font(.system(size: 14)) } } }
+                        VStack(spacing: 6) { partyPlayerAvatar(size: 100); HStack(spacing: 2) { ForEach(0..<Int(m.rarity), id: \.self) { _ in Text("⭐").font(.system(size: 14)) } } }
                             .frame(maxWidth: .infinity).padding(.vertical, 18).background(rarityColor(Int(m.rarity)).opacity(0.12)).cornerRadius(18).padding(.horizontal, 16)
                         VStack(spacing: 4) {
                             Text(m.name).font(.system(size: 22, weight: .heavy)).foregroundColor(textW)
