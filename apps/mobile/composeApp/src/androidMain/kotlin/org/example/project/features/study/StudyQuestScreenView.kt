@@ -189,7 +189,6 @@ private fun MainQuestView(
                         phase == AdventurePhase.WALKING -> "🚶 探索中"
                         phase == AdventurePhase.ENCOUNTER -> "⚠️ エンカウント！"
                         phase == AdventurePhase.ATTACKING -> "⚔️ 戦闘中"
-                        phase == AdventurePhase.ENEMY_DEFEATED -> "🎉 討伐完了！"
                         else -> "⚔️ 冒険中"
                     },
                     fontSize = 13.sp,
@@ -429,8 +428,9 @@ private fun MainQuestView(
 }
 
 private val ConfrontGap = 30.dp
-private val ConfrontPlayerSize = 108.dp
-private val ConfrontEnemySize = 112.dp
+/** 探索時の歩きスプライト（118dp）と揃え、床位置を一致させる */
+private val ConfrontPlayerSize = 118.dp
+private val ConfrontEnemySize = 118.dp
 
 /**
  * 背景を下基準でクロップしたときの「床帯」に足を乗せるための下端オフセット。
@@ -448,7 +448,7 @@ private fun combatPlayerMode(phaseTick: Long, lastDamage: Int): PlayerSpriteMode
         else -> PlayerSpriteMode.Idle
     }
 
-/** 遭遇〜戦闘：左右から中央へ接近。接近中のみ敵が上下に揺れる。戦闘中は idle→prep→attack、上下運動なし */
+/** 遭遇〜戦闘：キャラは探索時と同じ床ライン。HP・接近文は画面上部。接近中のみ敵スプライトが微上下 */
 @Composable
 private fun BattleConfrontationLayer(
     isAttackPhase: Boolean,
@@ -466,7 +466,7 @@ private fun BattleConfrontationLayer(
 ) {
     val isStriking = isAttackPhase && lastDamage > 0
     val showEnemyHp = isAttackPhase || approachProgress >= 0.9f
-    val enemyYOffset = if (!isAttackPhase) {
+    val enemyBobY = if (!isAttackPhase) {
         if (syncBob) (-3).dp else 2.dp
     } else {
         0.dp
@@ -486,14 +486,67 @@ private fun BattleConfrontationLayer(
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
         )
 
-        if (isStriking) {
-            Text(
-                "-$lastDamage",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = DamageRed,
-                modifier = Modifier.align(Alignment.Center).offset(y = (-42).dp)
-            )
+        if (showEnemyHp) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 28.dp, end = 8.dp)
+            ) {
+                Text(
+                    enemyName,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextMuted
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Box(
+                    modifier = Modifier
+                        .width(72.dp)
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(DarkSurface)
+                ) {
+                    val hpRatio = if (enemyMaxHp > 0) enemyHp.toFloat() / enemyMaxHp else 0f
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(hpRatio)
+                            .background(
+                                when {
+                                    hpRatio > 0.5f -> EmeraldGreen
+                                    hpRatio > 0.25f -> FireOrange
+                                    else -> FireRed
+                                },
+                                RoundedCornerShape(3.dp)
+                            )
+                    )
+                }
+                Text(
+                    "$enemyHp/$enemyMaxHp",
+                    fontSize = 8.sp,
+                    color = TextMuted
+                )
+            }
+        } else if (!isAttackPhase) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 28.dp)
+            ) {
+                Text(
+                    enemyName,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Black,
+                    color = FireOrange
+                )
+                Text(
+                    "接近中…",
+                    fontSize = 10.sp,
+                    color = TextMuted
+                )
+            }
         }
 
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -514,10 +567,8 @@ private fun BattleConfrontationLayer(
                     size = ConfrontPlayerSize,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .offset(
-                            x = playerLeft + if (isAttackPhase && isStriking) 6.dp else 0.dp,
-                            y = -AdventureFloorInsetDp
-                        )
+                        .offset(x = playerLeft + if (isAttackPhase && isStriking) 6.dp else 0.dp)
+                        .padding(start = 16.dp, bottom = AdventureFloorInsetDp)
                 )
             } else {
                 Text(
@@ -525,78 +576,31 @@ private fun BattleConfrontationLayer(
                     fontSize = 52.sp,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .offset(x = playerLeft, y = -AdventureFloorInsetDp)
+                        .offset(x = playerLeft)
+                        .padding(start = 16.dp, bottom = AdventureFloorInsetDp)
                 )
             }
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .offset(x = enemyLeft, y = -AdventureFloorInsetDp + enemyYOffset)
-                    .widthIn(min = 80.dp)
-            ) {
-                if (hasEnemySprite) {
-                    BattleSprite(
-                        spriteKey = enemySpriteKey,
-                        spriteType = "enemy",
-                        size = ConfrontEnemySize,
-                        animateFrames = false,
-                        modifier = Modifier.offset(x = 0.dp)
-                    )
-                } else {
-                    Text(enemyEmoji, fontSize = 56.sp)
-                }
-                if (showEnemyHp) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        enemyName,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextMuted
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(72.dp)
-                            .height(5.dp)
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(DarkSurface)
-                    ) {
-                        val hpRatio = if (enemyMaxHp > 0) enemyHp.toFloat() / enemyMaxHp else 0f
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(hpRatio)
-                                .background(
-                                    when {
-                                        hpRatio > 0.5f -> EmeraldGreen
-                                        hpRatio > 0.25f -> FireOrange
-                                        else -> FireRed
-                                    },
-                                    RoundedCornerShape(3.dp)
-                                )
-                        )
-                    }
-                    Text(
-                        "$enemyHp/$enemyMaxHp",
-                        fontSize = 8.sp,
-                        color = TextMuted
-                    )
-                } else {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        enemyName,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
-                        color = FireOrange
-                    )
-                    Text(
-                        "接近中…",
-                        fontSize = 10.sp,
-                        color = TextMuted
-                    )
-                }
+            if (hasEnemySprite) {
+                BattleSprite(
+                    spriteKey = enemySpriteKey,
+                    spriteType = "enemy",
+                    size = ConfrontEnemySize,
+                    animateFrames = false,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = enemyLeft, y = enemyBobY)
+                        .padding(bottom = AdventureFloorInsetDp)
+                )
+            } else {
+                Text(
+                    enemyEmoji,
+                    fontSize = 56.sp,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = enemyLeft, y = enemyBobY)
+                        .padding(bottom = AdventureFloorInsetDp)
+                )
             }
         }
     }
@@ -736,32 +740,9 @@ private fun AdventureScene(
                 )
             }
 
-            AdventurePhase.ENEMY_DEFEATED -> {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("🎉", fontSize = 40.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "${enemyName}を倒した！",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        color = EmeraldGreen
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for (i in 0..4) {
-                            Text(
-                                "✨",
-                                fontSize = (16 + (i * 4)).sp,
-                                modifier = Modifier.offset(y = (walkBounce * (i + 1) * 0.5f).dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("経験値を獲得！", fontSize = 13.sp, color = FireOrange, fontWeight = FontWeight.Bold)
-                }
+            AdventurePhase.ENEMY_DEFEATED,
+            AdventurePhase.FLOOR_CLEAR -> {
+                Box(modifier = Modifier.fillMaxSize())
             }
 
             AdventurePhase.RESTING -> {
@@ -781,18 +762,6 @@ private fun AdventureScene(
                 }
             }
 
-            AdventurePhase.FLOOR_CLEAR -> {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("🏆", fontSize = 48.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("全階層制覇！", fontSize = 18.sp, fontWeight = FontWeight.Black, color = FireOrange)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("💎 +5  1Fから再挑戦！", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = PurpleGlow)
-                }
-            }
         }
     }
 }

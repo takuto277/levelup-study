@@ -114,9 +114,7 @@ class StudyQuestViewModel(
         /** 接近演出＋向かい合い（HP表示）の秒数。UI の接近アニメと同期させる */
         const val ENCOUNTER_DURATION = 5L
         const val ATTACK_INTERVAL = 3L
-        const val DEFEAT_DURATION = 2L
         const val DEAD_DURATION = 3L
-        const val FLOOR_CLEAR_DURATION = 3L
     }
 
     private var phaseElapsed = 0L
@@ -390,12 +388,30 @@ class StudyQuestViewModel(
                     newLogs = (newLogs + dmgMsg).takeLast(5)
 
                     if (enemyHp <= 0) {
-                        phase = AdventurePhase.ENEMY_DEFEATED
-                        phaseElapsed = 0L
                         defeatedCount++
                         val xpGain = enemyMaxHp / 2
                         earnedXp += xpGain
                         newLogs = (newLogs + "🎉 ${enemyName}を倒した！ EXP+${xpGain}").takeLast(5)
+                        lastDamage = 0
+                        lastPlayerDamage = 0
+                        if (currentFloor >= state.totalFloors) {
+                            floorClearCount++
+                            earnedStones += 5
+                            currentFloor = 1
+                            playerHp = state.playerMaxHp
+                            newLogs = (newLogs + "🏆 全${state.totalFloors}F制覇！ 💎+5 1Fから再挑戦！").takeLast(5)
+                        } else {
+                            currentFloor++
+                            newLogs = (newLogs + "📍 ${currentFloor}Fへ進んだ…").takeLast(5)
+                        }
+                        val newEnemy = currentEnemyTable.random()
+                        enemyName = newEnemy.name
+                        enemyEmoji = newEnemy.emoji
+                        enemySpriteKey = newEnemy.spriteKey
+                        enemyHp = newEnemy.hp
+                        enemyMaxHp = newEnemy.hp
+                        phase = AdventurePhase.WALKING
+                        phaseElapsed = 0L
                     } else {
                         // 敵の反撃
                         val enemyData = currentEnemyTable.find { it.name == enemyName }
@@ -411,48 +427,6 @@ class StudyQuestViewModel(
                             newLogs = (newLogs + "💀 力尽きた…1Fからやり直し！").takeLast(5)
                         }
                     }
-                }
-            }
-
-            AdventurePhase.ENEMY_DEFEATED -> {
-                if (phaseElapsed >= DEFEAT_DURATION) {
-                    // 1フロアにつき敵1体 → 倒したら階層クリア判定
-                    if (currentFloor >= state.totalFloors) {
-                        // 全階層クリア！
-                        phase = AdventurePhase.FLOOR_CLEAR
-                        phaseElapsed = 0L
-                        floorClearCount++
-                        val bonusStones = 5
-                        earnedStones += bonusStones
-                        newLogs = (newLogs + "🏆 全${state.totalFloors}F制覇！ 💎+${bonusStones} 1Fから再挑戦！").takeLast(5)
-                    } else {
-                        currentFloor++
-                        val newEnemy = currentEnemyTable.random()
-                        enemyName = newEnemy.name
-                        enemyEmoji = newEnemy.emoji
-                        enemySpriteKey = newEnemy.spriteKey
-                        enemyHp = newEnemy.hp
-                        enemyMaxHp = newEnemy.hp
-                        phase = AdventurePhase.WALKING
-                        phaseElapsed = 0L
-                        newLogs = (newLogs + "📍 ${currentFloor}Fへ進んだ…").takeLast(5)
-                    }
-                }
-            }
-
-            AdventurePhase.FLOOR_CLEAR -> {
-                if (phaseElapsed >= FLOOR_CLEAR_DURATION) {
-                    currentFloor = 1
-                    playerHp = state.playerMaxHp
-                    val newEnemy = currentEnemyTable.random()
-                    enemyName = newEnemy.name
-                    enemyEmoji = newEnemy.emoji
-                    enemySpriteKey = newEnemy.spriteKey
-                    enemyHp = newEnemy.hp
-                    enemyMaxHp = newEnemy.hp
-                    phase = AdventurePhase.WALKING
-                    phaseElapsed = 0L
-                    newLogs = (newLogs + "1Fから再スタート！ HPも全回復した！").takeLast(5)
                 }
             }
 
@@ -473,6 +447,9 @@ class StudyQuestViewModel(
             }
 
             AdventurePhase.RESTING -> { }
+
+            AdventurePhase.ENEMY_DEFEATED,
+            AdventurePhase.FLOOR_CLEAR -> { }
         }
 
         return state.copy(
