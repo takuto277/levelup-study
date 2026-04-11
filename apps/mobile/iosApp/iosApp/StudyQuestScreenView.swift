@@ -346,7 +346,7 @@ private let breakAccent = Color(hex: 0x34D399)
 private let breakGlow = Color(hex: 0x10B981)
 
 /// 背景の床帯に足を合わせる（値が大きいほどキャラが上に浮く）
-private let adventureFloorInset: CGFloat = 8
+private let adventureFloorInset: CGFloat = 20
 
 private func questHpRatioColor(ratio: CGFloat) -> Color {
     if ratio > 0.5 { return emeraldGreen }
