@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -137,89 +138,123 @@ private fun MainQuestView(
     val progress = if (targetSeconds > 0 && !isOvertime) {
         (uiState.elapsedSeconds.toFloat() / targetSeconds).coerceIn(0f, 1f)
     } else if (isOvertime) 1f else 0f
+    val showEnemyHpBar = !isBreak && (phase == AdventurePhase.ENCOUNTER || phase == AdventurePhase.ATTACKING)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(48.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Spacer(modifier = Modifier.height(44.dp))
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(22.dp))
+                .background(Color.White.copy(alpha = 0.06f))
+                .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(22.dp))
+                .padding(16.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                uiState.dungeonName?.takeIf { it.isNotEmpty() }?.let { dn ->
-                    Box(
-                        modifier = Modifier
-                            .background(FireOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text("🏰 $dn", fontSize = 11.sp, fontWeight = FontWeight.Black, color = FireOrange)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    if (isBreak) {
+                        Text(
+                            "🌿 休憩",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BreakAccent
+                        )
+                    } else {
+                        resolvedStudyGenreLabel(uiState.genreId)?.let { label ->
+                            Text(
+                                text = label,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextWhite,
+                                maxLines = 2
+                            )
+                        }
+                        uiState.dungeonName?.takeIf { it.isNotEmpty() }?.let { dn ->
+                            Row(
+                                modifier = Modifier.padding(top = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text("🏰", fontSize = 12.sp)
+                                Text(
+                                    dn,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextMuted,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
                     }
                 }
-                Box(
-                    modifier = Modifier
-                        .background(AccentIndigo.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("📖 " + (uiState.genreId ?: "総合"), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AccentIndigo)
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .background(
-                        when {
-                            isOvertime -> PurpleGlow.copy(alpha = 0.2f)
-                            isBreak -> BreakAccent.copy(alpha = 0.15f)
-                            phase == AdventurePhase.ATTACKING -> FireRed.copy(alpha = 0.2f)
-                            phase == AdventurePhase.ENCOUNTER -> FireOrange.copy(alpha = 0.2f)
-                            else -> AccentBlue.copy(alpha = 0.15f)
-                        },
-                        RoundedCornerShape(12.dp)
-                    )
-                    .padding(horizontal = 14.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    text = when {
-                        isOvertime -> "⚡ 限界突破中"
-                        uiState.status == StudySessionStatus.PAUSED -> "⏸ 一時停止"
-                        isBreak -> "🏕️ 休憩中"
-                        phase == AdventurePhase.WALKING -> "🚶 探索中"
-                        phase == AdventurePhase.ENCOUNTER -> "⚠️ エンカウント！"
-                        phase == AdventurePhase.ATTACKING -> "⚔️ 戦闘中"
-                        else -> "⚔️ 冒険中"
-                    },
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = when {
-                        isOvertime -> PurpleGlow
-                        isBreak -> BreakAccent
-                        phase == AdventurePhase.ATTACKING -> FireRed
-                        phase == AdventurePhase.ENCOUNTER -> FireOrange
-                        else -> AccentBlue
+                    if (isOvertime) {
+                        Text(
+                            "⚡",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
+                            color = PurpleGlow,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(PurpleGlow.copy(alpha = 0.14f))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
                     }
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .background(DarkSurface, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                Text("📍 ${uiState.currentFloor}F/${uiState.totalFloors}F", fontSize = 11.sp, fontWeight = FontWeight.Black, color = Color.White)
-            }
-            Box(
-                modifier = Modifier
-                    .background(EmeraldGreen.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                Text("💀 ${uiState.defeatedCount}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = EmeraldGreen)
+                    if (uiState.status == StudySessionStatus.PAUSED) {
+                        Text(
+                            "停止中",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentBlue,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(AccentBlue.copy(alpha = 0.14f))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                    if (!isBreak) {
+                        Text(
+                            "F${uiState.currentFloor}/${uiState.totalFloors}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(DarkSurface.copy(alpha = 0.9f))
+                                .padding(horizontal = 11.dp, vertical = 6.dp)
+                        )
+                        Text(
+                            "💀 ${uiState.defeatedCount}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            color = EmeraldGreen,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(EmeraldGreen.copy(alpha = 0.14f))
+                                .padding(horizontal = 11.dp, vertical = 6.dp)
+                        )
+                    }
+                }
             }
         }
 
-        // プレイヤー HP + 敵 HP（各列が行の半分を占有）
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 探索中は敵 HP 非表示。遭遇・戦闘のみ 2 列。
         if (!isBreak) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -258,49 +293,51 @@ private fun MainQuestView(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(uiState.enemyEmoji, fontSize = 12.sp)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            uiState.enemyName,
-                            modifier = Modifier.weight(1f),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextMuted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            "${uiState.enemyHp}/${uiState.enemyMaxHp}",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(DarkSurface)
-                    ) {
-                        val er = if (uiState.enemyMaxHp > 0) uiState.enemyHp.toFloat() / uiState.enemyMaxHp else 0f
-                        Box(
-                            modifier = Modifier.fillMaxHeight().fillMaxWidth(er).background(
-                                when {
-                                    er > 0.5f -> EmeraldGreen
-                                    er > 0.25f -> FireOrange
-                                    else -> FireRed
-                                },
-                                RoundedCornerShape(3.dp)
+                if (showEnemyHpBar) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(uiState.enemyEmoji, fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                uiState.enemyName,
+                                modifier = Modifier.weight(1f),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
-                        )
+                            Text(
+                                "${uiState.enemyHp}/${uiState.enemyMaxHp}",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(DarkSurface)
+                        ) {
+                            val er = if (uiState.enemyMaxHp > 0) uiState.enemyHp.toFloat() / uiState.enemyMaxHp else 0f
+                            Box(
+                                modifier = Modifier.fillMaxHeight().fillMaxWidth(er).background(
+                                    when {
+                                        er > 0.5f -> EmeraldGreen
+                                        er > 0.25f -> FireOrange
+                                        else -> FireRed
+                                    },
+                                    RoundedCornerShape(3.dp)
+                                )
+                            )
+                        }
                     }
                 }
                 if (uiState.lastPlayerDamage > 0) {
@@ -341,7 +378,6 @@ private fun MainQuestView(
                 AdventureScene(
                     phase = phase,
                     enemyEmoji = uiState.enemyEmoji,
-                    enemyName = uiState.enemyName,
                     enemySpriteKey = uiState.enemySpriteKey,
                     enemyHp = uiState.enemyHp,
                     enemyMaxHp = uiState.enemyMaxHp,
@@ -492,6 +528,14 @@ private val ConfrontEnemySize = 118.dp
  */
 private val AdventureFloorInsetDp = 8.dp
 
+/** 「総合」「general」は表示しない。それ以外のジャンル ID のみ返す。 */
+private fun resolvedStudyGenreLabel(genreId: String?): String? {
+    val raw = genreId?.trim().orEmpty()
+    if (raw.isEmpty()) return null
+    val lower = raw.lowercase()
+    if (lower == "general" || raw == "総合") return null
+    return raw
+}
 
 /** 戦闘中: 1秒目 idle → 2秒目 prep → 3秒目 attack（ATTACK_INTERVAL と同期） */
 private fun combatPlayerMode(phaseTick: Long, lastDamage: Int): PlayerSpriteMode =
@@ -502,7 +546,7 @@ private fun combatPlayerMode(phaseTick: Long, lastDamage: Int): PlayerSpriteMode
         else -> PlayerSpriteMode.Idle
     }
 
-/** 遭遇〜戦闘：床ラインは探索と同一。敵 HP は画面上部の共通バー（MainQuestView）に表示。 */
+/** 遭遇〜戦闘：ステージ内テキストなし。床ラインのみ（敵 HP は MainQuestView）。 */
 @Composable
 private fun BattleConfrontationLayer(
     isAttackPhase: Boolean,
@@ -513,11 +557,9 @@ private fun BattleConfrontationLayer(
     hasEnemySprite: Boolean,
     enemySpriteKey: String,
     enemyEmoji: String,
-    enemyName: String,
     lastDamage: Int
 ) {
     val isStriking = isAttackPhase && lastDamage > 0
-    val showApproachBanner = !isAttackPhase && approachProgress < 0.9f
     val enemyBobY = if (!isAttackPhase) {
         if (syncBob) (-3).dp else 2.dp
     } else {
@@ -530,41 +572,7 @@ private fun BattleConfrontationLayer(
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.12f))
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                if (isAttackPhase) "⚔️ 戦闘中" else "⚠️ 遭遇！",
-                fontSize = 11.sp,
-                color = TextMuted,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-            if (showApproachBanner) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Text(
-                        enemyName,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
-                        color = FireOrange,
-                        maxLines = 1
-                    )
-                    Text(
-                        "接近中…",
-                        fontSize = 10.sp,
-                        color = TextMuted
-                    )
-                }
-            }
-            BoxWithConstraints(
-                Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
             val centerX = maxWidth / 2
             val playerEndLeft = centerX - ConfrontGap / 2 - ConfrontPlayerSize
             val enemyEndLeft = centerX + ConfrontGap / 2
@@ -596,27 +604,24 @@ private fun BattleConfrontationLayer(
                 )
             }
 
-            if (hasEnemySprite) {
-                BattleSprite(
-                    spriteKey = enemySpriteKey,
-                    spriteType = "enemy",
-                    size = ConfrontEnemySize,
-                    animateFrames = false,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .offset(x = enemyLeft, y = enemyBobY)
-                        .padding(bottom = AdventureFloorInsetDp)
-                )
-            } else {
-                Text(
-                    enemyEmoji,
-                    fontSize = 56.sp,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .offset(x = enemyLeft, y = enemyBobY)
-                        .padding(bottom = AdventureFloorInsetDp)
-                )
-            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = enemyLeft, y = enemyBobY)
+                    .padding(bottom = AdventureFloorInsetDp)
+                    .size(ConfrontEnemySize),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                if (hasEnemySprite) {
+                    BattleSprite(
+                        spriteKey = enemySpriteKey,
+                        spriteType = "enemy",
+                        size = ConfrontEnemySize,
+                        animateFrames = false
+                    )
+                } else {
+                    Text(enemyEmoji, fontSize = 56.sp)
+                }
             }
         }
     }
@@ -626,7 +631,6 @@ private fun BattleConfrontationLayer(
 private fun AdventureScene(
     phase: AdventurePhase,
     enemyEmoji: String,
-    enemyName: String,
     enemySpriteKey: String,
     enemyHp: Int,
     enemyMaxHp: Int,
@@ -695,13 +699,6 @@ private fun AdventureScene(
         when (phase) {
             AdventurePhase.WALKING -> {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        "探索中…",
-                        fontSize = 11.sp,
-                        color = TextMuted,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
-                    )
                     if (hasPlayerSprite) {
                         PlayerSprite(
                             mode = PlayerSpriteMode.Walking,
@@ -732,7 +729,6 @@ private fun AdventureScene(
                     hasEnemySprite = hasEnemySprite,
                     enemySpriteKey = enemySpriteKey,
                     enemyEmoji = enemyEmoji,
-                    enemyName = enemyName,
                     lastDamage = lastDamage
                 )
             }
@@ -747,7 +743,6 @@ private fun AdventureScene(
                     hasEnemySprite = hasEnemySprite,
                     enemySpriteKey = enemySpriteKey,
                     enemyEmoji = enemyEmoji,
-                    enemyName = enemyName,
                     lastDamage = lastDamage
                 )
             }

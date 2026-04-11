@@ -22,6 +22,14 @@ private func playerPrepAssetName() -> String? {
     return playerWalkFrameNames().first
 }
 
+/// 「総合」「general」は出さず、それ以外のジャンルだけ表示用ラベルにする
+private func resolvedStudyGenreLabel(_ genreId: String?) -> String? {
+    guard let raw = genreId?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+    let lower = raw.lowercased()
+    if lower == "general" || lower == "総合" || raw == "総合" { return nil }
+    return raw
+}
+
 private func enemySpriteFrames(_ key: String) -> [String] {
     var frames: [String] = []
     for i in 1...8 {
@@ -150,7 +158,7 @@ private func iosCombatPlayerSprite(phaseTick: Int64, lastDamage: Int32, size: CG
     }
 }
 
-/// 遭遇〜戦闘：探索と同じく VStack + Spacer で床帯を確保。敵 HP は画面上部のバー（親）に集約。
+/// 遭遇〜戦闘：ステージ内のラベルなし。床ラインのみ。
 private struct BattleConfrontationIOSView: View {
     let isAttackPhase: Bool
     let approach: CGFloat
@@ -159,37 +167,16 @@ private struct BattleConfrontationIOSView: View {
     let playerWalkFrames: [String]
     let enemyFirstFrameName: String?
     let enemyEmoji: String
-    let enemyName: String
     let lastDamage: Int32
 
     var body: some View {
         let t = min(1.0, max(0.0, approach))
-        let showApproachBanner = !isAttackPhase && approach < 0.9
         let isStriking = isAttackPhase && lastDamage > 0
 
         ZStack {
             Color.black.opacity(0.12)
 
             VStack(spacing: 0) {
-                Text(isAttackPhase ? "⚔️ 戦闘中" : "⚠️ 遭遇！")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(textMuted)
-                    .padding(.top, 8)
-
-                if showApproachBanner {
-                    VStack(spacing: 2) {
-                        Text(enemyName)
-                            .font(.system(size: 12, weight: .heavy))
-                            .foregroundColor(fireOrange)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                        Text("接近中…")
-                            .font(.system(size: 10))
-                            .foregroundColor(textMuted)
-                    }
-                    .padding(.top, 4)
-                }
-
                 Spacer(minLength: 0)
 
                 GeometryReader { geo in
@@ -237,11 +224,11 @@ private struct BattleConfrontationIOSView: View {
                             if !isAttackPhase {
                                 TimelineView(.animation(minimumInterval: 0.32, paused: false)) { ctx in
                                     let bob = Int(ctx.date.timeIntervalSinceReferenceDate / 0.32) % 2 == 0 ? CGFloat(-3) : 2
-                                    enemySpriteOnly(eW: eW)
+                                    enemySpriteOnly(eW: eW, cellH: pW)
                                         .offset(x: enemyLeft, y: bob)
                                 }
                             } else {
-                                enemySpriteOnly(eW: eW)
+                                enemySpriteOnly(eW: eW, cellH: pW)
                                     .offset(x: enemyLeft)
                             }
                         }
@@ -254,17 +241,19 @@ private struct BattleConfrontationIOSView: View {
         }
     }
 
+    /// プレイヤーと同じ 118pt 枠の高さに揃え、下端で床に接地
     @ViewBuilder
-    private func enemySpriteOnly(eW: CGFloat) -> some View {
+    private func enemySpriteOnly(eW: CGFloat, cellH: CGFloat) -> some View {
         if let name = enemyFirstFrameName, UIImage(named: name) != nil {
             Image(name)
                 .resizable()
                 .interpolation(.none)
                 .scaledToFit()
-                .frame(width: eW, height: eW)
+                .frame(width: eW, height: cellH, alignment: .bottom)
         } else {
             Text(enemyEmoji)
                 .font(.system(size: 56))
+                .frame(width: eW, height: cellH, alignment: .bottom)
         }
     }
 }
@@ -409,69 +398,100 @@ struct StudyQuestScreenView: View {
             : (isOvertime ? 1.0 : 0.0)
         let glowColor: Color = isOvertime ? purpleGlow : (isBreak ? breakGlow : accentBlue)
 
+        let showEnemyHpBar = !isBreak && (phase == .encounter || phase == .attacking)
+
         return VStack(spacing: 0) {
-            // トップバー
-            Spacer().frame(height: 56)
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    if let dn = uiState.dungeonName, !dn.isEmpty {
-                        Text("🏰 \(dn)")
-                            .font(.system(size: 11, weight: .heavy))
-                            .foregroundColor(fireOrange)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(fireOrange.opacity(0.15))
-                            .cornerRadius(10)
+            Spacer().frame(height: 52)
+
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .center, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        if isBreak {
+                            Text("🌿 休憩")
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                .foregroundColor(breakAccent)
+                        } else {
+                            if let genreLabel = resolvedStudyGenreLabel(uiState.genreId) {
+                                Text(genreLabel)
+                                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                    .foregroundColor(textWhite)
+                                    .lineLimit(2)
+                                    .minimumScaleFactor(0.85)
+                            }
+                            if let dn = uiState.dungeonName, !dn.isEmpty {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "leaf.fill")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(fireOrange.opacity(0.9))
+                                    Text(dn)
+                                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                                        .foregroundColor(textMuted)
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
                     }
-                    Text("📖 \(uiState.genreId ?? "総合")")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(accentIndigo)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(accentIndigo.opacity(0.15))
-                        .cornerRadius(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    HStack(spacing: 8) {
+                        if isOvertime {
+                            Text("⚡")
+                                .font(.system(size: 12, weight: .heavy))
+                                .foregroundColor(purpleGlow)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 6)
+                                .background(purpleGlow.opacity(0.14))
+                                .clipShape(Capsule())
+                        }
+                        if uiState.status == .paused {
+                            Text("停止中")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundColor(accentBlue)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(accentBlue.opacity(0.14))
+                                .clipShape(Capsule())
+                        }
+                        if !isBreak {
+                            Text("F\(uiState.currentFloor)/\(uiState.totalFloors)")
+                                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                .foregroundColor(textWhite)
+                                .padding(.horizontal, 11)
+                                .padding(.vertical, 6)
+                                .background(darkSurface.opacity(0.9))
+                                .clipShape(Capsule())
+                            Text("💀 \(uiState.defeatedCount)")
+                                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                .foregroundColor(emeraldGreen)
+                                .padding(.horizontal, 11)
+                                .padding(.vertical, 6)
+                                .background(emeraldGreen.opacity(0.14))
+                                .clipShape(Capsule())
+                        }
+                    }
                 }
-
-                Spacer()
-
-                // ステータスバッジ
-                HStack(spacing: 6) {
-                    Text(phaseStatusEmoji(phase: phase, isOvertime: isOvertime, isPaused: uiState.status == .paused, isBreak: isBreak))
-                        .font(.system(size: 12))
-                    Text(phaseStatusText(phase: phase, isOvertime: isOvertime, isPaused: uiState.status == .paused, isBreak: isBreak))
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(phaseStatusColor(phase: phase, isOvertime: isOvertime, isBreak: isBreak))
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 6)
-                .background(phaseStatusColor(phase: phase, isOvertime: isOvertime, isBreak: isBreak).opacity(0.15))
-                .cornerRadius(12)
-
-                Spacer()
-
-                // 階層
-                Text("📍 \(uiState.currentFloor)F/\(uiState.totalFloors)F")
-                    .font(.system(size: 11, weight: .heavy))
-                    .foregroundColor(textWhite)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(darkSurface)
-                    .cornerRadius(10)
-
-                // 撃破数
-                Text("💀 \(uiState.defeatedCount)")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(emeraldGreen)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(emeraldGreen.opacity(0.15))
-                    .cornerRadius(10)
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(Color.white.opacity(0.06))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.14), Color.white.opacity(0.04)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 20)
 
             Spacer()
 
-            // プレイヤー HP + 敵 HP（各バーは行の半分幅）
+            // 探索中は敵 HP 非表示。遭遇・戦闘のみ 2 列。
             if !isBreak {
                 HStack(alignment: .top, spacing: 8) {
                     Text("🧙‍♂️").font(.system(size: 16))
@@ -503,36 +523,38 @@ struct StudyQuestScreenView: View {
                     }
                     .frame(maxWidth: .infinity)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 4) {
-                            Text(uiState.enemyEmoji)
-                                .font(.system(size: 12))
-                            Text(uiState.enemyName)
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(textMuted)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.6)
-                            Spacer(minLength: 0)
-                            Text("\(uiState.enemyHp)/\(uiState.enemyMaxHp)")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(textWhite)
-                        }
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(darkSurface)
-                                    .frame(height: 6)
-                                let ratio = uiState.enemyMaxHp > 0
-                                    ? CGFloat(uiState.enemyHp) / CGFloat(uiState.enemyMaxHp)
-                                    : 0
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(ratio > 0.5 ? emeraldGreen : (ratio > 0.25 ? fireOrange : fireRed))
-                                    .frame(width: geo.size.width * ratio, height: 6)
+                    if showEnemyHpBar {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 4) {
+                                Text(uiState.enemyEmoji)
+                                    .font(.system(size: 12))
+                                Text(uiState.enemyName)
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(textMuted)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.6)
+                                Spacer(minLength: 0)
+                                Text("\(uiState.enemyHp)/\(uiState.enemyMaxHp)")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(textWhite)
                             }
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(darkSurface)
+                                        .frame(height: 6)
+                                    let ratio = uiState.enemyMaxHp > 0
+                                        ? CGFloat(uiState.enemyHp) / CGFloat(uiState.enemyMaxHp)
+                                        : 0
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(ratio > 0.5 ? emeraldGreen : (ratio > 0.25 ? fireOrange : fireRed))
+                                        .frame(width: geo.size.width * ratio, height: 6)
+                                }
+                            }
+                            .frame(height: 6)
                         }
-                        .frame(height: 6)
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity)
 
                     if uiState.lastPlayerDamage > 0 {
                         Text("-\(uiState.lastPlayerDamage)")
@@ -714,10 +736,6 @@ struct StudyQuestScreenView: View {
             switch phase {
             case .walking:
                 VStack {
-                    Text("探索中…")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(textMuted)
-                        .padding(.top, 8)
                     Spacer()
                     HStack(alignment: .bottom) {
                         if hasPlayerSprites {
@@ -743,7 +761,6 @@ struct StudyQuestScreenView: View {
                     playerWalkFrames: playerWalkFrameNames(),
                     enemyFirstFrameName: enemyFrames.first,
                     enemyEmoji: uiState.enemyEmoji,
-                    enemyName: uiState.enemyName,
                     lastDamage: uiState.lastDamage
                 )
 
@@ -756,7 +773,6 @@ struct StudyQuestScreenView: View {
                     playerWalkFrames: playerWalkFrameNames(),
                     enemyFirstFrameName: enemyFrames.first,
                     enemyEmoji: uiState.enemyEmoji,
-                    enemyName: uiState.enemyName,
                     lastDamage: uiState.lastDamage
                 )
 
@@ -952,42 +968,6 @@ struct StudyQuestScreenView: View {
     }
 
     // MARK: - ヘルパー
-
-    private func phaseStatusEmoji(phase: AdventurePhase, isOvertime: Bool, isPaused: Bool, isBreak: Bool) -> String {
-        if isOvertime { return "⚡" }
-        if isPaused { return "⏸" }
-        if isBreak { return "🏕️" }
-        if phase == .playerDead { return "💀" }
-        if phase == .floorClear { return "🏆" }
-        if phase == .walking { return "🚶" }
-        if phase == .encounter { return "⚠️" }
-        if phase == .attacking { return "⚔️" }
-        if phase == .resting { return "🏕️" }
-        return "⚔️"
-    }
-
-    private func phaseStatusText(phase: AdventurePhase, isOvertime: Bool, isPaused: Bool, isBreak: Bool) -> String {
-        if isOvertime { return "限界突破中" }
-        if isPaused { return "一時停止" }
-        if isBreak { return "休憩中" }
-        if phase == .playerDead { return "力尽きた…" }
-        if phase == .floorClear { return "全階層制覇！" }
-        if phase == .walking { return "探索中" }
-        if phase == .encounter { return "エンカウント！" }
-        if phase == .attacking { return "戦闘中" }
-        if phase == .resting { return "休憩中" }
-        return "冒険中"
-    }
-
-    private func phaseStatusColor(phase: AdventurePhase, isOvertime: Bool, isBreak: Bool) -> Color {
-        if isOvertime { return purpleGlow }
-        if isBreak { return breakAccent }
-        if phase == .playerDead { return fireRed }
-        if phase == .floorClear { return fireOrange }
-        if phase == .attacking { return fireRed }
-        if phase == .encounter { return fireOrange }
-        return accentBlue
-    }
 
     private func rewardItem(emoji: String, label: String, value: String) -> some View {
         VStack(spacing: 4) {
