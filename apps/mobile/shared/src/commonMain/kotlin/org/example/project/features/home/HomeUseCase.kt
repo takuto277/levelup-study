@@ -65,6 +65,10 @@ class HomeUseCase(
         return genreRepository.createGenre(label, emoji, colorHex)
     }
 
+    suspend fun deleteGenre(genreId: String) {
+        genreRepository.deleteGenre(genreId)
+    }
+
     suspend fun refreshUser(): User {
         return userRepository.syncFromServer()
     }

@@ -28,6 +28,7 @@ class HomeViewModel(
             is HomeIntent.TapMainCharacter -> { }
             is HomeIntent.SelectDungeon -> selectDungeon(intent.id, intent.name)
             is HomeIntent.AddGenre -> addGenre(intent.label, intent.emoji, intent.colorHex)
+            is HomeIntent.DeleteGenre -> deleteGenre(intent.genreId)
         }
     }
 
@@ -72,6 +73,16 @@ class HomeViewModel(
         viewModelScope.launch {
             try {
                 homeUseCase.createGenre(label, emoji, colorHex)
+                val data = homeUseCase.loadHomeData()
+                applyHomeData(data, clearLoading = false)
+            } catch (_: Exception) { }
+        }
+    }
+
+    private fun deleteGenre(genreId: String) {
+        viewModelScope.launch {
+            try {
+                homeUseCase.deleteGenre(genreId)
                 val data = homeUseCase.loadHomeData()
                 applyHomeData(data, clearLoading = false)
             } catch (_: Exception) { }

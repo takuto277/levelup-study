@@ -5,6 +5,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,8 +24,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import org.example.project.domain.model.MasterStudyGenre
 @Composable
 fun HomeTabContent(
     studyMinutes: Int,
@@ -88,20 +93,22 @@ fun HomeTabContent(
     }
 
     if (showAddGenreDialog) {
-        AddGenreDialog(
+        GenreManageDialog(
+            genres = homeState.genres,
             newGenreLabel = newGenreLabel,
             onLabelChange = { newGenreLabel = it },
             newGenreEmoji = newGenreEmoji,
             onEmojiChange = { newGenreEmoji = it },
             onDismiss = { showAddGenreDialog = false },
-            onConfirm = {
+            onAdd = {
                 if (newGenreLabel.isNotEmpty()) {
                     homeViewModel.onIntent(HomeIntent.AddGenre(newGenreLabel, newGenreEmoji, "#6B7280"))
                     newGenreLabel = ""
                     newGenreEmoji = "📖"
                     showAddGenreDialog = false
                 }
-            }
+            },
+            onDeleteGenre = { id -> homeViewModel.onIntent(HomeIntent.DeleteGenre(id)) }
         )
     }
 
@@ -388,32 +395,93 @@ private fun StartAdventureButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun AddGenreDialog(
+private fun GenreManageDialog(
+    genres: List<MasterStudyGenre>,
     newGenreLabel: String,
     onLabelChange: (String) -> Unit,
     newGenreEmoji: String,
     onEmojiChange: (String) -> Unit,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onAdd: () -> Unit,
+    onDeleteGenre: (String) -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("ジャンル追加") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    var pendingDelete by remember { mutableStateOf<MasterStudyGenre?>(null) }
+    val deletable = remember(genres) { genres.filter { !it.isDefault } }
+
+    pendingDelete?.let { g ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            containerColor = HomeTheme.BgDark2,
+            titleContentColor = HomeTheme.TextPrimary,
+            textContentColor = HomeTheme.TextSecondary,
+            title = { Text("削除の確認", fontWeight = FontWeight.Bold) },
+            text = {
+                Text("${g.emoji} ${g.label} を削除しますか？\n記録の勉強時間は「削除済み課題」として残ります。")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteGenre(g.id)
+                        pendingDelete = null
+                    }
+                ) { Text("削除", color = HomeTheme.FireRed, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) {
+                    Text("キャンセル", color = HomeTheme.TextSecondary)
+                }
+            }
+        )
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 560.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = HomeTheme.BgDark2,
+            shadowElevation = 10.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text("ジャンル管理", fontSize = 20.sp, fontWeight = FontWeight.Black, color = HomeTheme.TextPrimary)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("追加・削除はここから", fontSize = 12.sp, color = HomeTheme.TextSecondary)
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text("新しいジャンルを追加", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HomeTheme.AccentCyan)
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = newGenreLabel,
                     onValueChange = onLabelChange,
                     label = { Text("ジャンル名") },
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = HomeTheme.TextPrimary,
+                        unfocusedTextColor = HomeTheme.TextPrimary,
+                        focusedBorderColor = HomeTheme.AccentCyan,
+                        unfocusedBorderColor = HomeTheme.BarStroke,
+                        focusedLabelColor = HomeTheme.AccentCyan,
+                        unfocusedLabelColor = HomeTheme.TextSecondary,
+                        cursorColor = HomeTheme.AccentCyan,
+                        focusedContainerColor = HomeTheme.CardWhite,
+                        unfocusedContainerColor = HomeTheme.CardWhite
+                    )
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     listOf("📖", "📐", "🧪", "🌍", "🎵", "⚽", "🎮", "✏️").forEach { emoji ->
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(
-                                    if (newGenreEmoji == emoji) HomeTheme.AccentBlue.copy(alpha = 0.2f) else Color.Transparent
+                                    if (newGenreEmoji == emoji) HomeTheme.AccentCyan.copy(alpha = 0.22f)
+                                    else Color.Transparent
                                 )
                                 .clickable { onEmojiChange(emoji) }
                                 .padding(6.dp)
@@ -422,13 +490,59 @@ private fun AddGenreDialog(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = onAdd,
+                    enabled = newGenreLabel.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = HomeTheme.AccentBlue,
+                        disabledContainerColor = HomeTheme.TextSecondary.copy(alpha = 0.25f),
+                        contentColor = Color.White,
+                        disabledContentColor = HomeTheme.TextSecondary
+                    )
+                ) {
+                    Text("ジャンルを追加", fontWeight = FontWeight.Bold)
+                }
+
+                if (deletable.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    HorizontalDivider(color = HomeTheme.BarStroke)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("追加したジャンルを削除", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HomeTheme.AccentCyan)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    deletable.forEach { g ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(HomeTheme.CardWhite)
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "${g.emoji} ${g.label}",
+                                color = HomeTheme.TextPrimary,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(onClick = { pendingDelete = g }) {
+                                Text("削除", color = HomeTheme.FireRed, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                    Text("閉じる", color = HomeTheme.TextSecondary)
+                }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text("追加") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("キャンセル") }
         }
-    )
+    }
 }

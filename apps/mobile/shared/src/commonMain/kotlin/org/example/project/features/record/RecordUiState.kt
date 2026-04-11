@@ -46,6 +46,8 @@ data class GenreInfo(
         val PROGRAMMING = GenreInfo("programming", "プログラミング", "💻", 0xFF8B5CF6)
         val GENERAL = GenreInfo("general", "総合", "📚", 0xFFEF4444)
         val CREATIVE = GenreInfo("creative", "クリエイティブ", "🎨", 0xFFEC4899)
+        /** マスタから消えた slug のセッションを記録上まとめて表示する */
+        val DELETED_TOPIC = GenreInfo("__deleted_topic__", "削除済み課題", "📕", 0xFF64748B)
         val defaults: List<GenreInfo> = listOf(MATH, SCIENCE, LANGUAGE, PROGRAMMING, GENERAL, CREATIVE)
     }
 }

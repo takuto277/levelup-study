@@ -28,4 +28,9 @@ class GenreRepositoryImpl(
         cachedGenres = null
         return created
     }
+
+    override suspend fun deleteGenre(genreId: String) {
+        gateway.deleteGenre(genreId).getOrThrow()
+        cachedGenres = null
+    }
 }

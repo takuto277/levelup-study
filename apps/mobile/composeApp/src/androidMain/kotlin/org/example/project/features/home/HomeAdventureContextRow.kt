@@ -1,6 +1,7 @@
 package org.example.project.features.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -12,7 +13,6 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,14 +51,21 @@ internal fun HomeAdventureContextRow(
             onGenreChange = onGenreChange,
             modifier = Modifier.widthIn(min = 108.dp, max = 168.dp)
         )
-        IconButton(
-            onClick = onAddGenreClick,
+        Box(
             modifier = Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(HomeTheme.AccentCyan.copy(alpha = 0.15f))
+                .background(HomeTheme.CardWhite)
+                .border(1.dp, HomeTheme.AccentCyan.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
+                .clickable(onClick = onAddGenreClick),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Add, contentDescription = "ジャンル追加", tint = HomeTheme.AccentCyan, modifier = Modifier.size(22.dp))
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "ジャンル管理",
+                tint = HomeTheme.AccentIndigo,
+                modifier = Modifier.size(22.dp)
+            )
         }
     }
 }

@@ -72,4 +72,7 @@ object ApiRoutes {
     fun masterDungeon(dungeonId: String) = "/api/v1/master/dungeons/$dungeonId"
     const val MASTER_GACHA_BANNERS = "/api/v1/master/gacha/banners"
     const val MASTER_GENRES = "/api/v1/master/genres"
+
+    /** DELETE: ユーザー追加ジャンルの論理削除 */
+    fun masterGenre(genreId: String) = "/api/v1/master/genres/$genreId"
 }

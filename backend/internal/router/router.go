@@ -58,6 +58,8 @@ type SecurityConfig struct {
 //   GET    /api/v1/master/dungeons/{dungeonID}         ダンジョン詳細
 //   GET    /api/v1/master/gacha/banners                開催中バナー
 //   GET    /api/v1/master/genres                       勉強ジャンルマスタ
+//   POST   /api/v1/master/genres                       ジャンル追加
+//   DELETE /api/v1/master/genres/{genreID}             ユーザー追加ジャンル論理削除
 // ============================================================
 
 func NewRouter(
@@ -149,6 +151,7 @@ func NewRouter(
 			r.Get("/gacha/banners", masterH.ListActiveBanners)
 			r.Get("/genres", masterH.ListStudyGenres)
 			r.Post("/genres", masterH.CreateStudyGenre)
+			r.Delete("/genres/{genreID}", masterH.DeleteStudyGenre)
 		})
 	})
 

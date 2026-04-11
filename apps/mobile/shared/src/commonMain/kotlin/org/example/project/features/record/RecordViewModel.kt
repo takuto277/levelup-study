@@ -155,7 +155,7 @@ class RecordViewModel(
 
     private fun resolveGenre(category: String?): GenreInfo {
         if (category == null) return GenreInfo.GENERAL
-        return genreMap[category] ?: GenreInfo.GENERAL
+        return genreMap[category] ?: GenreInfo.DELETED_TOPIC
     }
 
     private fun sessionMinutesForDates(sessions: List<StudySession>, dates: Set<String>): Int {

@@ -64,6 +64,7 @@ struct HomeScreenView: View {
     @State private var showAddGenreSheet = false
     @State private var newGenreLabel = ""
     @State private var newGenreEmoji = "📖"
+    @State private var genrePendingDelete: MasterStudyGenre? = nil
 
     private let homeViewModel = KoinHelperKt.getHomeViewModel()
     @State private var homeState: HomeUiState?
@@ -108,7 +109,23 @@ struct HomeScreenView: View {
         }) {
             StudyQuestScreenView(initialStudyMinutes: studyMinutes, genreId: selectedGenreSlug, dungeonName: homeState?.selectedDungeonName)
         }
-        .sheet(isPresented: $showAddGenreSheet) { addGenreSheet }
+        .sheet(isPresented: $showAddGenreSheet) { genreManageSheet }
+        .alert("削除の確認", isPresented: Binding(
+            get: { genrePendingDelete != nil },
+            set: { if !$0 { genrePendingDelete = nil } }
+        )) {
+            Button("キャンセル", role: .cancel) { genrePendingDelete = nil }
+            Button("削除", role: .destructive) {
+                if let g = genrePendingDelete {
+                    homeViewModel.onIntent(intent: HomeIntentDeleteGenre(genreId: g.id))
+                }
+                genrePendingDelete = nil
+            }
+        } message: {
+            if let g = genrePendingDelete {
+                Text("\(g.emoji) \(g.label) を削除しますか？\n記録の勉強時間は「削除済み課題」として残ります。")
+            }
+        }
         .onReceive(messageTimer) { _ in withAnimation(.easeInOut(duration: 0.3)) { messageIndex = (messageIndex + 1) % messages.count } }
         .onAppear { homeViewModel.onIntent(intent: HomeIntentRefresh()) }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in self.homeState = homeViewModel.uiState.value as? HomeUiState }
@@ -126,10 +143,11 @@ struct HomeScreenView: View {
                 Button(action: { showAddGenreSheet = true }) {
                     Image(systemName: "plus")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(accentCyan)
+                        .foregroundColor(accentIndigo)
                         .frame(width: 40, height: 40)
-                        .background(accentCyan.opacity(0.15))
+                        .background(bgCard)
                         .cornerRadius(12)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(accentCyan.opacity(0.45), lineWidth: 1))
                 }
             }
             .padding(.horizontal, 8)
@@ -281,36 +299,79 @@ struct HomeScreenView: View {
         .padding(.horizontal, 32)
     }
 
-    // MARK: - Add Genre Sheet
-    private var addGenreSheet: some View {
+    // MARK: - Genre manage sheet（追加・削除）
+    private var deletableGenres: [MasterStudyGenre] {
+        (homeState?.genres ?? []).filter { !$0.isDefault }
+    }
+
+    private var genreManageSheet: some View {
         NavigationView {
-            VStack(spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("ジャンル名").font(.system(size: 14, weight: .bold)).foregroundColor(textSub)
-                    TextField("例: 英語、物理", text: $newGenreLabel).textFieldStyle(.roundedBorder)
-                }
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("絵文字").font(.system(size: 14, weight: .bold)).foregroundColor(textSub)
-                    HStack(spacing: 12) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("追加・削除はここから").font(.system(size: 12)).foregroundColor(textSub)
+
+                    Text("新しいジャンルを追加").font(.system(size: 13, weight: .bold)).foregroundColor(accentCyan)
+                    Text("ジャンル名").font(.system(size: 12, weight: .semibold)).foregroundColor(textSub)
+                    TextField("例: 英語、物理", text: $newGenreLabel)
+                        .foregroundColor(textW)
+                        .padding(12)
+                        .background(bgCard)
+                        .cornerRadius(12)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(accentCyan.opacity(0.35), lineWidth: 1))
+
+                    Text("絵文字").font(.system(size: 12, weight: .semibold)).foregroundColor(textSub)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 10) {
                         ForEach(["📖", "📐", "🧪", "🌍", "🎵", "⚽", "🎮", "✏️"], id: \.self) { e in
                             Button(action: { newGenreEmoji = e }) {
-                                Text(e).font(.system(size: 28)).padding(6).background(newGenreEmoji == e ? accentBlue.opacity(0.2) : Color.clear).cornerRadius(10)
+                                Text(e).font(.system(size: 28)).frame(maxWidth: .infinity).padding(8)
+                                    .background(newGenreEmoji == e ? accentCyan.opacity(0.22) : Color.clear).cornerRadius(10)
                             }
                         }
                     }
+
+                    Button(action: {
+                        guard !newGenreLabel.isEmpty else { return }
+                        homeViewModel.onIntent(intent: HomeIntentAddGenre(label: newGenreLabel, emoji: newGenreEmoji, colorHex: "#6B7280"))
+                        newGenreLabel = ""; newGenreEmoji = "📖"; showAddGenreSheet = false
+                    }) {
+                        Text("ジャンルを追加").font(.system(size: 16, weight: .bold)).foregroundColor(.white).frame(maxWidth: .infinity).padding(.vertical, 14)
+                            .background(
+                                LinearGradient(
+                                    colors: newGenreLabel.isEmpty ? [Color.gray.opacity(0.5), Color.gray.opacity(0.4)] : [accentBlue, accentIndigo],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(14)
+                    }.disabled(newGenreLabel.isEmpty)
+
+                    if !deletableGenres.isEmpty {
+                        Divider().background(Color(hex: 0x263859))
+                        Text("追加したジャンルを削除").font(.system(size: 13, weight: .bold)).foregroundColor(accentCyan)
+                        ForEach(deletableGenres, id: \.id) { g in
+                            HStack {
+                                Text("\(g.emoji) \(g.label)").font(.system(size: 15, weight: .medium)).foregroundColor(textW).lineLimit(1)
+                                Spacer()
+                                Button("削除") { genrePendingDelete = g }
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(Color(hex: 0xEF4444))
+                            }
+                            .padding(12)
+                            .background(bgCard)
+                            .cornerRadius(12)
+                        }
+                    }
                 }
-                Button(action: {
-                    guard !newGenreLabel.isEmpty else { return }
-                    homeViewModel.onIntent(intent: HomeIntentAddGenre(label: newGenreLabel, emoji: newGenreEmoji, colorHex: "#6B7280"))
-                    newGenreLabel = ""; newGenreEmoji = "📖"; showAddGenreSheet = false
-                }) {
-                    Text("ジャンルを追加").font(.system(size: 16, weight: .bold)).foregroundColor(.white).frame(maxWidth: .infinity).padding(.vertical, 14)
-                        .background(newGenreLabel.isEmpty ? Color.gray : accentBlue).cornerRadius(14)
-                }.disabled(newGenreLabel.isEmpty)
-                Spacer()
+                .padding(24)
             }
-            .padding(24).navigationTitle("ジャンル追加").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { showAddGenreSheet = false } } }
+            .background(LinearGradient(colors: [bgDark, Color(hex: 0x0F172A)], startPoint: .top, endPoint: .bottom))
+            .navigationTitle("ジャンル管理")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("閉じる") { showAddGenreSheet = false }
+                }
+            }
         }
     }
 

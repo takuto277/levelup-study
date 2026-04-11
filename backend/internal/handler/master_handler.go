@@ -2,11 +2,13 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/takuto277/levelup-study/backend/internal/model"
 	"github.com/takuto277/levelup-study/backend/internal/repository"
+	"gorm.io/gorm"
 )
 
 // ============================================================
@@ -110,6 +112,34 @@ func (h *MasterHandler) CreateStudyGenre(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	respondJSON(w, http.StatusCreated, genre)
+}
+
+// DeleteStudyGenre — DELETE /api/v1/master/genres/{genreID}
+// ユーザー追加ジャンル（is_default = false）のみ論理削除できる。
+func (h *MasterHandler) DeleteStudyGenre(w http.ResponseWriter, r *http.Request) {
+	id, err := parseUUID(chi.URLParam(r, "genreID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なジャンルIDです")
+		return
+	}
+	g, err := h.repo.GetStudyGenre(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			respondError(w, http.StatusNotFound, "ジャンルが見つかりません")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "ジャンル取得に失敗しました")
+		return
+	}
+	if g.IsDefault {
+		respondError(w, http.StatusForbidden, "初期ジャンルは削除できません")
+		return
+	}
+	if err := h.repo.DeactivateStudyGenre(id); err != nil {
+		respondError(w, http.StatusInternalServerError, "ジャンル削除に失敗しました")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // GetDungeon — GET /api/v1/master/dungeons/{dungeonID}

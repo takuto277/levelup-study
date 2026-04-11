@@ -262,3 +262,17 @@ func (r *MasterRepository) ListStudyGenres() ([]model.MasterStudyGenre, error) {
 func (r *MasterRepository) CreateStudyGenre(g *model.MasterStudyGenre) error {
 	return r.db.Create(g).Error
 }
+
+// GetStudyGenre — ID でジャンルを取得する
+func (r *MasterRepository) GetStudyGenre(id uuid.UUID) (*model.MasterStudyGenre, error) {
+	var g model.MasterStudyGenre
+	if err := r.db.First(&g, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &g, nil
+}
+
+// DeactivateStudyGenre — ジャンルを論理削除する（is_active = false）
+func (r *MasterRepository) DeactivateStudyGenre(id uuid.UUID) error {
+	return r.db.Model(&model.MasterStudyGenre{}).Where("id = ?", id).Update("is_active", false).Error
+}

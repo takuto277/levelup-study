@@ -2,6 +2,7 @@ package org.example.project.data.remote.gateway
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -28,6 +29,14 @@ class GenreGateway(private val client: HttpClient) {
             NetworkResult.Success(response)
         }.getOrElse { e ->
             NetworkResult.Error(message = e.message ?: "ジャンル作成に失敗しました")
+        }
+
+    suspend fun deleteGenre(genreId: String): NetworkResult<Unit> =
+        runCatching {
+            client.delete(ApiRoutes.masterGenre(genreId))
+            NetworkResult.Success(Unit)
+        }.getOrElse { e ->
+            NetworkResult.Error(message = e.message ?: "ジャンル削除に失敗しました")
         }
 }
 
