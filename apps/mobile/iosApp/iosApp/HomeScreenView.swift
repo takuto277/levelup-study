@@ -1,6 +1,43 @@
 import SwiftUI
 import Shared
 
+// MARK: - 冒険時間（1〜60 分・刻み）＋ UserDefaults（キーは Android KeyValueStore と同じ）
+private enum HomeStudyMinutesPersisted {
+    static let key = "home_study_minutes"
+
+    static func snapToValid(_ m: Int) -> Int {
+        let c = min(max(m, 1), 60)
+        if c <= 1 { return 1 }
+        if c < 5 { return 5 }
+        return min((c + 2) / 5 * 5, 60)
+    }
+
+    static func increase(_ current: Int) -> Int {
+        let c = min(max(current, 1), 60)
+        if c >= 60 { return 60 }
+        if c <= 1 { return 5 }
+        let ceil5 = (c + 4) / 5 * 5
+        return ceil5 > c ? ceil5 : min(c + 5, 60)
+    }
+
+    static func decrease(_ current: Int) -> Int {
+        let c = min(max(current, 1), 60)
+        if c <= 1 { return 1 }
+        if c <= 5 { return 1 }
+        let floor5 = c / 5 * 5
+        return floor5 < c ? floor5 : max(c - 5, 5)
+    }
+
+    static func load() -> Int {
+        guard let s = UserDefaults.standard.string(forKey: key), let v = Int(s) else { return 25 }
+        return snapToValid(v)
+    }
+
+    static func save(_ minutes: Int) {
+        UserDefaults.standard.set(String(minutes), forKey: key)
+    }
+}
+
 private extension Color {
     init(hex: UInt, alpha: Double = 1.0) {
         self.init(.sRGB, red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255, opacity: alpha)
@@ -20,7 +57,7 @@ private let fireGradient = [Color(hex: 0xEF4444), Color(hex: 0xF59E0B)]
 
 struct HomeScreenView: View {
     @State private var showStudySheet = false
-    @State private var studyMinutes = 25
+    @State private var studyMinutes: Int
     @State private var selectedGenreSlug = "general"
     @State private var isBouncing = false
     @State private var messageIndex = 0
@@ -33,6 +70,18 @@ struct HomeScreenView: View {
 
     private let messages = ["今日の特訓も頑張ろうな！", "知識こそ最強の武器だ。", "お前の成長、楽しみにしてるぞ。", "さぁ、冒険の時間だ！", "集中すれば、何でもできる。"]
     let messageTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
+
+    init() {
+        _showStudySheet = State(initialValue: false)
+        _studyMinutes = State(initialValue: HomeStudyMinutesPersisted.load())
+        _selectedGenreSlug = State(initialValue: "general")
+        _isBouncing = State(initialValue: false)
+        _messageIndex = State(initialValue: 0)
+        _showAddGenreSheet = State(initialValue: false)
+        _newGenreLabel = State(initialValue: "")
+        _newGenreEmoji = State(initialValue: "📖")
+        _homeState = State(initialValue: nil)
+    }
 
     private var genreList: [(slug: String, emoji: String, label: String)] {
         let fromServer = (homeState?.genres ?? []).map { (slug: $0.slug, emoji: $0.emoji, label: $0.label) }
@@ -65,6 +114,9 @@ struct HomeScreenView: View {
         .onReceive(messageTimer) { _ in withAnimation(.easeInOut(duration: 0.3)) { messageIndex = (messageIndex + 1) % messages.count } }
         .onAppear { homeViewModel.onIntent(intent: HomeIntentRefresh()) }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in self.homeState = homeViewModel.uiState.value as? HomeUiState }
+        .onChange(of: studyMinutes) { _, newValue in
+            HomeStudyMinutesPersisted.save(newValue)
+        }
     }
 
     // MARK: - Header
@@ -140,37 +192,36 @@ struct HomeScreenView: View {
         }
     }
 
-    // MARK: - Time
+    // MARK: - Time（1〜60 分、Android と同じ ± ルール）
     private var timeSelector: some View {
         VStack(spacing: 8) {
             Text("⏱ 冒険時間").font(.system(size: 12, weight: .bold)).foregroundColor(textSub)
             HStack(spacing: 0) {
-                Button(action: { if studyMinutes > 5 { studyMinutes -= 5 } }) {
-                    Circle().fill(accentBlue.opacity(0.2)).frame(width: 34, height: 34)
-                        .overlay(Image(systemName: "chevron.left").font(.system(size: 12, weight: .bold)).foregroundColor(accentBlue))
+                Button(action: { studyMinutes = HomeStudyMinutesPersisted.decrease(studyMinutes) }) {
+                    Circle().fill(accentBlue.opacity(studyMinutes > 1 ? 0.2 : 0.08)).frame(width: 34, height: 34)
+                        .overlay(
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(studyMinutes > 1 ? accentBlue : textSub.opacity(0.35))
+                        )
                 }
+                .disabled(studyMinutes <= 1)
                 VStack(spacing: 0) {
                     Text("\(studyMinutes)").font(.system(size: 38, weight: .black, design: .rounded)).foregroundColor(textW)
                     Text("分").font(.system(size: 13, weight: .bold)).foregroundColor(textSub)
                 }
                 .frame(width: 90)
-                Button(action: { if studyMinutes < 120 { studyMinutes += 5 } }) {
-                    Circle().fill(accentBlue.opacity(0.2)).frame(width: 34, height: 34)
-                        .overlay(Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundColor(accentBlue))
+                Button(action: { studyMinutes = HomeStudyMinutesPersisted.increase(studyMinutes) }) {
+                    Circle().fill(accentBlue.opacity(studyMinutes < 60 ? 0.2 : 0.08)).frame(width: 34, height: 34)
+                        .overlay(
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(studyMinutes < 60 ? accentBlue : textSub.opacity(0.35))
+                        )
                 }
+                .disabled(studyMinutes >= 60)
             }
             .padding(.horizontal, 8).padding(.vertical, 4).background(bgCard).cornerRadius(18)
-
-            HStack(spacing: 8) {
-                ForEach([15, 25, 45, 60], id: \.self) { m in
-                    let sel = studyMinutes == m
-                    Button(action: { studyMinutes = m }) {
-                        Text("\(m)分").font(.system(size: 11, weight: .bold)).foregroundColor(sel ? .white : textSub)
-                            .padding(.horizontal, 12).padding(.vertical, 6)
-                            .background(sel ? accentBlue : bgSurface).cornerRadius(10)
-                    }.buttonStyle(.plain)
-                }
-            }
         }
         .padding(.horizontal, 32)
     }

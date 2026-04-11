@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
+import org.example.project.core.storage.KeyValueStore
 
 // ── カラー（青テーマ）────────────────────────────
 private val BgColor = Color(0xFF0B1120)
@@ -40,19 +41,60 @@ private val FireOrange = Color(0xFFF59E0B)
 private val EmeraldGreen = Color(0xFF10B981)
 private val BgSurface = Color(0xFF1A2744)
 
+/** ホームの冒険時間（分）。iOS の UserDefaults と同じキー。 */
+private const val HOME_STUDY_MINUTES_KEY = "home_study_minutes"
+
+/** 1 または 5 刻み（5〜60）。範囲外は近い有効値へ寄せる。 */
+private fun snapStudyMinutesToValid(m: Int): Int {
+    val c = m.coerceIn(1, 60)
+    if (c <= 1) return 1
+    if (c < 5) return 5
+    return ((c + 2) / 5 * 5).coerceAtMost(60)
+}
+
+/** 右矢印: 1→5、それ以外は次の 5 分へ（最大 60） */
+private fun studyMinutesIncrease(current: Int): Int {
+    val c = current.coerceIn(1, 60)
+    if (c >= 60) return 60
+    if (c <= 1) return 5
+    val ceil5 = (c + 4) / 5 * 5
+    return if (ceil5 > c) ceil5 else (c + 5).coerceAtMost(60)
+}
+
+/** 左矢印: 5→1、それ以外は 5 分戻す（1 は据え置き） */
+private fun studyMinutesDecrease(current: Int): Int {
+    val c = current.coerceIn(1, 60)
+    if (c <= 1) return 1
+    if (c <= 5) return 1
+    val floor5 = c / 5 * 5
+    return if (floor5 < c) floor5 else (c - 5).coerceAtLeast(5)
+}
+
 @Composable
 fun HomeScreenView() {
     var selectedTab by remember { mutableStateOf(2) }
     var showStudySheet by remember { mutableStateOf(false) }
-    var studyMinutes by remember { mutableStateOf(25) }
+    val kvStore = remember { KeyValueStore() }
+    var studyMinutes by remember {
+        mutableStateOf(
+            kvStore.getString(HOME_STUDY_MINUTES_KEY)
+                ?.toIntOrNull()
+                ?.let { snapStudyMinutesToValid(it.coerceIn(1, 60)) }
+                ?: 25
+        )
+    }
     var selectedGenreSlug by remember { mutableStateOf("general") }
 
     val homeViewModel = remember { org.example.project.di.getHomeViewModel() }
     val homeState by homeViewModel.uiState.collectAsState()
 
+    LaunchedEffect(studyMinutes) {
+        kvStore.putString(HOME_STUDY_MINUTES_KEY, studyMinutes.toString())
+    }
+
     if (showStudySheet) {
         org.example.project.features.study.StudyQuestScreenView(
-            initialStudyMinutes = studyMinutes,
+            initialStudyMinutes = studyMinutes.coerceIn(1, 60),
             genreId = selectedGenreSlug,
             dungeonName = homeState.selectedDungeonName,
             onDismiss = { showStudySheet = false }
@@ -70,7 +112,7 @@ fun HomeScreenView() {
                         1 -> org.example.project.features.party.PartyScreenView()
                         2 -> HomeTabContent(
                             studyMinutes = studyMinutes,
-                            onStudyMinutesChange = { studyMinutes = it },
+                            onStudyMinutesChange = { studyMinutes = it.coerceIn(1, 60) },
                             selectedGenreSlug = selectedGenreSlug,
                             onGenreChange = { selectedGenreSlug = it },
                             onStartStudy = { showStudySheet = true },
@@ -324,9 +366,9 @@ fun HomeTabContent(
                     .background(CardWhite, RoundedCornerShape(20.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                // マイナスボタン
                 IconButton(
-                    onClick = { if (studyMinutes > 5) onStudyMinutesChange(studyMinutes - 5) }
+                    onClick = { onStudyMinutesChange(studyMinutesDecrease(studyMinutes)) },
+                    enabled = studyMinutes > 1
                 ) {
                     Box(
                         modifier = Modifier
@@ -334,7 +376,11 @@ fun HomeTabContent(
                             .background(AccentBlue.copy(alpha = 0.1f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Decrease", tint = AccentBlue)
+                        Icon(
+                            Icons.Default.KeyboardArrowLeft,
+                            contentDescription = "Decrease",
+                            tint = if (studyMinutes > 1) AccentBlue else TextSecondary.copy(alpha = 0.35f)
+                        )
                     }
                 }
 
@@ -352,7 +398,8 @@ fun HomeTabContent(
                 }
 
                 IconButton(
-                    onClick = { if (studyMinutes < 120) onStudyMinutesChange(studyMinutes + 5) }
+                    onClick = { onStudyMinutesChange(studyMinutesIncrease(studyMinutes)) },
+                    enabled = studyMinutes < 60
                 ) {
                     Box(
                         modifier = Modifier
@@ -360,30 +407,10 @@ fun HomeTabContent(
                             .background(AccentBlue.copy(alpha = 0.1f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Increase", tint = AccentBlue)
-                    }
-                }
-            }
-
-            // クイック選択
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(15, 25, 45, 60).forEach { min ->
-                    val isSelected = studyMinutes == min
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (isSelected) AccentBlue else Color(0xFFE2E8F0)
-                            )
-                            .clickable { onStudyMinutesChange(min) }
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            "${min}分",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSelected) Color.White else TextSecondary
+                        Icon(
+                            Icons.Default.KeyboardArrowRight,
+                            contentDescription = "Increase",
+                            tint = if (studyMinutes < 60) AccentBlue else TextSecondary.copy(alpha = 0.35f)
                         )
                     }
                 }
