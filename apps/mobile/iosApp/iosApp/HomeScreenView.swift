@@ -306,14 +306,18 @@ struct HomeScreenView: View {
         NavigationView {
             List {
                 Section {
-                    Text("一覧は下のセクション。カスタムは左スワイプで削除。")
-                        .font(.system(size: 12))
-                        .foregroundColor(textSub)
-                        .listRowBackground(Color.clear)
-
-                    TextField("ジャンル名（例: 英語、物理）", text: $newGenreLabel)
-                        .foregroundColor(textW)
-                        .padding(.vertical, 4)
+                    TextField(
+                        "",
+                        text: $newGenreLabel,
+                        prompt: Text("ジャンル名（例: 英語、物理）").foregroundColor(textSub.opacity(0.95))
+                    )
+                    .foregroundColor(textW)
+                    .tint(accentCyan)
+                    .padding(12)
+                    .background(Color(hex: 0x1E293B))
+                    .cornerRadius(14)
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(accentCyan.opacity(0.35), lineWidth: 1))
+                    .listRowBackground(Color.clear)
 
                     Button(action: {
                         guard !newGenreLabel.isEmpty else { return }
@@ -340,28 +344,33 @@ struct HomeScreenView: View {
                     .listRowBackground(Color.clear)
                 }
 
-                Section("ジャンル一覧") {
+                Section {
                     ForEach(sortedGenresForSheet, id: \.id) { g in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(g.label)
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(textW)
-                                .lineLimit(1)
-                            Text(g.isDefault ? "プリセット（削除不可）" : "左スワイプで削除")
-                                .font(.system(size: 11))
-                                .foregroundColor(textSub)
-                        }
-                        .listRowBackground(bgCard)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            if !g.isDefault {
-                                Button(role: .destructive) {
-                                    genrePendingDelete = g
-                                } label: {
-                                    Label("削除", systemImage: "trash")
+                        Text(g.label)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(textW)
+                            .lineLimit(1)
+                            .listRowBackground(bgCard)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                if sortedGenresForSheet.count > 1 {
+                                    Button(role: .destructive) {
+                                        genrePendingDelete = g
+                                    } label: {
+                                        Label("削除", systemImage: "trash")
+                                    }
                                 }
                             }
-                        }
                     }
+                } header: {
+                    Text("ジャンル一覧")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(accentCyan)
+                        .textCase(nil)
+                } footer: {
+                    Text(sortedGenresForSheet.count > 1 ? "※左にスワイプして削除できます。" : "※ジャンルは最低1件必要です。")
+                        .font(.system(size: 11))
+                        .foregroundColor(textSub)
+                        .textCase(nil)
                 }
             }
             .scrollContentBackground(.hidden)

@@ -449,27 +449,27 @@ private fun GenreManageDialog(
             ) {
                 item {
                     Text("ジャンル管理", fontSize = 20.sp, fontWeight = FontWeight.Black, color = HomeTheme.TextPrimary)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("一覧は下に並びます。追加したジャンルは左にスワイプで削除できます。", fontSize = 12.sp, color = HomeTheme.TextSecondary)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("新しいジャンルを追加", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HomeTheme.AccentCyan)
                     Spacer(modifier = Modifier.height(8.dp))
+                    val fieldBg = Color(0xFF1E293B)
                     OutlinedTextField(
                         value = newGenreLabel,
                         onValueChange = onLabelChange,
                         label = { Text("ジャンル名") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = HomeTheme.TextPrimary,
-                            unfocusedTextColor = HomeTheme.TextPrimary,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
                             focusedBorderColor = HomeTheme.AccentCyan,
                             unfocusedBorderColor = HomeTheme.BarStroke,
                             focusedLabelColor = HomeTheme.AccentCyan,
                             unfocusedLabelColor = HomeTheme.TextSecondary,
                             cursorColor = HomeTheme.AccentCyan,
-                            focusedContainerColor = HomeTheme.CardWhite,
-                            unfocusedContainerColor = HomeTheme.CardWhite
+                            focusedContainerColor = fieldBg,
+                            unfocusedContainerColor = fieldBg
                         )
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -491,11 +491,22 @@ private fun GenreManageDialog(
                     HorizontalDivider(color = HomeTheme.BarStroke)
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("ジャンル一覧", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HomeTheme.AccentCyan)
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = if (sortedGenres.size > 1) {
+                            "※左にスワイプして削除できます。"
+                        } else {
+                            "※ジャンルは最低1件必要です。"
+                        },
+                        fontSize = 11.sp,
+                        color = HomeTheme.TextSecondary,
+                        lineHeight = 15.sp
+                    )
                 }
                 items(sortedGenres, key = { it.id }) { g ->
                     GenreManageSwipeRow(
                         genre = g,
+                        allowSwipeDelete = sortedGenres.size > 1,
                         onSwipeDeleteRequest = { pendingDelete = it }
                     )
                 }
@@ -513,10 +524,11 @@ private fun GenreManageDialog(
 @Composable
 private fun GenreManageSwipeRow(
     genre: MasterStudyGenre,
+    allowSwipeDelete: Boolean,
     onSwipeDeleteRequest: (MasterStudyGenre) -> Unit
 ) {
-    val swipeable = !genre.isDefault
-    var offsetX by remember(genre.id) { mutableFloatStateOf(0f) }
+    val swipeable = allowSwipeDelete
+    var offsetX by remember(genre.id, allowSwipeDelete) { mutableFloatStateOf(0f) }
     val maxLeft = -168f
     val triggerAt = -96f
 
@@ -546,7 +558,7 @@ private fun GenreManageSwipeRow(
                 .offset { IntOffset(offsetX.roundToInt(), 0) }
                 .then(
                     if (swipeable) {
-                        Modifier.pointerInput(genre.id) {
+                        Modifier.pointerInput(genre.id, allowSwipeDelete) {
                             detectHorizontalDragGestures(
                                 onHorizontalDrag = { change, dragAmount ->
                                     change.consume()
@@ -568,23 +580,14 @@ private fun GenreManageSwipeRow(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    genre.label,
-                    color = HomeTheme.TextPrimary,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = when {
-                        genre.isDefault -> "プリセット（削除不可）"
-                        else -> "左にスワイプして削除"
-                    },
-                    fontSize = 11.sp,
-                    color = HomeTheme.TextSecondary
-                )
-            }
+            Text(
+                genre.label,
+                modifier = Modifier.weight(1f),
+                color = HomeTheme.TextPrimary,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
