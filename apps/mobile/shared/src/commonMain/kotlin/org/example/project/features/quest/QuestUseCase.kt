@@ -21,7 +21,7 @@ class QuestUseCase(
             }
             val progressMap = progressList.associateBy { it.dungeonId }
 
-            masterDungeons.map { md ->
+            val serverDungeons = masterDungeons.map { md ->
                 val progress = progressMap[md.id]
                 val totalStages = md.totalStages.takeIf { it > 0 }
                     ?: 10 // stages count from server, fallback
@@ -41,6 +41,7 @@ class QuestUseCase(
                     isLocked = md.unlockCondition != null && (progress == null)
                 )
             }
+            listOf(LocalDungeons.trainingGround()) + serverDungeons
         } catch (_: Exception) {
             getDefaultDungeons()
         }
@@ -48,6 +49,7 @@ class QuestUseCase(
 
     companion object {
         fun getDefaultDungeons(): List<Dungeon> = listOf(
+            LocalDungeons.trainingGround(),
             Dungeon(
                 id = "forest_of_beginnings", name = "はじまりの森",
                 description = "新米冒険者の修行場。穏やかな森で基礎を固めよう。",
@@ -55,7 +57,9 @@ class QuestUseCase(
                 totalStages = 10, clearedStages = 0, recommendedMinutes = 25,
                 rewards = DungeonReward(gold = 100, exp = 50, gachaStones = 5),
                 iconEmoji = "🌲",
-                imageUrl = "https://picsum.photos/seed/levelup-dungeon-forest/1200/675"
+                imageUrl = "https://picsum.photos/seed/levelup-dungeon-forest/1200/675",
+                isFromServer = true,
+                isLocked = false
             )
         )
     }

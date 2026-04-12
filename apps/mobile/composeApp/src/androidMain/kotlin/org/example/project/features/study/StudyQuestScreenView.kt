@@ -366,10 +366,13 @@ private fun MainQuestView(
                         val hasRemoteBg = remember(uiState.dungeonImageUrl) {
                             !uiState.dungeonImageUrl.isNullOrBlank()
                         }
-                        val hasBgRes = remember(uiState.dungeonName, uiState.isTrainingGround) {
+                        val hasDungeonBundleBg = remember(uiState.dungeonName, uiState.isTrainingGround) {
                             hasBackgroundResource(context, uiState.dungeonName, uiState.isTrainingGround)
                         }
-                        if (!hasBgRes && !hasRemoteBg) {
+                        val hasTrainingFallback = remember {
+                            hasBackgroundResource(context, dungeonName = null, isTrainingGround = true)
+                        }
+                        if (!hasDungeonBundleBg && !hasRemoteBg && !hasTrainingFallback) {
                             Column(modifier = Modifier.matchParentSize()) {
                                 Spacer(modifier = Modifier.weight(1f))
                                 Box(
@@ -995,6 +998,15 @@ private fun AdventureScene(
                     .clip(RoundedCornerShape(24.dp)),
                 alpha = 0.82f,
                 isTrainingGround = isTrainingGround
+            )
+        } else {
+            DungeonBackground(
+                dungeonName = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(24.dp)),
+                alpha = 0.82f,
+                isTrainingGround = true
             )
         }
 

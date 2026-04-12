@@ -109,8 +109,8 @@ struct HomeScreenView: View {
                 initialStudyMinutes: studyMinutes,
                 genreId: selectedGenreSlug,
                 dungeonName: homeState?.selectedDungeonName,
-                dungeonImageUrl: homeState?.selectedDungeonImageUrl,
-                isTrainingGround: homeState?.isOfflineTraining == true
+                dungeonImageUrl: (homeState?.isTrainingStudySession == true) ? nil : homeState?.selectedDungeonImageUrl,
+                isTrainingGround: homeState?.isTrainingStudySession == true
             )
         }
         .sheet(isPresented: $showAddGenreSheet, onDismiss: {
@@ -147,8 +147,8 @@ struct HomeScreenView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 contextStatChip(
-                    title: (homeState?.isOfflineTraining == true) ? "モード" : "ダンジョン",
-                    value: (homeState?.isOfflineTraining == true) ? "訓練場" : (homeState?.selectedDungeonName ?? "—")
+                    title: (homeState?.isTrainingStudySession == true) ? "モード" : "ダンジョン",
+                    value: (homeState?.isTrainingStudySession == true) ? "訓練場" : (homeState?.selectedDungeonName ?? "—")
                 )
                 genreMenuChip
                 Button(action: { showAddGenreSheet = true }) {
@@ -406,7 +406,7 @@ struct HomeScreenView: View {
 
     // MARK: - Start Button
     private var startButton: some View {
-        let training = homeState?.isOfflineTraining == true
+        let training = homeState?.isTrainingStudySession == true
         return Button(action: { showStudySheet = true }) {
             HStack(spacing: 8) {
                 Text(training ? "🏋️" : "⚔️").font(.system(size: 20))

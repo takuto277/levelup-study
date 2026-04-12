@@ -946,6 +946,9 @@ struct StudyQuestScreenView: View {
                         if UIImage(named: bgAssetName) != nil {
                             DungeonBackgroundView(dungeonName: uiState.dungeonName, isTrainingGround: uiState.isTrainingGround)
                                 .clipShape(RoundedRectangle(cornerRadius: 24))
+                        } else if UIImage(named: "bg_dungeon_training") != nil {
+                            DungeonBackgroundView(dungeonName: nil, isTrainingGround: true)
+                                .clipShape(RoundedRectangle(cornerRadius: 24))
                         } else {
                             VStack {
                                 HStack {
@@ -1141,6 +1144,11 @@ struct StudyQuestScreenView: View {
                 .overlay(Color.black.opacity(0.28))
             } else if hasBg {
                 DungeonBackgroundView(dungeonName: uiState.dungeonName, isTrainingGround: uiState.isTrainingGround)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+            } else if UIImage(named: "bg_dungeon_training") != nil {
+                DungeonBackgroundView(dungeonName: nil, isTrainingGround: true)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 24))

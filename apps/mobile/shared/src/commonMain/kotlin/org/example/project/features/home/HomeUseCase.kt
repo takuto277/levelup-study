@@ -49,7 +49,8 @@ class HomeUseCase(
             if (dungeonId != null) {
                 val dungeons = dungeonRepository.getDungeons()
                 val d = dungeons.find { it.id == dungeonId }
-                Pair(d?.name, d?.imageUrl?.takeIf { it.isNotBlank() })
+                // 背景は同梱の bg_dungeon_* のみ（サーバー image_url は表示に使わない）
+                Pair(d?.name, null)
             } else Pair(null, null)
         } catch (_: Exception) {
             Pair(null, null)

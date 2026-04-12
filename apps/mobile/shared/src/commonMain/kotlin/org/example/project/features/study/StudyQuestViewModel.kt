@@ -268,7 +268,13 @@ class StudyQuestViewModel(
                     targetStudyMinutes = studyMinutes,
                     elapsedSeconds = 0,
                     isOvertime = false,
-                    currentLog = listOf("訓練場で集中トレーニングを開始した。（オフライン中はダンジョンに潜れません）"),
+                    currentLog = listOf(
+                        if (isDeviceOnline()) {
+                            "訓練場で集中を開始した。完了時は経験値・ダイヤがサーバーに反映される。"
+                        } else {
+                            "訓練場で集中トレーニングを開始した。（オフライン中はダンジョンに潜れません）"
+                        }
+                    ),
                     displayTime = formatTime(studyMinutes.toLong() * 60),
                     genreId = genreId,
                     isTrainingGround = true,

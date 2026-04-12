@@ -27,7 +27,8 @@ import androidx.compose.ui.unit.sp
 @Composable
 internal fun HomeAdventureContextRow(
     dungeonName: String?,
-    isOfflineTraining: Boolean = false,
+    /** 樽打ち訓練の勉強シーン（オフライン or 訓練場ダンジョン選択） */
+    isTrainingStudySession: Boolean = false,
     selectedGenreSlug: String,
     genreTriples: List<Triple<String, String, String>>,
     onGenreChange: (String) -> Unit,
@@ -42,8 +43,8 @@ internal fun HomeAdventureContextRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         ContextStatChip(
-            label = if (isOfflineTraining) "モード" else "ダンジョン",
-            value = if (isOfflineTraining) "訓練場" else (dungeonName ?: "—"),
+            label = if (isTrainingStudySession) "モード" else "ダンジョン",
+            value = if (isTrainingStudySession) "訓練場" else (dungeonName ?: "—"),
             modifier = Modifier.defaultMinSize(minWidth = 96.dp)
         )
         GenrePickerChip(

@@ -154,9 +154,9 @@ struct QuestScreenView: View {
         let currentId = homeState?.selectedDungeonId
         let hasValid = currentId != nil && available.contains(where: { $0.id == currentId })
         if !hasValid {
-            let first = available[0]
-            let img = String(first.imageUrl).trimmingCharacters(in: .whitespacesAndNewlines)
-            homeViewModel.onIntent(intent: HomeIntentSelectDungeon(id: first.id, name: first.name, imageUrl: img.isEmpty ? nil : img))
+            let pick = available.first(where: { $0.isFromServer }) ?? available[0]
+            let img = String(pick.imageUrl).trimmingCharacters(in: .whitespacesAndNewlines)
+            homeViewModel.onIntent(intent: HomeIntentSelectDungeon(id: pick.id, name: pick.name, imageUrl: img.isEmpty ? nil : img))
             didAutoSelect = true
         } else {
             didAutoSelect = true

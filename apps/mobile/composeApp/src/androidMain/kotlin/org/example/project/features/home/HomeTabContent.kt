@@ -124,7 +124,7 @@ fun HomeTabContent(
 
         HomeAdventureContextRow(
             dungeonName = homeState.selectedDungeonName,
-            isOfflineTraining = homeState.isOfflineTraining,
+            isTrainingStudySession = homeState.isTrainingStudySession,
             selectedGenreSlug = selectedGenreSlug,
             genreTriples = genreTriples,
             onGenreChange = onGenreChange,
@@ -152,7 +152,7 @@ fun HomeTabContent(
         Spacer(modifier = Modifier.height(28.dp))
 
         StartAdventureButton(
-            isOfflineTraining = homeState.isOfflineTraining,
+            isTrainingStudySession = homeState.isTrainingStudySession,
             onClick = onStartStudy
         )
 
@@ -371,9 +371,9 @@ private fun StudyDurationStepper(
 }
 
 @Composable
-private fun StartAdventureButton(isOfflineTraining: Boolean, onClick: () -> Unit) {
-    val label = if (isOfflineTraining) "訓練を始める" else "冒険に出発する"
-    val emoji = if (isOfflineTraining) "🏋️" else "⚔️"
+private fun StartAdventureButton(isTrainingStudySession: Boolean, onClick: () -> Unit) {
+    val label = if (isTrainingStudySession) "訓練を始める" else "冒険に出発する"
+    val emoji = if (isTrainingStudySession) "🏋️" else "⚔️"
     Button(
         onClick = onClick,
         shape = RoundedCornerShape(24.dp),
@@ -389,7 +389,7 @@ private fun StartAdventureButton(isOfflineTraining: Boolean, onClick: () -> Unit
                 .fillMaxSize()
                 .background(
                     brush = Brush.linearGradient(
-                        if (isOfflineTraining) {
+                        if (isTrainingStudySession) {
                             listOf(HomeTheme.AccentIndigo, HomeTheme.AccentBlue)
                         } else {
                             listOf(HomeTheme.FireRed, HomeTheme.FireOrange)

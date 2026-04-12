@@ -21,12 +21,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import org.example.project.domain.local.LocalDungeonIds
 import org.example.project.domain.model.DungeonDifficulty
 
 // ── カラーパレット（青テーマ）──────────────────────────
@@ -58,6 +58,25 @@ private fun difficultyGradient(difficulty: DungeonDifficulty): List<Color> = whe
     DungeonDifficulty.LEGENDARY -> listOf(Color(0xFF8B5CF6), Color(0xFFA78BFA))
 }
 
+/** 冒険タブ用: 同梱 `bg_dungeon_*` のみ。未一致は訓練場。 */
+private fun questBannerDrawableId(context: android.content.Context, dungeon: Dungeon): Int {
+    fun rid(base: String): Int =
+        context.resources.getIdentifier(base, "drawable", context.packageName)
+    val suffix = when {
+        LocalDungeonIds.isTrainingGround(dungeon.id) -> "training"
+        dungeon.name.contains("森") || dungeon.name.contains("forest", ignoreCase = true) -> "forest"
+        dungeon.name.contains("洞窟") || dungeon.name.contains("水晶") ||
+            dungeon.name.contains("cave", ignoreCase = true) -> "cave"
+        dungeon.name.contains("塔") || dungeon.name.contains("炎") ||
+            dungeon.name.contains("tower", ignoreCase = true) -> "tower"
+        else -> "training"
+    }
+    val primary = rid("bg_dungeon_$suffix")
+    if (primary != 0) return primary
+    val training = rid("bg_dungeon_training")
+    return if (training != 0) training else 0
+}
+
 // ── メイン画面 ──────────────────────────────────────
 @Composable
 fun QuestScreenView() {
@@ -73,12 +92,13 @@ fun QuestScreenView() {
         if (available.isNotEmpty()) {
             val hasValid = selectedId != null && available.any { it.id == selectedId }
             if (!hasValid) {
-                val first = available.first()
+                val pick = available.firstOrNull { it.isFromServer }
+                    ?: available.first()
                 homeVm.onIntent(
                     org.example.project.features.home.HomeIntent.SelectDungeon(
-                        id = first.id,
-                        name = first.name,
-                        imageUrl = first.imageUrl.takeIf { it.isNotBlank() }
+                        id = pick.id,
+                        name = pick.name,
+                        imageUrl = null
                     )
                 )
             }
@@ -132,7 +152,7 @@ fun QuestScreenView() {
                         org.example.project.features.home.HomeIntent.SelectDungeon(
                             id = dungeon.id,
                             name = dungeon.name,
-                            imageUrl = dungeon.imageUrl.takeIf { it.isNotBlank() }
+                            imageUrl = null
                         )
                     )
                     viewModel.onIntent(QuestIntent.DismissDetail)
@@ -211,35 +231,46 @@ private fun DungeonCard(
             .clickable(enabled = !isLocked, onClick = onClick),
         color = bgColor,
         shape = RoundedCornerShape(16.dp),
-        border = androidx.compose.foundation.BorderStroke(if (isSelected) 1.5.dp else 1.dp, borderColor)
+        border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, borderColor)
     ) {
         Column {
-            if (dungeon.imageUrl.isNotBlank()) {
-                val context = LocalContext.current
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(92.dp)
-                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context).data(dungeon.imageUrl).crossfade(true).build(),
+            val context = LocalContext.current
+            val bannerId = remember(dungeon.id, dungeon.name) { questBannerDrawableId(context, dungeon) }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(92.dp)
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+            ) {
+                if (bannerId != 0) {
+                    Image(
+                        painter = painterResource(bannerId),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
+                } else {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(40.dp)
-                            .align(Alignment.BottomCenter)
+                            .fillMaxSize()
                             .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, CardWhite.copy(alpha = 0.98f))
+                                brush = Brush.linearGradient(
+                                    difficultyGradient(dungeon.difficulty).map { it.copy(alpha = 0.4f) }
                                 )
                             )
                     )
                 }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, CardWhite.copy(alpha = 0.98f))
+                            )
+                        )
+                )
             }
             Row(
                 modifier = Modifier
@@ -247,22 +278,11 @@ private fun DungeonCard(
                     .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .background(
-                            brush = Brush.linearGradient(difficultyGradient(dungeon.difficulty).map { it.copy(alpha = if (isSelected) 0.6f else 0.35f) }),
-                            shape = RoundedCornerShape(14.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(if (isLocked) "🔒" else dungeon.iconEmoji, fontSize = 26.sp)
-                }
-
-                Spacer(modifier = Modifier.width(14.dp))
-
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isLocked) {
+                            Text("🔒 ", fontSize = 14.sp)
+                        }
                         Text(
                             dungeon.name, fontSize = 16.sp, fontWeight = FontWeight.Bold,
                             color = TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis
@@ -368,8 +388,9 @@ private fun DungeonDetailSheet(
                         .background(Color(0xFFD1D5DB), RoundedCornerShape(2.dp))
                 )
 
-                // ダンジョンヒーロー（DB image_url を背景に）
+                // ダンジョンヒーロー（同梱 bg_dungeon_* のみ・デフォルト訓練場）
                 val sheetContext = LocalContext.current
+                val heroBannerId = remember(dungeon.id, dungeon.name) { questBannerDrawableId(sheetContext, dungeon) }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -377,9 +398,9 @@ private fun DungeonDetailSheet(
                         .padding(horizontal = 16.dp)
                         .clip(RoundedCornerShape(20.dp))
                 ) {
-                    if (dungeon.imageUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(sheetContext).data(dungeon.imageUrl).crossfade(true).build(),
+                    if (heroBannerId != 0) {
+                        Image(
+                            painter = painterResource(heroBannerId),
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -411,8 +432,6 @@ private fun DungeonDetailSheet(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Text(dungeon.iconEmoji, fontSize = 48.sp)
-                        Spacer(modifier = Modifier.height(6.dp))
                         Text(dungeon.name, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(shape = RoundedCornerShape(8.dp), color = difficultyColor(dungeon.difficulty).copy(alpha = 0.25f)) {

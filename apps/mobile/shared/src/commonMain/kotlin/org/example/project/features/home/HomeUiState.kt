@@ -1,5 +1,6 @@
 package org.example.project.features.home
 
+import org.example.project.domain.local.LocalDungeonIds
 import org.example.project.domain.model.MasterStudyGenre
 import org.example.project.domain.model.UserCharacter
 
@@ -25,4 +26,12 @@ data class HomeUiState(
             val minutes = (totalStudySeconds % 3600) / 60
             return "${hours}h ${minutes}m"
         }
+
+    /**
+     * 勉強クエストで樽打ち訓練 UI を使うか。
+     * オフライン強制、またはアプリ同梱の「訓練場」ダンジョン選択時。
+     * オンライン時も [isTrainingStudySession] なら報酬は [StudyQuestViewModel] から通常どおりサーバー同期される。
+     */
+    val isTrainingStudySession: Boolean
+        get() = isOfflineTraining || LocalDungeonIds.isTrainingGround(selectedDungeonId)
 }

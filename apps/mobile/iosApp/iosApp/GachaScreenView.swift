@@ -12,20 +12,6 @@ private enum UIPhase {
 private enum UIBannerType: String {
     case character, weapon, mixed
 
-    var label: String {
-        switch self {
-        case .character: return "キャラ"
-        case .weapon: return "武器"
-        case .mixed: return "ミックス"
-        }
-    }
-    var icon: String {
-        switch self {
-        case .character: return "person.fill"
-        case .weapon: return "shield.fill"
-        case .mixed: return "sparkles"
-        }
-    }
     var colors: [Color] {
         switch self {
         case .character: return [Color(red: 0.3, green: 0.2, blue: 0.8), Color(red: 0.5, green: 0.2, blue: 0.9)]
@@ -373,128 +359,100 @@ private struct BannerCard: View {
     let onTap: () -> Void
     @State private var shimmerOffset: CGFloat = -200
 
-    private var subtitle: String {
-        if !banner.pickupName.isEmpty { return banner.pickupName }
-        return banner.description
-    }
-
     var body: some View {
         Button(action: onTap) {
             ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(LinearGradient(
                         colors: banner.type.colors,
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     ))
-                    .frame(height: 288)
+                    .frame(height: 312)
 
-                VStack(spacing: 0) {
-                    ZStack {
-                        if let s = banner.pickupImageUrl, let u = URL(string: s) {
-                            ZStack {
-                                AsyncImage(url: u) { phase in
-                                    switch phase {
-                                    case .success(let img):
-                                        img
-                                            .resizable()
-                                            .scaledToFill()
-                                            .frame(height: 210)
-                                            .frame(maxWidth: .infinity)
-                                            .clipped()
-                                    default:
-                                        LinearGradient(colors: banner.type.colors, startPoint: .top, endPoint: .bottom)
-                                            .frame(height: 210)
-                                    }
-                                }
-                                LinearGradient(
-                                    colors: [.clear, .black.opacity(0.55)],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                                .allowsHitTesting(false)
-                            }
-                            .frame(height: 210)
-                            .clipped()
-                        } else {
-                            ZStack {
-                                Image("sprite_player_idle_1")
+                Group {
+                    if let s = banner.pickupImageUrl, let u = URL(string: s) {
+                        AsyncImage(url: u) { phase in
+                            switch phase {
+                            case .success(let img):
+                                img
                                     .resizable()
                                     .scaledToFill()
-                                    .frame(height: 210)
+                                    .frame(height: 312)
                                     .frame(maxWidth: .infinity)
                                     .clipped()
-                                LinearGradient(
-                                    colors: [.clear, .black.opacity(0.55)],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                                .allowsHitTesting(false)
+                            default:
+                                LinearGradient(colors: banner.type.colors, startPoint: .top, endPoint: .bottom)
+                                    .frame(height: 312)
                             }
-                            .frame(height: 210)
-                            .clipped()
                         }
+                    } else {
+                        Image("sprite_player_idle_1")
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 312)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
                     }
-                    .frame(height: 210)
-
-                    Spacer(minLength: 0)
                 }
-                .frame(height: 288, alignment: .top)
+                .frame(height: 312)
+                .clipped()
 
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                LinearGradient(
+                    colors: [.clear, .clear, .black.opacity(0.82)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 312)
+                .allowsHitTesting(false)
+
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(
                         LinearGradient(
-                            colors: [.clear, .white.opacity(0.15), .clear],
-                            startPoint: .leading, endPoint: .trailing
+                            colors: [.clear, .white.opacity(0.16), .clear],
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
                     )
-                    .frame(height: 288)
+                    .frame(height: 312)
                     .offset(x: shimmerOffset)
-                    .mask(RoundedRectangle(cornerRadius: 20, style: .continuous).frame(height: 288))
+                    .mask(RoundedRectangle(cornerRadius: 24, style: .continuous).frame(height: 312))
 
-                Image(systemName: banner.type.icon)
-                    .font(.system(size: 56, weight: .ultraLight))
-                    .foregroundColor(.white.opacity(0.12))
+                Text("✦")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white.opacity(0.55))
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(.white.opacity(0.08)))
+                    .overlay(Circle().stroke(.white.opacity(0.12), lineWidth: 1))
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding(.trailing, 12)
-                    .padding(.top, 8)
+                    .padding(14)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 4) {
-                        Text("PICK UP")
-                            .font(.system(size: 10, weight: .black))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Capsule().fill(.white.opacity(0.25)))
-
-                        Text(banner.type.label)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white.opacity(0.8))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Capsule().fill(.white.opacity(0.15)))
-                    }
-
+                VStack(alignment: .leading, spacing: 6) {
                     Text(banner.name)
-                        .font(.system(size: 22, weight: .bold))
+                        .font(.system(size: 23, weight: .black))
                         .foregroundColor(.white)
+                        .lineLimit(2)
                         .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
 
-                    Text(subtitle)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.88))
+                    Text(banner.periodLine)
+                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.78))
                         .lineLimit(2)
 
-                    HStack(spacing: 2) {
-                        ForEach(0..<banner.featuredRarity, id: \.self) { _ in
-                            Image(systemName: "star.fill").font(.system(size: 12)).foregroundColor(.yellow)
-                        }
+                    HStack(spacing: 6) {
+                        Text("タップして召喚へ")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white.opacity(0.45))
+                            .tracking(0.6)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white.opacity(0.4))
                     }
+                    .padding(.top, 4)
                 }
-                .padding(20)
+                .padding(18)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .shadow(color: banner.type.colors.first!.opacity(0.4), radius: 16, y: 8)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .shadow(color: banner.type.colors.first!.opacity(0.42), radius: 18, y: 10)
         }
         .buttonStyle(.plain)
         .onAppear {

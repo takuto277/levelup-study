@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -170,7 +171,9 @@ private fun BackgroundParticles() {
 private fun GachaFeaturedHeroPanel(
     featured: GachaBannerFeatured?,
     bannerType: BannerType,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** 一覧カードはカード角に合わせて全面クリップ */
+    contentClip: Shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
 ) {
     val accent = bannerColors(bannerType).first()
     val url = featured?.imageUrl?.takeIf { it.isNotBlank() }
@@ -186,7 +189,7 @@ private fun GachaFeaturedHeroPanel(
             )
         )
 
-    Box(modifier = modifier.clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))) {
+    Box(modifier = modifier.clip(contentClip)) {
         when {
             url != null -> {
                 AsyncImage(
@@ -327,7 +330,8 @@ private fun BannerCard(banner: GachaBanner, onClick: () -> Unit) {
         GachaFeaturedHeroPanel(
             featured = hero,
             bannerType = banner.bannerType,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            contentClip = RoundedCornerShape(24.dp)
         )
 
         Box(

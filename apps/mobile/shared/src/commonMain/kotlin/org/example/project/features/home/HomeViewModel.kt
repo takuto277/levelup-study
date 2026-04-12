@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.example.project.core.network.NetworkException
 import org.example.project.core.network.isDeviceOnline
+import org.example.project.core.storage.KeyValueStore
+import org.example.project.domain.local.LocalDungeonIds
 import org.example.project.domain.repository.StudyRepository
 import org.example.project.domain.repository.UserRepository
 
@@ -17,6 +19,8 @@ class HomeViewModel(
     private val userRepository: UserRepository,
     private val studyRepository: StudyRepository
 ) : ViewModel() {
+
+    private val kv = KeyValueStore()
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -41,6 +45,11 @@ class HomeViewModel(
     }
 
     private fun selectDungeon(id: String, name: String, imageUrl: String? = null) {
+        if (LocalDungeonIds.isTrainingGround(id)) {
+            kv.putString(KEY_PERSISTED_LOCAL_DUNGEON_ID, id)
+        } else {
+            kv.remove(KEY_PERSISTED_LOCAL_DUNGEON_ID)
+        }
         _uiState.update {
             it.copy(
                 selectedDungeonId = id,
@@ -48,6 +57,7 @@ class HomeViewModel(
                 selectedDungeonImageUrl = imageUrl?.takeIf { s -> s.isNotBlank() }
             )
         }
+        if (LocalDungeonIds.isTrainingGround(id)) return
         viewModelScope.launch {
             try {
                 userRepository.updateSelectedDungeon(id)
@@ -66,7 +76,9 @@ class HomeViewModel(
                 applyHomeData(data, clearLoading = true)
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isLoading = false, error = e.message, isOfflineTraining = !isDeviceOnline())
+                    withPersistedTrainingOverride(
+                        it.copy(isLoading = false, error = e.message, isOfflineTraining = !isDeviceOnline())
+                    )
                 }
             }
         }
@@ -74,21 +86,45 @@ class HomeViewModel(
 
     private fun applyHomeData(data: HomeUseCase.HomeData, clearLoading: Boolean) {
         val offlineTraining = !isDeviceOnline()
-        _uiState.update {
-            it.copy(
+        val usePersistedTraining = LocalDungeonIds.isTrainingGround(kv.getString(KEY_PERSISTED_LOCAL_DUNGEON_ID))
+        _uiState.update { prev ->
+            val (mergedId, mergedName, mergedImg) = if (usePersistedTraining) {
+                Triple(LocalDungeonIds.TRAINING_GROUND, LocalDungeonIds.TRAINING_GROUND_NAME, null)
+            } else {
+                Triple(
+                    data.user.selectedDungeonId ?: prev.selectedDungeonId,
+                    data.selectedDungeonName ?: prev.selectedDungeonName,
+                    data.selectedDungeonImageUrl ?: prev.selectedDungeonImageUrl
+                )
+            }
+            prev.copy(
                 totalStudySeconds = data.user.totalStudySeconds,
                 stones = data.user.stones,
                 gold = data.user.gold,
                 displayName = data.user.displayName,
                 mainCharacter = data.mainCharacter,
                 genres = data.genres,
-                selectedDungeonId = data.user.selectedDungeonId ?: it.selectedDungeonId,
-                selectedDungeonName = data.selectedDungeonName ?: it.selectedDungeonName,
-                selectedDungeonImageUrl = data.selectedDungeonImageUrl ?: it.selectedDungeonImageUrl,
-                isLoading = if (clearLoading) false else it.isLoading,
+                selectedDungeonId = mergedId,
+                selectedDungeonName = mergedName,
+                selectedDungeonImageUrl = mergedImg,
+                isLoading = if (clearLoading) false else prev.isLoading,
                 isOfflineTraining = offlineTraining
             )
         }
+    }
+
+    private fun withPersistedTrainingOverride(state: HomeUiState): HomeUiState {
+        if (!LocalDungeonIds.isTrainingGround(kv.getString(KEY_PERSISTED_LOCAL_DUNGEON_ID))) return state
+        return state.copy(
+            selectedDungeonId = LocalDungeonIds.TRAINING_GROUND,
+            selectedDungeonName = LocalDungeonIds.TRAINING_GROUND_NAME,
+            selectedDungeonImageUrl = null
+        )
+    }
+
+    private companion object {
+        /** サーバーに存在しないローカル専用ダンジョンの選択をホーム再読込後も維持する */
+        const val KEY_PERSISTED_LOCAL_DUNGEON_ID = "home_persisted_local_dungeon_id"
     }
 
     private fun addGenre(label: String, emoji: String, colorHex: String) {
