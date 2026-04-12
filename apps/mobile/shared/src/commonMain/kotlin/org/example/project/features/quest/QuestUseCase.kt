@@ -41,7 +41,7 @@ class QuestUseCase(
                     isLocked = md.unlockCondition != null && (progress == null)
                 )
             }
-            listOf(LocalDungeons.trainingGround()) + serverDungeons
+            serverDungeons + listOf(LocalDungeons.trainingGround())
         } catch (_: Exception) {
             getDefaultDungeons()
         }
@@ -49,7 +49,6 @@ class QuestUseCase(
 
     companion object {
         fun getDefaultDungeons(): List<Dungeon> = listOf(
-            LocalDungeons.trainingGround(),
             Dungeon(
                 id = "forest_of_beginnings", name = "はじまりの森",
                 description = "新米冒険者の修行場。穏やかな森で基礎を固めよう。",
@@ -60,7 +59,8 @@ class QuestUseCase(
                 imageUrl = "https://picsum.photos/seed/levelup-dungeon-forest/1200/675",
                 isFromServer = true,
                 isLocked = false
-            )
+            ),
+            LocalDungeons.trainingGround()
         )
     }
 }

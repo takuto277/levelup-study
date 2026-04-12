@@ -10,7 +10,7 @@ object LocalDungeons {
     fun trainingGround(): Dungeon = Dungeon(
         id = LocalDungeonIds.TRAINING_GROUND,
         name = LocalDungeonIds.TRAINING_GROUND_NAME,
-        description = "樽を叩いてフォームを整える。オンラインなら勉強時間・経験値・ダイヤはサーバーへ同期される。",
+        description = "",
         difficulty = DungeonDifficulty.BEGINNER,
         category = DungeonCategory.GENERAL,
         totalStages = 1,

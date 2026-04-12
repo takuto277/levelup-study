@@ -279,7 +279,7 @@ struct HomeScreenView: View {
     // MARK: - Time（1〜60 分、Android と同じ ± ルール）
     private var timeSelector: some View {
         VStack(spacing: 8) {
-            Text("⏱ 冒険時間").font(.system(size: 12, weight: .bold)).foregroundColor(textSub)
+            Text("冒険時間").font(.system(size: 12, weight: .bold)).foregroundColor(textSub)
             HStack(spacing: 0) {
                 Button(action: { studyMinutes = HomeStudyMinutesPersisted.decrease(studyMinutes) }) {
                     Circle().fill(accentBlue.opacity(studyMinutes > 1 ? 0.2 : 0.08)).frame(width: 34, height: 34)
@@ -408,11 +408,11 @@ struct HomeScreenView: View {
     private var startButton: some View {
         let training = homeState?.isTrainingStudySession == true
         return Button(action: { showStudySheet = true }) {
-            HStack(spacing: 8) {
-                Text(training ? "🏋️" : "⚔️").font(.system(size: 20))
-                Text(training ? "訓練を始める" : "冒険に出発する").font(.system(size: 17, weight: .heavy))
-            }
-            .foregroundColor(.white).frame(maxWidth: .infinity).padding(.vertical, 16)
+            Text("勉強を始める")
+                .font(.system(size: 17, weight: .heavy))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
             .background(
                 LinearGradient(
                     colors: training ? [accentIndigo, accentBlue] : fireGradient,

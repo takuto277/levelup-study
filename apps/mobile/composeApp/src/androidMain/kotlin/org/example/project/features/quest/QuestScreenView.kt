@@ -98,7 +98,7 @@ fun QuestScreenView() {
                     org.example.project.features.home.HomeIntent.SelectDungeon(
                         id = pick.id,
                         name = pick.name,
-                        imageUrl = null
+                        imageUrl = if (LocalDungeonIds.isTrainingGround(pick.id)) null else pick.imageUrl.takeIf { it.isNotBlank() }
                     )
                 )
             }
@@ -152,7 +152,7 @@ fun QuestScreenView() {
                         org.example.project.features.home.HomeIntent.SelectDungeon(
                             id = dungeon.id,
                             name = dungeon.name,
-                            imageUrl = null
+                            imageUrl = if (LocalDungeonIds.isTrainingGround(dungeon.id)) null else dungeon.imageUrl.takeIf { it.isNotBlank() }
                         )
                     )
                     viewModel.onIntent(QuestIntent.DismissDetail)
@@ -221,7 +221,11 @@ private fun DungeonCard(
 ) {
     val alpha = if (isLocked) 0.5f else 1f
     val bgColor = if (isSelected) AccentBlue.copy(alpha = 0.12f) else CardWhite
-    val borderColor = if (isSelected) AccentCyan.copy(alpha = 0.6f) else difficultyColor(dungeon.difficulty).copy(alpha = 0.15f)
+    val borderColor = when {
+        isSelected -> AccentCyan.copy(alpha = 0.6f)
+        LocalDungeonIds.isTrainingGround(dungeon.id) -> AccentCyan.copy(alpha = 0.22f)
+        else -> difficultyColor(dungeon.difficulty).copy(alpha = 0.15f)
+    }
 
     Surface(
         modifier = Modifier
@@ -287,11 +291,6 @@ private fun DungeonCard(
                             dungeon.name, fontSize = 16.sp, fontWeight = FontWeight.Bold,
                             color = TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Surface(shape = RoundedCornerShape(6.dp), color = difficultyColor(dungeon.difficulty).copy(alpha = 0.2f)) {
-                            Text(dungeon.difficulty.label, fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                                color = difficultyColor(dungeon.difficulty), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                        }
                         if (isSelected) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Surface(shape = RoundedCornerShape(6.dp), color = AccentCyan) {
@@ -300,13 +299,13 @@ private fun DungeonCard(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(dungeon.description, fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (dungeon.description.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(dungeon.description, fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        MetaChip("🕐 ${dungeon.recommendedMinutes}分")
-                        MetaChip("📍 ${dungeon.totalStages}F")
-                        MetaChip("✨ ${dungeon.rewards.exp}EXP")
+                        MetaChip(dungeon.estimatedLevelChipText())
                     }
                 }
 
@@ -433,13 +432,14 @@ private fun DungeonDetailSheet(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(dungeon.name, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(shape = RoundedCornerShape(8.dp), color = difficultyColor(dungeon.difficulty).copy(alpha = 0.25f)) {
-                                Text(dungeon.difficulty.label, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                                    color = difficultyColor(dungeon.difficulty), modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp))
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("${dungeon.category.emoji} ${dungeon.category.label}", fontSize = 12.sp, color = TextSecondary)
+                        Surface(shape = RoundedCornerShape(8.dp), color = AccentCyan.copy(alpha = 0.18f)) {
+                            Text(
+                                "推定Lv.${dungeon.estimatedRecommendedLevel()}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AccentCyan,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                            )
                         }
                         if (isCurrentlySelected) {
                             Spacer(modifier = Modifier.height(6.dp))
@@ -453,16 +453,16 @@ private fun DungeonDetailSheet(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // 説明
-                Text(
-                    dungeon.description,
-                    fontSize = 15.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    lineHeight = 22.sp
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
+                if (dungeon.description.isNotBlank()) {
+                    Text(
+                        dungeon.description,
+                        fontSize = 15.sp,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        lineHeight = 22.sp
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
 
                 Surface(
                     modifier = Modifier
@@ -479,12 +479,8 @@ private fun DungeonDetailSheet(
                             color = TextPrimary
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        DetailInfoRow("推奨時間", "🕐 ${dungeon.recommendedMinutes}分")
                         DetailInfoRow("総ステージ", "📍 ${dungeon.totalStages}ステージ")
-                        DetailInfoRow(
-                            "難易度",
-                            buildString { repeat(dungeon.difficulty.stars) { append("⭐") } }
-                        )
+                        DetailInfoRow("推定レベル", "Lv.${dungeon.estimatedRecommendedLevel()}")
                     }
                 }
 

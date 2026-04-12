@@ -68,9 +68,6 @@ private fun rarityColor(rarity: Int): Color = when (rarity) {
 
 private fun rarityStars(rarity: Int): String = "★".repeat(rarity)
 
-/** メインタブの BottomNavigation と重ならないよう確保 */
-private val GachaMainTabBottomReserve = 88.dp
-
 private fun bannerColors(type: BannerType): List<Color> = when (type) {
     BannerType.CHARACTER -> listOf(Color(0xFF4B32C8), Color(0xFF8033E6))
     BannerType.WEAPON -> listOf(Color(0xFFCC3333), Color(0xFFE6661A))
@@ -105,6 +102,7 @@ fun GachaScreenView() {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .clip(RectangleShape)
             .background(Brush.linearGradient(listOf(BgDark1, BgDark2, BgDark3)))
     ) {
         // 背景パーティクル
@@ -243,7 +241,6 @@ private fun GachaStonesBottomBar(stones: Int) {
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(bottom = GachaMainTabBottomReserve)
                 .padding(horizontal = 20.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -379,6 +376,7 @@ private fun BannerCard(banner: GachaBanner, onClick: () -> Unit) {
         ) {
             Text(
                 banner.name,
+                modifier = Modifier.fillMaxWidth(),
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Black,
                 color = Color.White,
@@ -388,6 +386,7 @@ private fun BannerCard(banner: GachaBanner, onClick: () -> Unit) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 periodLine,
+                modifier = Modifier.fillMaxWidth(),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color.White.copy(alpha = 0.78f),
@@ -397,14 +396,18 @@ private fun BannerCard(banner: GachaBanner, onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(10.dp))
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
                     "タップして召喚へ",
+                    modifier = Modifier.weight(1f, fill = false),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White.copy(alpha = 0.45f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     letterSpacing = 0.6.sp
                 )
                 Icon(
@@ -448,8 +451,7 @@ private fun ConfirmPhase(viewModel: GachaViewModel, uiState: GachaUiState) {
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .navigationBarsPadding()
-                .padding(bottom = GachaMainTabBottomReserve),
+                .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(8.dp))

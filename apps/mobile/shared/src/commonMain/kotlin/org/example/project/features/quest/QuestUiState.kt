@@ -1,5 +1,6 @@
 package org.example.project.features.quest
 
+import org.example.project.domain.local.LocalDungeonIds
 import org.example.project.domain.model.DungeonCategory
 import org.example.project.domain.model.DungeonDifficulty
 
@@ -42,6 +43,21 @@ data class Dungeon(
 
     val isCleared: Boolean
         get() = clearedStages >= totalStages
+
+    /** 一覧・詳細の「推定Lv.」表示用（難易度＋進行の目安）。訓練場は 1 固定。 */
+    fun estimatedRecommendedLevel(): Int {
+        if (LocalDungeonIds.isTrainingGround(id)) return 1
+        val base = when (difficulty) {
+            DungeonDifficulty.BEGINNER -> 10
+            DungeonDifficulty.INTERMEDIATE -> 35
+            DungeonDifficulty.ADVANCED -> 60
+            DungeonDifficulty.EXPERT -> 90
+            DungeonDifficulty.LEGENDARY -> 130
+        }
+        return (base + clearedStages * 3).coerceIn(1, 999)
+    }
+
+    fun estimatedLevelChipText(): String = "推定Lv.${estimatedRecommendedLevel()}"
 }
 
 /**

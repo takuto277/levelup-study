@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -46,35 +45,35 @@ fun HomeScreenView() {
             }
         )
     } else {
-        Scaffold(containerColor = Color.Transparent) { paddingValues ->
+        Scaffold(
+            containerColor = Color.Transparent,
+            bottomBar = {
+                BottomNavigationBar(
+                    selectedTab = selectedTab,
+                    onTabSelected = { tab -> selectedTab = tab }
+                )
+            }
+        ) { paddingValues ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(paddingValues)
                     .background(Brush.verticalGradient(listOf(HomeTheme.BgColor, HomeTheme.BgDark2)))
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = paddingValues.calculateBottomPadding())
-                ) {
-                    when (selectedTab) {
-                        0 -> org.example.project.features.quest.QuestScreenView()
-                        1 -> org.example.project.features.party.PartyScreenView()
-                        2 -> HomeTabContent(
-                            studyMinutes = studyMinutes,
-                            onStudyMinutesChange = { studyMinutes = it.coerceIn(1, 60) },
-                            selectedGenreSlug = selectedGenreSlug,
-                            onGenreChange = { selectedGenreSlug = it },
-                            onStartStudy = { showStudySheet = true },
-                            homeState = homeState,
-                            homeViewModel = homeViewModel
-                        )
-                        3 -> org.example.project.features.gacha.GachaScreenView()
-                        4 -> org.example.project.features.record.RecordScreenView()
-                    }
-                }
-                Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-                    BottomNavigationBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+                when (selectedTab) {
+                    0 -> org.example.project.features.quest.QuestScreenView()
+                    1 -> org.example.project.features.party.PartyScreenView()
+                    2 -> HomeTabContent(
+                        studyMinutes = studyMinutes,
+                        onStudyMinutesChange = { studyMinutes = it.coerceIn(1, 60) },
+                        selectedGenreSlug = selectedGenreSlug,
+                        onGenreChange = { selectedGenreSlug = it },
+                        onStartStudy = { showStudySheet = true },
+                        homeState = homeState,
+                        homeViewModel = homeViewModel
+                    )
+                    3 -> org.example.project.features.gacha.GachaScreenView()
+                    4 -> org.example.project.features.record.RecordScreenView()
                 }
             }
         }

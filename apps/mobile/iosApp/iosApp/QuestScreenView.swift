@@ -146,7 +146,9 @@ struct QuestScreenView: View {
                 DungeonDetailOverlay(dungeon: dungeon, isSelected: dungeon.id == selectedId, onDismiss: {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showDetail = false }
                 }, onSelect: {
-                    homeViewModel.onIntent(intent: HomeIntentSelectDungeon(id: dungeon.id, name: dungeon.name, imageUrl: nil))
+                    let img = String(dungeon.imageUrl).trimmingCharacters(in: .whitespacesAndNewlines)
+                    let url: String? = (dungeon.id == kTrainingDungeonId) ? nil : (img.isEmpty ? nil : img)
+                    homeViewModel.onIntent(intent: HomeIntentSelectDungeon(id: dungeon.id, name: dungeon.name, imageUrl: url))
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showDetail = false }
                 })
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -169,7 +171,9 @@ struct QuestScreenView: View {
         let hasValid = currentId != nil && available.contains(where: { $0.id == currentId })
         if !hasValid {
             let pick = available.first(where: { $0.isFromServer }) ?? available[0]
-            homeViewModel.onIntent(intent: HomeIntentSelectDungeon(id: pick.id, name: pick.name, imageUrl: nil))
+            let img = String(pick.imageUrl).trimmingCharacters(in: .whitespacesAndNewlines)
+            let url: String? = (pick.id == kTrainingDungeonId) ? nil : (img.isEmpty ? nil : img)
+            homeViewModel.onIntent(intent: HomeIntentSelectDungeon(id: pick.id, name: pick.name, imageUrl: url))
             didAutoSelect = true
         } else {
             didAutoSelect = true
@@ -209,20 +213,18 @@ private struct DungeonCardView: View {
                     HStack(spacing: 6) {
                         if isLocked { Text("🔒").font(.system(size: 14)) }
                         Text(dungeon.name).font(.system(size: 16, weight: .bold)).foregroundColor(textW).lineLimit(1)
-                        Text(diffLabel(dungeon.difficulty)).font(.system(size: 10, weight: .bold))
-                            .foregroundColor(diffColor(dungeon.difficulty)).padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(diffColor(dungeon.difficulty).opacity(0.2)).cornerRadius(6)
                         if isSelected {
                             Text("選択中").font(.system(size: 9, weight: .heavy))
                                 .foregroundColor(.white).padding(.horizontal, 6).padding(.vertical, 2)
                                 .background(accentCyan).cornerRadius(6)
                         }
                     }
-                    Text(dungeon.description_).font(.system(size: 11)).foregroundColor(textSub).lineLimit(1)
+                    let desc = String(dungeon.description_).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !desc.isEmpty {
+                        Text(desc).font(.system(size: 11)).foregroundColor(textSub).lineLimit(1)
+                    }
                     HStack(spacing: 6) {
-                        chipText("🕐 \(dungeon.recommendedMinutes)分")
-                        chipText("📍 \(dungeon.totalStages)F")
-                        chipText("\(catEmoji(dungeon.category)) \(dungeon.category.label)")
+                        chipText(dungeon.estimatedLevelChipText())
                     }
                 }
                 Spacer()
@@ -236,7 +238,10 @@ private struct DungeonCardView: View {
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(isSelected ? accentCyan.opacity(0.6) : diffColor(dungeon.difficulty).opacity(0.15), lineWidth: isSelected ? 1.5 : 1)
+                    .stroke(
+                        isSelected ? accentCyan.opacity(0.6) : (dungeon.id == kTrainingDungeonId ? accentCyan.opacity(0.22) : diffColor(dungeon.difficulty).opacity(0.15)),
+                        lineWidth: isSelected ? 1.5 : 1
+                    )
             )
             .opacity(isLocked ? 0.4 : 1)
         }
@@ -281,11 +286,11 @@ private struct DungeonDetailOverlay: View {
                             }
                             VStack(spacing: 8) {
                                 Text(dungeon.name).font(.system(size: 22, weight: .heavy)).foregroundColor(textW)
-                                HStack(spacing: 8) {
-                                    Text(diffLabel(dungeon.difficulty)).font(.system(size: 12, weight: .bold)).foregroundColor(diffColor(dungeon.difficulty))
-                                        .padding(.horizontal, 10).padding(.vertical, 3).background(diffColor(dungeon.difficulty).opacity(0.25)).cornerRadius(8)
-                                    Text("\(catEmoji(dungeon.category)) \(dungeon.category.label)").font(.system(size: 12)).foregroundColor(textSub)
-                                }
+                                Text("推定Lv.\(dungeon.estimatedRecommendedLevel())")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(accentCyan)
+                                    .padding(.horizontal, 10).padding(.vertical, 3)
+                                    .background(accentCyan.opacity(0.18)).cornerRadius(8)
                                 if isSelected {
                                     Text("✅ 現在選択中").font(.system(size: 12, weight: .bold)).foregroundColor(accentCyan)
                                         .padding(.horizontal, 12).padding(.vertical, 4).background(accentCyan.opacity(0.2)).cornerRadius(8)
@@ -297,13 +302,15 @@ private struct DungeonDetailOverlay: View {
                         .clipShape(RoundedRectangle(cornerRadius: 20))
                         .padding(.horizontal, 16)
 
-                        Text(dungeon.description_).font(.system(size: 14)).foregroundColor(textSub).padding(.horizontal, 20).lineSpacing(4)
+                        let ddesc = String(dungeon.description_).trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !ddesc.isEmpty {
+                            Text(ddesc).font(.system(size: 14)).foregroundColor(textSub).padding(.horizontal, 20).lineSpacing(4)
+                        }
 
                         VStack(alignment: .leading, spacing: 10) {
                             Text("ダンジョン情報").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
-                            infoRow("推奨時間", "🕐 \(dungeon.recommendedMinutes)分")
                             infoRow("総ステージ", "📍 \(dungeon.totalStages)F")
-                            infoRow("難易度", String(repeating: "⭐", count: Int(dungeon.difficulty.stars)))
+                            infoRow("推定レベル", "Lv.\(dungeon.estimatedRecommendedLevel())")
                         }
                         .padding(16).background(bgSurface).cornerRadius(14).padding(.horizontal, 16)
 

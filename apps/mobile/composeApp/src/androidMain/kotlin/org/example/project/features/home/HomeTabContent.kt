@@ -307,7 +307,7 @@ private fun StudyDurationStepper(
             .padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("⏱ 冒険時間", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HomeTheme.TextSecondary)
+        Text("冒険時間", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = HomeTheme.TextSecondary)
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(
@@ -372,8 +372,7 @@ private fun StudyDurationStepper(
 
 @Composable
 private fun StartAdventureButton(isTrainingStudySession: Boolean, onClick: () -> Unit) {
-    val label = if (isTrainingStudySession) "訓練を始める" else "冒険に出発する"
-    val emoji = if (isTrainingStudySession) "🏋️" else "⚔️"
+    val label = "勉強を始める"
     Button(
         onClick = onClick,
         shape = RoundedCornerShape(24.dp),
@@ -399,13 +398,12 @@ private fun StartAdventureButton(isTrainingStudySession: Boolean, onClick: () ->
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(emoji, fontSize = 22.sp)
-                Text(label, fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White)
-            }
+            Text(
+                text = label,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White
+            )
         }
     }
 }
