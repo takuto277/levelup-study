@@ -42,11 +42,46 @@ private struct BannerDisplay: Identifiable {
     let id: String
     let name: String
     let type: UIBannerType
-    let featuredRarity: Int
-    let description: String
     /// ピックアップ立ち絵（マスタの image_url）
     let pickupImageUrl: String?
-    let pickupName: String
+    /// マスタ `start_at` / `end_at`（API の文字列をそのまま）
+    let startAt: String
+    let endAt: String
+
+    var periodLine: String { BannerDisplay.formatPeriodLine(startAt: startAt, endAt: endAt) }
+
+    private static func formatOne(_ raw: String) -> String {
+        let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.isEmpty { return "—" }
+        if s.count >= 10 {
+            let head = String(s.prefix(10))
+            let p = head.split(separator: "-")
+            if p.count == 3, let y = Int(p[0]), let m = Int(p[1]), let d = Int(p[2]) {
+                return "\(y)年\(m)月\(d)日"
+            }
+        }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = iso.date(from: s) {
+            return formatDateForLabel(date)
+        }
+        iso.formatOptions = [.withInternetDateTime]
+        if let date = iso.date(from: s) {
+            return formatDateForLabel(date)
+        }
+        return s
+    }
+
+    private static func formatDateForLabel(_ date: Date) -> String {
+        let cal = Calendar.current
+        let c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        guard let y = c.year, let m = c.month, let d = c.day, let h = c.hour, let min = c.minute else { return "—" }
+        return String(format: "%d年%d月%d日 %02d:%02d", y, m, d, h, min)
+    }
+
+    static func formatPeriodLine(startAt: String, endAt: String) -> String {
+        "開催 \(formatOne(startAt)) 〜 \(formatOne(endAt))"
+    }
 }
 
 private enum ItemType: String {
@@ -179,23 +214,18 @@ private class GachaStore: ObservableObject {
         let kbt = b.bannerType
         if kbt == BannerType.character { bt = .character }
         else if kbt == BannerType.weapon { bt = .weapon }
+        else if kbt == BannerType.costume { bt = .mixed }
         else { bt = .mixed }
-        let sub = b.featuredSummary
-        let desc = sub.isEmpty ? "期間限定召喚開催中！" : "ピックアップ: \(sub)"
         let hero = b.primaryFeaturedForHero()
         let urlStr = hero?.imageUrl
         let pickupUrl: String? = (urlStr?.isEmpty == false) ? urlStr : nil
-        let pName = hero?.itemName ?? ""
-        let rarity: Int = {
-            guard let h = hero else { return 5 }
-            return Int(h.rarity)
-        }()
         return BannerDisplay(
-            id: b.id, name: b.name, type: bt,
-            featuredRarity: max(1, min(rarity, 5)),
-            description: desc,
+            id: b.id,
+            name: b.name,
+            type: bt,
             pickupImageUrl: pickupUrl,
-            pickupName: pName
+            startAt: b.startAt,
+            endAt: b.endAt
         )
     }
 

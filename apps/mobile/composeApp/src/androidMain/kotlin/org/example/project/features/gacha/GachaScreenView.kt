@@ -73,6 +73,7 @@ private fun bannerColors(type: BannerType): List<Color> = when (type) {
     BannerType.CHARACTER -> listOf(Color(0xFF4B32C8), Color(0xFF8033E6))
     BannerType.WEAPON -> listOf(Color(0xFFCC3333), Color(0xFFE6661A))
     BannerType.MIXED -> listOf(Color(0xFF9933CC), Color(0xFFE64D80))
+    BannerType.COSTUME -> listOf(Color(0xFF2A6BC4), Color(0xFF6B3AD6))
     else -> listOf(Color.Gray, Color.Black)
 }
 
@@ -80,6 +81,7 @@ private fun bannerIcon(type: BannerType) = when (type) {
     BannerType.CHARACTER -> Icons.Default.Person
     BannerType.WEAPON -> Icons.Default.Shield
     BannerType.MIXED -> Icons.Default.Star
+    BannerType.COSTUME -> Icons.Default.Star
     else -> Icons.Default.QuestionMark
 }
 
@@ -296,89 +298,109 @@ private fun BannerSelectPhase(viewModel: GachaViewModel, uiState: GachaUiState) 
 @Composable
 private fun BannerCard(banner: GachaBanner, onClick: () -> Unit) {
     val hero = banner.primaryFeaturedForHero()
+    val accent = bannerColors(banner.bannerType)
     val shimmer = rememberInfiniteTransition(label = "shimmer")
     val shimmerX by shimmer.animateFloat(
         initialValue = -300f, targetValue = 600f,
         animationSpec = infiniteRepeatable(tween(2500, easing = LinearEasing)), label = "sx"
     )
+    val periodLine = remember(banner.startAt, banner.endAt) {
+        gachaBannerPeriodLabel(banner.startAt, banner.endAt)
+    }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(288.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .height(312.dp)
+            .clip(RoundedCornerShape(24.dp))
             .clickable(onClick = onClick)
-            .background(Brush.linearGradient(bannerColors(banner.bannerType)))
+            .background(Brush.linearGradient(accent))
             .drawBehind {
                 drawRect(
                     Brush.linearGradient(
-                        listOf(Color.Transparent, Color.White.copy(alpha = 0.12f), Color.Transparent),
+                        listOf(Color.Transparent, Color.White.copy(alpha = 0.14f), Color.Transparent),
                         start = Offset(shimmerX, 0f), end = Offset(shimmerX + 200f, size.height)
                     )
                 )
             }
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(210.dp)
-                .align(Alignment.TopCenter)
-        ) {
-            GachaFeaturedHeroPanel(
-                featured = hero,
-                bannerType = banner.bannerType,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
-        Icon(
-            bannerIcon(banner.bannerType), null,
-            modifier = Modifier.size(72.dp).align(Alignment.TopEnd).offset(x = 12.dp, y = 8.dp),
-            tint = Color.White.copy(alpha = 0.12f)
+        GachaFeaturedHeroPanel(
+            featured = hero,
+            bannerType = banner.bannerType,
+            modifier = Modifier.fillMaxSize()
         )
 
-        Column(
-            modifier = Modifier.align(Alignment.BottomStart).padding(20.dp)
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                BadgeChip("PICK UP", Color.White.copy(alpha = 0.25f))
-                BadgeChip(
-                    when (banner.bannerType) {
-                        BannerType.CHARACTER -> "キャラ"
-                        BannerType.WEAPON -> "武器"
-                        BannerType.MIXED -> "ミックス"
-                        else -> "不明"
-                    },
-                    Color.White.copy(alpha = 0.15f)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Transparent,
+                            0.45f to Color.Transparent,
+                            1f to Color.Black.copy(alpha = 0.82f)
+                        )
+                    )
                 )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(banner.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Spacer(modifier = Modifier.height(4.dp))
-            val sub = hero?.itemName?.takeIf { it.isNotBlank() }
-                ?: banner.featuredSummary.takeIf { it.isNotBlank() }
-                ?: "期間限定召喚開催中！"
-            Text(sub, fontSize = 12.sp, color = Color.White.copy(alpha = 0.88f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(14.dp)
+                .size(36.dp)
+                .background(Color.White.copy(alpha = 0.08f), CircleShape)
+                .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("✦", fontSize = 16.sp, color = Color.White.copy(alpha = 0.55f))
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(18.dp)
+        ) {
+            Text(
+                banner.name,
+                fontSize = 23.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
             Spacer(modifier = Modifier.height(6.dp))
-            Row {
-                val stars = (hero?.rarity ?: 5).coerceIn(1, 5)
-                repeat(stars) {
-                    Text("★", fontSize = 14.sp, color = GoldStar)
-                }
+            Text(
+                periodLine,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.78f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    "タップして召喚へ",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.45f),
+                    letterSpacing = 0.6.sp
+                )
+                Icon(
+                    Icons.Default.KeyboardArrowRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = Color.White.copy(alpha = 0.4f)
+                )
             }
         }
     }
-}
-
-@Composable
-private fun BadgeChip(text: String, bg: Color) {
-    Text(
-        text,
-        fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Color.White,
-        modifier = Modifier
-            .background(bg, RoundedCornerShape(50))
-            .padding(horizontal = 8.dp, vertical = 3.dp)
-    )
 }
 
 // ══════════════════════════════════════════════════════════════
