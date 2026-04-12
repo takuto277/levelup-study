@@ -390,76 +390,38 @@ private fun ConfirmPhase(viewModel: GachaViewModel, uiState: GachaUiState) {
     val banner = uiState.selectedBanner ?: return
     val hero = banner.primaryFeaturedForHero()
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        bottomBar = {
-            Surface(color = Color.Black.copy(alpha = 0.55f), shadowElevation = 16.dp) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(bottom = GachaMainTabBottomReserve)
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("所持結晶", fontSize = 12.sp, color = Color.White.copy(alpha = 0.55f))
-                        StoneCountBadge(uiState.currentStones)
-                    }
-                    GlowPullButton(
-                        "単発召喚", GachaUiState.SINGLE_PULL_COST, uiState.canPullSingle, bannerColors(banner.bannerType)
-                    ) { viewModel.onIntent(GachaIntent.PullSingle(banner.id)) }
-                    GlowPullButton(
-                        "10連召喚", GachaUiState.MULTI_PULL_COST, uiState.canPullMulti, bannerColors(banner.bannerType), isPrimary = true
-                    ) { viewModel.onIntent(GachaIntent.PullMulti(banner.id)) }
-                }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { viewModel.onIntent(GachaIntent.BackToBannerSelect) }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "戻る", tint = Color.White.copy(alpha = 0.7f))
             }
+            Text("召喚確認", fontSize = 14.sp, color = Color.White.copy(alpha = 0.7f))
+            Spacer(modifier = Modifier.weight(1f))
+            StoneCountBadge(uiState.currentStones)
         }
-    ) { innerPadding ->
+
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+                .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 20.dp)
+                .navigationBarsPadding()
+                .padding(bottom = GachaMainTabBottomReserve),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { viewModel.onIntent(GachaIntent.BackToBannerSelect) }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "戻る", tint = Color.White.copy(alpha = 0.7f))
-                }
-                Text("召喚確認", fontSize = 14.sp, color = Color.White.copy(alpha = 0.7f))
-                Spacer(modifier = Modifier.weight(1f))
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(240.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(Brush.linearGradient(bannerColors(banner.bannerType)))
-            ) {
-                GachaFeaturedHeroPanel(
-                    featured = hero,
-                    bannerType = banner.bannerType,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(banner.name, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color.White)
             Spacer(modifier = Modifier.height(4.dp))
             Text("知識の結晶を消費して召喚します", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
-            Spacer(modifier = Modifier.height(16.dp))
 
             if (banner.featured.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(18.dp))
                 Text("ピックアップ", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.85f))
                 Spacer(modifier = Modifier.height(8.dp))
                 banner.featured.forEach { f ->
@@ -472,12 +434,29 @@ private fun ConfirmPhase(viewModel: GachaViewModel, uiState: GachaUiState) {
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
             }
 
-            SummoningOrb(banner.bannerType)
+            Spacer(modifier = Modifier.height(24.dp))
+            SummoningOrb(banner.bannerType, featured = hero)
             Spacer(modifier = Modifier.height(20.dp))
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                GlowPullButton(
+                    "単発召喚", GachaUiState.SINGLE_PULL_COST, uiState.canPullSingle, bannerColors(banner.bannerType),
+                    modifier = Modifier.weight(1f)
+                ) { viewModel.onIntent(GachaIntent.PullSingle(banner.id)) }
+                GlowPullButton(
+                    "10連召喚", GachaUiState.MULTI_PULL_COST, uiState.canPullMulti, bannerColors(banner.bannerType),
+                    isPrimary = true,
+                    modifier = Modifier.weight(1f)
+                ) { viewModel.onIntent(GachaIntent.PullMulti(banner.id)) }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
             RateInfoCard()
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -670,7 +649,10 @@ private fun PullAnimationPhase(highestRarity: Int) {
 // ══════════════════════════════════════════════════════════════
 
 @Composable
-private fun SummoningOrb(type: BannerType) {
+private fun SummoningOrb(
+    type: BannerType,
+    featured: GachaBannerFeatured? = null,
+) {
     val infiniteTransition = rememberInfiniteTransition(label = "orb")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f, targetValue = 360f,
@@ -681,11 +663,53 @@ private fun SummoningOrb(type: BannerType) {
         animationSpec = infiniteRepeatable(tween(2000), RepeatMode.Reverse), label = "pulse"
     )
 
+    val colors = bannerColors(type)
+    val url = featured?.imageUrl?.takeIf { it.isNotBlank() }
+    val ctx = LocalContext.current
+    val localIdleRes = remember(ctx) {
+        ctx.resources.getIdentifier("sprite_player_idle_1", "drawable", ctx.packageName)
+    }
+
     Box(
-        modifier = Modifier.size(200.dp),
+        modifier = Modifier.size(220.dp),
         contentAlignment = Alignment.Center
     ) {
-        val colors = bannerColors(type)
+        // オーブ中央のキャラ（リングより下層）
+        Box(
+            modifier = Modifier
+                .size(108.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.35f)),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                url != null -> {
+                    AsyncImage(
+                        model = ImageRequest.Builder(ctx).data(url).crossfade(320).build(),
+                        contentDescription = featured?.itemName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alignment = Alignment.TopCenter
+                    )
+                }
+                localIdleRes != 0 -> {
+                    Image(
+                        painter = painterResource(localIdleRes),
+                        contentDescription = featured?.itemName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alignment = Alignment.TopCenter
+                    )
+                }
+                else -> {
+                    Icon(
+                        bannerIcon(type), null,
+                        modifier = Modifier.size(44.dp).scale(pulse * 0.9f),
+                        tint = Color.White.copy(alpha = 0.8f)
+                    )
+                }
+            }
+        }
         // 外周リング
         Canvas(modifier = Modifier.size(160.dp).rotate(rotation)) {
             drawCircle(
@@ -704,8 +728,6 @@ private fun SummoningOrb(type: BannerType) {
                 CircleShape
             )
         )
-        // アイコン
-        Icon(bannerIcon(type), null, modifier = Modifier.size(40.dp).scale(pulse * 0.9f), tint = Color.White.copy(alpha = 0.8f))
     }
 }
 
@@ -882,7 +904,9 @@ private fun StoneCountBadge(stones: Int) {
 @Composable
 private fun GlowPullButton(
     label: String, cost: Int, enabled: Boolean, colors: List<Color>,
-    isPrimary: Boolean = false, onClick: () -> Unit
+    isPrimary: Boolean = false,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    onClick: () -> Unit
 ) {
     val height = if (isPrimary) 56.dp else 48.dp
     val shimmer = rememberInfiniteTransition(label = "btn")
@@ -895,8 +919,7 @@ private fun GlowPullButton(
     )
 
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .height(height)
             .clip(RoundedCornerShape(50))
             .background(bg)

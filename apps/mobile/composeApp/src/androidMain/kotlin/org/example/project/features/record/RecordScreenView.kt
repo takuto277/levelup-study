@@ -23,7 +23,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -184,31 +186,6 @@ private fun RecordHeader(uiState: RecordUiState) {
             )
         }
 
-        // 勉強時間サマリー
-        Column(
-            modifier = Modifier
-                .shadow(2.dp, RoundedCornerShape(12.dp))
-                .background(CardWhite, RoundedCornerShape(12.dp))
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.End
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("📅 今日", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(formatMinutes(uiState.todayStudyMinutes), fontSize = 11.sp, fontWeight = FontWeight.Black, color = TextPrimary)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("📆 今週", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(formatMinutes(uiState.weekStudyMinutes), fontSize = 11.sp, fontWeight = FontWeight.Black, color = TextPrimary)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("🗓️ 月間", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(formatMinutes(uiState.monthStudyMinutes), fontSize = 11.sp, fontWeight = FontWeight.Black, color = TextPrimary)
-            }
-        }
-        Spacer(modifier = Modifier.width(6.dp))
         RecordHeaderCharacterBlock(uiState)
     }
 }
@@ -217,32 +194,50 @@ private fun RecordHeader(uiState: RecordUiState) {
 private fun RecordHeaderCharacterBlock(uiState: RecordUiState) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         if (uiState.characterMessage.isNotBlank()) {
-            RecordMiniSpeechBubble(uiState.characterMessage)
+            RecordSpeechBubbleTowardsCharacter(uiState.characterMessage)
         }
         RecordCroppedIdlePortrait(uiState)
     }
 }
 
+/** 右のキャラへ向かうしっぽ付きの吹き出し（漫画のセリフ風） */
 @Composable
-private fun RecordMiniSpeechBubble(text: String) {
-    Box(
-        modifier = Modifier
-            .widthIn(max = 132.dp)
-            .shadow(4.dp, RoundedCornerShape(14.dp))
-            .background(CardWhite, RoundedCornerShape(14.dp))
-            .padding(horizontal = 10.dp, vertical = 8.dp)
-    ) {
-        Text(
-            text = "「$text」",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis
-        )
+private fun RecordSpeechBubbleTowardsCharacter(text: String) {
+    val bubbleColor = CardWhite
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .widthIn(max = 152.dp)
+                .shadow(5.dp, RoundedCornerShape(18.dp))
+                .background(bubbleColor, RoundedCornerShape(18.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+        ) {
+            Text(
+                text = text,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Canvas(
+            modifier = Modifier
+                .width(10.dp)
+                .height(18.dp)
+                .offset(x = (-6).dp)
+        ) {
+            val tail = Path().apply {
+                moveTo(0f, size.height * 0.30f)
+                lineTo(size.width, size.height * 0.52f)
+                lineTo(0f, size.height * 0.74f)
+                close()
+            }
+            drawPath(tail, color = bubbleColor, style = Fill)
+        }
     }
 }
 

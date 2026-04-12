@@ -50,6 +50,18 @@ private func weekdayAxisColor(iso: String) -> Color {
     return weekDayGray
 }
 
+/// 右のキャラクター側へ向く漫画風のしっぽ
+private struct SpeechBubbleTailRight: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: 0, y: rect.height * 0.30))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        p.addLine(to: CGPoint(x: 0, y: rect.height * 0.74))
+        p.closeSubpath()
+        return p
+    }
+}
+
 struct AnalyticsScreenView: View {
     private let viewModel: RecordViewModel
     @State private var uiState: RecordUiState
@@ -78,35 +90,39 @@ struct AnalyticsScreenView: View {
 
     // MARK: - Header
     private var header: some View {
-        HStack(alignment: .center, spacing: 6) {
+        HStack(alignment: .center, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("記 録").font(.system(size: 28, weight: .black)).foregroundColor(textW)
                 Text("あなたの冒険の軌跡").font(.caption).foregroundColor(textSub)
             }
             Spacer(minLength: 4)
-            VStack(alignment: .trailing, spacing: 3) {
-                HStack(spacing: 3) { Text("📅").font(.system(size: 8)); Text("今日").font(.system(size: 8, weight: .bold)).foregroundColor(textSub); Text(fmtMin(Int(uiState.todayStudyMinutes))).font(.system(size: 10, weight: .heavy)).foregroundColor(textW) }
-                HStack(spacing: 3) { Text("📆").font(.system(size: 8)); Text("今週").font(.system(size: 8, weight: .bold)).foregroundColor(textSub); Text(fmtMin(Int(uiState.weekStudyMinutes))).font(.system(size: 10, weight: .heavy)).foregroundColor(textW) }
-                HStack(spacing: 3) { Text("🗓️").font(.system(size: 8)); Text("月間").font(.system(size: 8, weight: .bold)).foregroundColor(textSub); Text(fmtMin(Int(uiState.monthStudyMinutes))).font(.system(size: 10, weight: .heavy)).foregroundColor(textW) }
-            }
-            .padding(8).background(bgCard).cornerRadius(10)
-            HStack(alignment: .center, spacing: 6) {
+            HStack(alignment: .center, spacing: 4) {
                 let msg = String(uiState.characterMessage)
                 if !msg.isEmpty {
-                    Text("「\(msg)」")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(textW)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(3)
-                        .frame(maxWidth: 132, alignment: .leading)
-                        .padding(.horizontal, 10).padding(.vertical, 8)
-                        .background(bgCard).cornerRadius(14)
-                        .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+                    recordSpeechBubbleTowardsCharacter(message: msg)
                 }
                 recordHeaderPortrait
             }
         }
         .padding(.horizontal, 20).padding(.vertical, 12)
+    }
+
+    private func recordSpeechBubbleTowardsCharacter(message: String) -> some View {
+        HStack(spacing: -6) {
+            Text(message)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(textW)
+                .multilineTextAlignment(.leading)
+                .lineLimit(3)
+                .frame(maxWidth: 152, alignment: .leading)
+                .padding(.horizontal, 12).padding(.vertical, 10)
+                .background(bgCard)
+                .cornerRadius(18)
+                .shadow(color: .black.opacity(0.25), radius: 5, y: 2)
+            SpeechBubbleTailRight()
+                .fill(bgCard)
+                .frame(width: 10, height: 18)
+        }
     }
 
     @ViewBuilder
