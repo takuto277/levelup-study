@@ -127,7 +127,12 @@ struct QuestScreenView: View {
                 DungeonDetailOverlay(dungeon: dungeon, isSelected: dungeon.id == selectedId, onDismiss: {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showDetail = false }
                 }, onSelect: {
-                    homeViewModel.onIntent(intent: HomeIntentSelectDungeon(id: dungeon.id, name: dungeon.name))
+                    let img = String(dungeon.imageUrl).trimmingCharacters(in: .whitespacesAndNewlines)
+                    homeViewModel.onIntent(intent: HomeIntentSelectDungeon(
+                        id: dungeon.id,
+                        name: dungeon.name,
+                        imageUrl: img.isEmpty ? nil : img
+                    ))
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showDetail = false }
                 })
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -150,7 +155,8 @@ struct QuestScreenView: View {
         let hasValid = currentId != nil && available.contains(where: { $0.id == currentId })
         if !hasValid {
             let first = available[0]
-            homeViewModel.onIntent(intent: HomeIntentSelectDungeon(id: first.id, name: first.name))
+            let img = String(first.imageUrl).trimmingCharacters(in: .whitespacesAndNewlines)
+            homeViewModel.onIntent(intent: HomeIntentSelectDungeon(id: first.id, name: first.name, imageUrl: img.isEmpty ? nil : img))
             didAutoSelect = true
         } else {
             didAutoSelect = true
@@ -168,7 +174,26 @@ private struct DungeonCardView: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 14) {
+            VStack(spacing: 0) {
+                let banner = String(dungeon.imageUrl).trimmingCharacters(in: .whitespacesAndNewlines)
+                if !banner.isEmpty, let u = URL(string: banner) {
+                    ZStack(alignment: .bottom) {
+                        AsyncImage(url: u) { phase in
+                            switch phase {
+                            case .success(let img): img.resizable().scaledToFill()
+                            case .failure: Color(hex: 0x1A2744)
+                            case .empty: Color(hex: 0x1A2744)
+                            @unknown default: Color(hex: 0x1A2744)
+                            }
+                        }
+                        .frame(height: 92)
+                        .clipped()
+                        LinearGradient(colors: [.clear, bgCard.opacity(0.98)], startPoint: .top, endPoint: .bottom)
+                            .frame(height: 40)
+                    }
+                    .clipShape(RoundedCorner(radius: 16, corners: [.topLeft, .topRight]))
+                }
+                HStack(spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 14)
                         .fill(LinearGradient(colors: diffGrad(dungeon.difficulty).map { $0.opacity(isSelected ? 0.6 : 0.35) }, startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -198,6 +223,7 @@ private struct DungeonCardView: View {
                 Spacer()
                 if !isLocked {
                     Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundColor(textSub)
+                }
                 }
             }
             .padding(14)
@@ -234,22 +260,42 @@ private struct DungeonDetailOverlay: View {
 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 16) {
-                        VStack(spacing: 8) {
-                            Text(dungeon.iconEmoji ?? "🏰").font(.system(size: 56))
-                            Text(dungeon.name).font(.system(size: 22, weight: .heavy)).foregroundColor(textW)
-                            HStack(spacing: 8) {
-                                Text(diffLabel(dungeon.difficulty)).font(.system(size: 12, weight: .bold)).foregroundColor(diffColor(dungeon.difficulty))
-                                    .padding(.horizontal, 10).padding(.vertical, 3).background(diffColor(dungeon.difficulty).opacity(0.2)).cornerRadius(8)
-                                Text("\(catEmoji(dungeon.category)) \(dungeon.category.label)").font(.system(size: 12)).foregroundColor(textSub)
+                        let hero = String(dungeon.imageUrl).trimmingCharacters(in: .whitespacesAndNewlines)
+                        ZStack {
+                            if !hero.isEmpty, let u = URL(string: hero) {
+                                AsyncImage(url: u) { phase in
+                                    switch phase {
+                                    case .success(let img): img.resizable().scaledToFill()
+                                    case .failure: LinearGradient(colors: diffGrad(dungeon.difficulty).map { $0.opacity(0.35) }, startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    case .empty: Color(hex: 0x1A2744)
+                                    @unknown default: Color(hex: 0x1A2744)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity).frame(height: 176)
+                                .clipped()
+                                Color.black.opacity(0.45)
+                            } else {
+                                LinearGradient(colors: diffGrad(dungeon.difficulty).map { $0.opacity(0.35) }, startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    .frame(maxWidth: .infinity).frame(height: 176)
                             }
-                            if isSelected {
-                                Text("✅ 現在選択中").font(.system(size: 12, weight: .bold)).foregroundColor(accentCyan)
-                                    .padding(.horizontal, 12).padding(.vertical, 4).background(accentCyan.opacity(0.15)).cornerRadius(8)
+                            VStack(spacing: 8) {
+                                Text(dungeon.iconEmoji ?? "🏰").font(.system(size: 48))
+                                Text(dungeon.name).font(.system(size: 22, weight: .heavy)).foregroundColor(textW)
+                                HStack(spacing: 8) {
+                                    Text(diffLabel(dungeon.difficulty)).font(.system(size: 12, weight: .bold)).foregroundColor(diffColor(dungeon.difficulty))
+                                        .padding(.horizontal, 10).padding(.vertical, 3).background(diffColor(dungeon.difficulty).opacity(0.25)).cornerRadius(8)
+                                    Text("\(catEmoji(dungeon.category)) \(dungeon.category.label)").font(.system(size: 12)).foregroundColor(textSub)
+                                }
+                                if isSelected {
+                                    Text("✅ 現在選択中").font(.system(size: 12, weight: .bold)).foregroundColor(accentCyan)
+                                        .padding(.horizontal, 12).padding(.vertical, 4).background(accentCyan.opacity(0.2)).cornerRadius(8)
+                                }
                             }
+                            .padding(.vertical, 16)
                         }
-                        .frame(maxWidth: .infinity).padding(.vertical, 20)
-                        .background(LinearGradient(colors: diffGrad(dungeon.difficulty).map { $0.opacity(0.15) }, startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .cornerRadius(20).padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                        .padding(.horizontal, 16)
 
                         Text(dungeon.description_).font(.system(size: 14)).foregroundColor(textSub).padding(.horizontal, 20).lineSpacing(4)
 

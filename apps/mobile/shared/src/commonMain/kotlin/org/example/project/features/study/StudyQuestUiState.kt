@@ -49,6 +49,8 @@ data class StudyQuestUiState(
     /** 勉強完了APIに渡す所持キャラID（パーティ先頭・メイン） */
     val partyLeadUserCharacterId: String = "",
     val dungeonName: String? = null,
+    /** マスタのダンジョン背景画像 URL（あればバンドル背景より優先） */
+    val dungeonImageUrl: String? = null,
     // 階層システム
     val currentFloor: Int = 1,
     val totalFloors: Int = 10,

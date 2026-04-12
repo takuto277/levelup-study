@@ -172,11 +172,13 @@ fun PlayerSprite(
 fun DungeonBackground(
     dungeonName: String?,
     modifier: Modifier = Modifier,
-    alpha: Float = 0.75f
+    alpha: Float = 0.75f,
+    isTrainingGround: Boolean = false
 ) {
     val context = LocalContext.current
-    val bgType = remember(dungeonName) {
+    val bgType = remember(dungeonName, isTrainingGround) {
         when {
+            isTrainingGround -> "training"
             dungeonName == null -> "default"
             dungeonName.contains("森") || dungeonName.contains("forest", true) -> "forest"
             dungeonName.contains("洞窟") || dungeonName.contains("水晶") || dungeonName.contains("cave", true) -> "cave"
@@ -186,7 +188,8 @@ fun DungeonBackground(
     }
 
     val resId = remember(bgType) {
-        drawableId(context, "bg_dungeon_$bgType")
+        val id = drawableId(context, "bg_dungeon_$bgType")
+        if (id != 0) id else drawableId(context, "bg_dungeon_default")
     }
 
     if (resId != 0) {
@@ -213,13 +216,23 @@ fun hasPartyPlayerSprite(context: android.content.Context): Boolean =
         drawableId(context, "sprite_player_prep_1") != 0 ||
         drawableId(context, "sprite_player_walk_1") != 0
 
-fun hasBackgroundResource(context: android.content.Context, dungeonName: String?): Boolean {
+fun hasBackgroundResource(
+    context: android.content.Context,
+    dungeonName: String?,
+    isTrainingGround: Boolean = false
+): Boolean {
     val bgType = when {
+        isTrainingGround -> "training"
         dungeonName == null -> "default"
         dungeonName.contains("森") || dungeonName.contains("forest", true) -> "forest"
         dungeonName.contains("洞窟") || dungeonName.contains("水晶") || dungeonName.contains("cave", true) -> "cave"
         dungeonName.contains("塔") || dungeonName.contains("炎") || dungeonName.contains("tower", true) -> "tower"
         else -> "default"
     }
-    return drawableId(context, "bg_dungeon_$bgType") != 0
+    val id = drawableId(context, "bg_dungeon_$bgType")
+    return if (id != 0) true else drawableId(context, "bg_dungeon_default") != 0
 }
+
+/** 訓練場の樽スプライト（`prop_training_barrel.png`）。無ければ 0。 */
+fun trainingBarrelDrawableId(context: android.content.Context): Int =
+    drawableId(context, "prop_training_barrel")

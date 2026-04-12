@@ -109,6 +109,7 @@ struct HomeScreenView: View {
                 initialStudyMinutes: studyMinutes,
                 genreId: selectedGenreSlug,
                 dungeonName: homeState?.selectedDungeonName,
+                dungeonImageUrl: homeState?.selectedDungeonImageUrl,
                 isTrainingGround: homeState?.isOfflineTraining == true
             )
         }

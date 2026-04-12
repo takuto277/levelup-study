@@ -251,8 +251,7 @@ private fun RecordCroppedIdlePortrait(uiState: RecordUiState) {
         modifier = Modifier
             .width(48.dp)
             .height(54.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(BgSurface),
+            .clip(RoundedCornerShape(14.dp)),
         contentAlignment = Alignment.TopCenter
     ) {
         when {

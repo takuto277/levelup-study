@@ -19,10 +19,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import org.example.project.domain.model.DungeonDifficulty
 
 // ── カラーパレット（青テーマ）──────────────────────────
@@ -71,7 +75,11 @@ fun QuestScreenView() {
             if (!hasValid) {
                 val first = available.first()
                 homeVm.onIntent(
-                    org.example.project.features.home.HomeIntent.SelectDungeon(id = first.id, name = first.name)
+                    org.example.project.features.home.HomeIntent.SelectDungeon(
+                        id = first.id,
+                        name = first.name,
+                        imageUrl = first.imageUrl.takeIf { it.isNotBlank() }
+                    )
                 )
             }
         }
@@ -122,7 +130,9 @@ fun QuestScreenView() {
                 onSelect = {
                     homeVm.onIntent(
                         org.example.project.features.home.HomeIntent.SelectDungeon(
-                            id = dungeon.id, name = dungeon.name
+                            id = dungeon.id,
+                            name = dungeon.name,
+                            imageUrl = dungeon.imageUrl.takeIf { it.isNotBlank() }
                         )
                     )
                     viewModel.onIntent(QuestIntent.DismissDetail)
@@ -204,6 +214,33 @@ private fun DungeonCard(
         border = androidx.compose.foundation.BorderStroke(if (isSelected) 1.5.dp else 1.dp, borderColor)
     ) {
         Column {
+            if (dungeon.imageUrl.isNotBlank()) {
+                val context = LocalContext.current
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(92.dp)
+                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context).data(dungeon.imageUrl).crossfade(true).build(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .align(Alignment.BottomCenter)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, CardWhite.copy(alpha = 0.98f))
+                                )
+                            )
+                    )
+                }
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -331,27 +368,54 @@ private fun DungeonDetailSheet(
                         .background(Color(0xFFD1D5DB), RoundedCornerShape(2.dp))
                 )
 
-                // ダンジョンヒーロー
+                // ダンジョンヒーロー（DB image_url を背景に）
+                val sheetContext = LocalContext.current
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(160.dp)
-                        .padding(16.dp)
-                        .background(
-                            brush = Brush.linearGradient(
-                                difficultyGradient(dungeon.difficulty)
-                                    .map { it.copy(alpha = 0.15f) }
-                            ),
-                            shape = RoundedCornerShape(20.dp)
-                        ),
-                    contentAlignment = Alignment.Center
+                        .height(176.dp)
+                        .padding(horizontal = 16.dp)
+                        .clip(RoundedCornerShape(20.dp))
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(dungeon.iconEmoji, fontSize = 56.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
+                    if (dungeon.imageUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(sheetContext).data(dungeon.imageUrl).crossfade(true).build(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Black.copy(alpha = 0.2f), Color.Black.copy(alpha = 0.72f))
+                                    )
+                                )
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        difficultyGradient(dungeon.difficulty).map { it.copy(alpha = 0.35f) }
+                                    )
+                                )
+                        )
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(dungeon.iconEmoji, fontSize = 48.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(dungeon.name, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(shape = RoundedCornerShape(8.dp), color = difficultyColor(dungeon.difficulty).copy(alpha = 0.2f)) {
+                            Surface(shape = RoundedCornerShape(8.dp), color = difficultyColor(dungeon.difficulty).copy(alpha = 0.25f)) {
                                 Text(dungeon.difficulty.label, fontSize = 12.sp, fontWeight = FontWeight.Bold,
                                     color = difficultyColor(dungeon.difficulty), modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp))
                             }
@@ -360,7 +424,7 @@ private fun DungeonDetailSheet(
                         }
                         if (isCurrentlySelected) {
                             Spacer(modifier = Modifier.height(6.dp))
-                            Surface(shape = RoundedCornerShape(8.dp), color = AccentCyan.copy(alpha = 0.15f)) {
+                            Surface(shape = RoundedCornerShape(8.dp), color = AccentCyan.copy(alpha = 0.2f)) {
                                 Text("✅ 現在選択中", fontSize = 12.sp, fontWeight = FontWeight.Bold,
                                     color = AccentCyan, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
                             }

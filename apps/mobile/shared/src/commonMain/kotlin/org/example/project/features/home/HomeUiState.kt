@@ -11,6 +11,8 @@ data class HomeUiState(
     val displayName: String = "",
     val selectedDungeonId: String? = null,
     val selectedDungeonName: String? = null,
+    /** 選択中ダンジョンの背景（マスタ image_url） */
+    val selectedDungeonImageUrl: String? = null,
     val genres: List<MasterStudyGenre> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,

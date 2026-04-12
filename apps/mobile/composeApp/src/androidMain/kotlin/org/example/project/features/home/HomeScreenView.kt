@@ -38,6 +38,7 @@ fun HomeScreenView() {
             initialStudyMinutes = studyMinutes.coerceIn(1, 60),
             genreId = selectedGenreSlug,
             dungeonName = homeState.selectedDungeonName,
+            dungeonImageUrl = homeState.selectedDungeonImageUrl,
             isTrainingGround = homeState.isOfflineTraining,
             onDismiss = {
                 showStudySheet = false

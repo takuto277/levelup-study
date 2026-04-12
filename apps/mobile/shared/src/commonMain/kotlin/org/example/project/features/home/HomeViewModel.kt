@@ -34,14 +34,20 @@ class HomeViewModel(
             is HomeIntent.Refresh -> loadHome()
             is HomeIntent.StartStudy -> { }
             is HomeIntent.TapMainCharacter -> { }
-            is HomeIntent.SelectDungeon -> selectDungeon(intent.id, intent.name)
+            is HomeIntent.SelectDungeon -> selectDungeon(intent.id, intent.name, intent.imageUrl)
             is HomeIntent.AddGenre -> addGenre(intent.label, intent.emoji, intent.colorHex)
             is HomeIntent.DeleteGenre -> deleteGenre(intent.genreId)
         }
     }
 
-    private fun selectDungeon(id: String, name: String) {
-        _uiState.update { it.copy(selectedDungeonId = id, selectedDungeonName = name) }
+    private fun selectDungeon(id: String, name: String, imageUrl: String? = null) {
+        _uiState.update {
+            it.copy(
+                selectedDungeonId = id,
+                selectedDungeonName = name,
+                selectedDungeonImageUrl = imageUrl?.takeIf { s -> s.isNotBlank() }
+            )
+        }
         viewModelScope.launch {
             try {
                 userRepository.updateSelectedDungeon(id)
@@ -78,6 +84,7 @@ class HomeViewModel(
                 genres = data.genres,
                 selectedDungeonId = data.user.selectedDungeonId ?: it.selectedDungeonId,
                 selectedDungeonName = data.selectedDungeonName ?: it.selectedDungeonName,
+                selectedDungeonImageUrl = data.selectedDungeonImageUrl ?: it.selectedDungeonImageUrl,
                 isLoading = if (clearLoading) false else it.isLoading,
                 isOfflineTraining = offlineTraining
             )

@@ -36,6 +36,7 @@ class QuestUseCase(
                     recommendedMinutes = md.recommendedMinutes ?: 25,
                     rewards = DungeonReward(gold = 100, exp = 50, gachaStones = 5),
                     iconEmoji = md.iconEmoji ?: "🏰",
+                    imageUrl = md.imageUrl,
                     isFromServer = true,
                     isLocked = md.unlockCondition != null && (progress == null)
                 )
@@ -53,7 +54,8 @@ class QuestUseCase(
                 difficulty = DungeonDifficulty.BEGINNER, category = DungeonCategory.GENERAL,
                 totalStages = 10, clearedStages = 0, recommendedMinutes = 25,
                 rewards = DungeonReward(gold = 100, exp = 50, gachaStones = 5),
-                iconEmoji = "🌲"
+                iconEmoji = "🌲",
+                imageUrl = "https://picsum.photos/seed/levelup-dungeon-forest/1200/675"
             )
         )
     }

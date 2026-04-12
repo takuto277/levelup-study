@@ -67,6 +67,13 @@
 | `bg_dungeon_forest.png` | 森系（名前に「森」「forest」を含む） |
 | `bg_dungeon_cave.png` | 洞窟系（名前に「洞窟」「水晶」「cave」を含む） |
 | `bg_dungeon_tower.png` | 塔系（名前に「塔」「炎」「tower」を含む） |
+| `bg_dungeon_training.png` | オフライン訓練場（`isTrainingGround` 時） |
+
+### 小物（訓練場）
+
+| ファイル名 | 用途 |
+|-----------|------|
+| `prop_training_barrel.png` | 訓練シーンの打撃ターゲット樽（透過 PNG 推奨） |
 
 ## 画像の配置先
 
@@ -82,7 +89,9 @@ apps/mobile/composeApp/src/androidMain/res/drawable/
   ├── bg_dungeon_default.png
   ├── bg_dungeon_forest.png
   ├── bg_dungeon_cave.png
-  └── bg_dungeon_tower.png
+  ├── bg_dungeon_tower.png
+  ├── bg_dungeon_training.png
+  └── prop_training_barrel.png
 ```
 
 ### iOS

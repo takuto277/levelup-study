@@ -85,6 +85,14 @@ private func dungeonBgName(_ dungeonName: String?) -> String {
     return "bg_dungeon_default"
 }
 
+private func remoteDungeonBgUrl(uiState: StudyQuestUiState) -> URL? {
+    guard !uiState.isTrainingGround else { return nil }
+    guard let raw = uiState.dungeonImageUrl else { return nil }
+    let s = String(describing: raw).trimmingCharacters(in: .whitespacesAndNewlines)
+    if s.isEmpty { return nil }
+    return URL(string: s)
+}
+
 struct AnimatedSpriteView: View {
     let frames: [String]
     let interval: TimeInterval
@@ -119,9 +127,10 @@ struct AnimatedSpriteView: View {
 
 struct DungeonBackgroundView: View {
     let dungeonName: String?
+    var isTrainingGround: Bool = false
 
     var body: some View {
-        let bgName = dungeonBgName(dungeonName)
+        let bgName = isTrainingGround ? "bg_dungeon_training" : dungeonBgName(dungeonName)
         if UIImage(named: bgName) != nil {
             GeometryReader { geo in
                 Image(bgName)
@@ -191,6 +200,113 @@ private func iosCombatPlayerSprite(phaseTick: Int64, lastDamage: Int32, size: CG
             .frame(width: size, height: size, alignment: .bottom)
     } else {
         Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
+    }
+}
+
+/// 訓練場: 毎ターン mod==0 で攻撃スプライト（lastDamage に依存しない）
+@ViewBuilder
+private func iosTrainingPlayerSprite(phaseTick: Int64, size: CGFloat) -> some View {
+    let m = combatTurnMod(phaseTick)
+    if m == 0 {
+        if UIImage(named: "sprite_player_attack_1") != nil {
+            Image("sprite_player_attack_1")
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: size, height: size, alignment: .bottom)
+        } else if UIImage(named: "sprite_player_idle_1") != nil {
+            Image("sprite_player_idle_1")
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: size, height: size, alignment: .bottom)
+        } else if let prep = playerPrepAssetName() {
+            Image(prep)
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: size, height: size, alignment: .bottom)
+        } else {
+            Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
+        }
+    } else if m == 1 {
+        if UIImage(named: "sprite_player_idle_1") != nil {
+            Image("sprite_player_idle_1")
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: size, height: size, alignment: .bottom)
+        } else if let prep = playerPrepAssetName() {
+            Image(prep)
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: size, height: size, alignment: .bottom)
+        } else {
+            Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
+        }
+    } else if let prep = playerPrepAssetName() {
+        Image(prep)
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
+            .frame(width: size, height: size, alignment: .bottom)
+    } else if UIImage(named: "sprite_player_idle_1") != nil {
+        Image("sprite_player_idle_1")
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
+            .frame(width: size, height: size, alignment: .bottom)
+    } else {
+        Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
+    }
+}
+
+/// 訓練場シーン（ResultBuilder の switch 内でローカル let を避けるため分離）
+private struct TrainingGroundSceneView: View {
+    let phaseTick: Int64
+    let hasPlayerSprites: Bool
+
+    private var strike: Bool {
+        combatTurnMod(phaseTick) == 0
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.12)
+            VStack {
+                Spacer()
+                ZStack(alignment: .bottom) {
+                    if hasPlayerSprites {
+                        iosTrainingPlayerSprite(phaseTick: phaseTick, size: 118)
+                            .offset(x: strike ? 6 : 0)
+                            .animation(.easeOut(duration: 0.08), value: strike)
+                    } else {
+                        Text("🧙‍♂️")
+                            .font(.system(size: 56))
+                            .offset(x: strike ? 6 : 0)
+                            .animation(.easeOut(duration: 0.08), value: strike)
+                    }
+                    Group {
+                        if UIImage(named: "prop_training_barrel") != nil {
+                            Image("prop_training_barrel")
+                                .resizable()
+                                .interpolation(.none)
+                                .scaledToFit()
+                                .frame(width: 80, height: 80)
+                        } else {
+                            Text("🛢")
+                                .font(.system(size: 58))
+                        }
+                    }
+                    .rotationEffect(.degrees(strike ? -18 : 0))
+                    .animation(.spring(response: 0.12, dampingFraction: 0.55), value: strike)
+                    .offset(x: 72, y: 6)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, adventureFloorInset)
+            }
+        }
     }
 }
 
@@ -469,6 +585,7 @@ struct StudyQuestScreenView: View {
     let initialStudyMinutes: Int
     let genreId: String?
     let dungeonName: String?
+    let dungeonImageUrl: String?
     let isTrainingGround: Bool
 
     private final class ViewModelHolder: ObservableObject {
@@ -486,10 +603,11 @@ struct StudyQuestScreenView: View {
     @State private var confrontationApproach: CGFloat = 0
     @State private var didStartQuest = false
 
-    init(initialStudyMinutes: Int, genreId: String? = nil, dungeonName: String? = nil, isTrainingGround: Bool = false) {
+    init(initialStudyMinutes: Int, genreId: String? = nil, dungeonName: String? = nil, dungeonImageUrl: String? = nil, isTrainingGround: Bool = false) {
         self.initialStudyMinutes = initialStudyMinutes
         self.genreId = genreId
         self.dungeonName = dungeonName
+        self.dungeonImageUrl = dungeonImageUrl
         self.isTrainingGround = isTrainingGround
         _uiState = State(initialValue: StudyQuestUiState(
             type: .study,
@@ -520,6 +638,7 @@ struct StudyQuestScreenView: View {
             partyLeadImageUrl: "",
             partyLeadUserCharacterId: "",
             dungeonName: dungeonName,
+            dungeonImageUrl: dungeonImageUrl,
             currentFloor: 1,
             totalFloors: 10,
             floorClearCount: 0,
@@ -542,7 +661,7 @@ struct StudyQuestScreenView: View {
         .onAppear {
             if !didStartQuest {
                 didStartQuest = true
-                holder.viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId, dungeonName: dungeonName, isTrainingGround: isTrainingGround))
+                holder.viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId, dungeonName: dungeonName, isTrainingGround: isTrainingGround, dungeonImageUrl: dungeonImageUrl))
             }
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 pulsePhase = true
@@ -609,7 +728,14 @@ struct StudyQuestScreenView: View {
             : (isOvertime ? 1.0 : 0.0)
         let glowColor: Color = isOvertime ? purpleGlow : (isBreak ? breakGlow : accentBlue)
 
-        let showEnemyHpBar = !isBreak && (phase == .encounter || phase == .attacking)
+        let showEnemyHpBar = !isBreak && (phase == .encounter || phase == .attacking || phase == .training)
+
+        let enemyFloatingDamage: Int32 = {
+            if phase == .training {
+                return combatTurnMod(uiState.adventurePhaseTick) == 0 ? 12 : 0
+            }
+            return uiState.lastDamage
+        }()
 
         let dungeonDisplayName: String? = {
             guard !isBreak else { return nil }
@@ -647,7 +773,18 @@ struct StudyQuestScreenView: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.75)
                         }
-                        if let dn = dungeonDisplayName {
+                        if uiState.isTrainingGround {
+                            QuestTitleCapsule {
+                                HStack(spacing: 4) {
+                                    Text("⚔️")
+                                        .font(.system(size: 11))
+                                    Text("訓練場")
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .foregroundColor(textWhite)
+                                        .lineLimit(1)
+                                }
+                            }
+                        } else if let dn = dungeonDisplayName {
                             QuestTitleCapsule {
                                 HStack(spacing: 4) {
                                     Text("🏰")
@@ -683,7 +820,7 @@ struct StudyQuestScreenView: View {
                             .background(accentBlue.opacity(0.14))
                             .clipShape(Capsule())
                     }
-                    if !isBreak {
+                    if !isBreak && !uiState.isTrainingGround {
                         Text("F\(uiState.currentFloor)/\(uiState.totalFloors)")
                             .font(.system(size: 11, weight: .heavy, design: .rounded))
                             .foregroundColor(textWhite)
@@ -742,7 +879,7 @@ struct StudyQuestScreenView: View {
                                 QuestHpBarStripView(
                                     currentHp: uiState.enemyHp,
                                     maxHp: uiState.enemyMaxHp,
-                                    floatingDamage: uiState.lastDamage,
+                                    floatingDamage: enemyFloatingDamage,
                                     adventurePhaseTick: uiState.adventurePhaseTick,
                                     floatTriggerTurnMod: 0
                                 ) {
@@ -762,7 +899,7 @@ struct StudyQuestScreenView: View {
                                 QuestHpBarStripView(
                                     currentHp: 0,
                                     maxHp: 1,
-                                    floatingDamage: uiState.lastDamage,
+                                    floatingDamage: enemyFloatingDamage,
                                     adventurePhaseTick: uiState.adventurePhaseTick,
                                     floatTriggerTurnMod: 0,
                                     showChrome: false
@@ -789,38 +926,55 @@ struct StudyQuestScreenView: View {
                     )
 
                 if !isBreak {
-                    let bgAssetName = dungeonBgName(uiState.dungeonName)
-                    if UIImage(named: bgAssetName) != nil {
-                        DungeonBackgroundView(dungeonName: uiState.dungeonName)
-                            .clipShape(RoundedRectangle(cornerRadius: 24))
-                    } else {
-                        VStack {
-                            HStack {
-                                ForEach(0..<8, id: \.self) { _ in
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .fill(textMuted.opacity(0.05))
-                                        .frame(width: 40, height: 24)
-                                }
+                    if let u = remoteDungeonBgUrl(uiState: uiState) {
+                        AsyncImage(url: u) { phase in
+                            switch phase {
+                            case .success(let img):
+                                img.resizable().scaledToFill()
+                            case .failure, .empty:
+                                Color(hex: 0x0E1428)
+                            @unknown default:
+                                Color(hex: 0x0E1428)
                             }
-                            .padding(.top, 8)
-                            Spacer()
-                            HStack {
-                                Text("🔥").font(.system(size: 16)).opacity(pulsePhase ? 0.9 : 0.5)
-                                Spacer()
-                                Text("🔥").font(.system(size: 16)).opacity(pulsePhase ? 0.5 : 0.9)
-                            }
-                            .padding(.horizontal, 16)
-                            Rectangle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color(hex: 0x2D1B0E), Color(hex: 0x1A1005)],
-                                        startPoint: .top, endPoint: .bottom
-                                    )
-                                )
-                                .frame(height: 30)
-                                .cornerRadius(0)
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
                         .clipShape(RoundedRectangle(cornerRadius: 24))
+                        .overlay(Color.black.opacity(0.28))
+                    } else {
+                        let bgAssetName = uiState.isTrainingGround ? "bg_dungeon_training" : dungeonBgName(uiState.dungeonName)
+                        if UIImage(named: bgAssetName) != nil {
+                            DungeonBackgroundView(dungeonName: uiState.dungeonName, isTrainingGround: uiState.isTrainingGround)
+                                .clipShape(RoundedRectangle(cornerRadius: 24))
+                        } else {
+                            VStack {
+                                HStack {
+                                    ForEach(0..<8, id: \.self) { _ in
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(textMuted.opacity(0.05))
+                                            .frame(width: 40, height: 24)
+                                    }
+                                }
+                                .padding(.top, 8)
+                                Spacer()
+                                HStack {
+                                    Text("🔥").font(.system(size: 16)).opacity(pulsePhase ? 0.9 : 0.5)
+                                    Spacer()
+                                    Text("🔥").font(.system(size: 16)).opacity(pulsePhase ? 0.5 : 0.9)
+                                }
+                                .padding(.horizontal, 16)
+                                Rectangle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color(hex: 0x2D1B0E), Color(hex: 0x1A1005)],
+                                            startPoint: .top, endPoint: .bottom
+                                        )
+                                    )
+                                    .frame(height: 30)
+                                    .cornerRadius(0)
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 24))
+                        }
                     }
                 }
 
@@ -967,18 +1121,33 @@ struct StudyQuestScreenView: View {
         let hasPlayerSprites = hasPlayerWalkSprites()
         let enemyKey = uiState.enemySpriteKey
         let enemyFrames = enemySpriteFrames(enemyKey)
-        let bgName = dungeonBgName(uiState.dungeonName)
+        let bgName = uiState.isTrainingGround ? "bg_dungeon_training" : dungeonBgName(uiState.dungeonName)
         let hasBg = UIImage(named: bgName) != nil
         return ZStack {
-            if hasBg {
-                DungeonBackgroundView(dungeonName: uiState.dungeonName)
+            if let u = remoteDungeonBgUrl(uiState: uiState) {
+                AsyncImage(url: u) { phase in
+                    switch phase {
+                    case .success(let img):
+                        img.resizable().scaledToFill()
+                    case .failure, .empty:
+                        Color(hex: 0x06060F)
+                    @unknown default:
+                        Color(hex: 0x06060F)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 24))
+                .overlay(Color.black.opacity(0.28))
+            } else if hasBg {
+                DungeonBackgroundView(dungeonName: uiState.dungeonName, isTrainingGround: uiState.isTrainingGround)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 24))
             }
 
             switch phase {
-            case .walking, .training:
+            case .walking:
                 VStack {
                     Spacer()
                     HStack(alignment: .bottom) {
@@ -995,6 +1164,9 @@ struct StudyQuestScreenView: View {
                         Spacer()
                     }
                 }
+
+            case .training:
+                TrainingGroundSceneView(phaseTick: uiState.adventurePhaseTick, hasPlayerSprites: hasPlayerSprites)
 
             case .encounter:
                 BattleConfrontationIOSView(

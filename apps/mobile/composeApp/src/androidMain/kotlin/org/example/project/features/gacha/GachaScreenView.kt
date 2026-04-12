@@ -447,11 +447,13 @@ private fun ConfirmPhase(viewModel: GachaViewModel, uiState: GachaUiState) {
             ) {
                 GlowPullButton(
                     "単発召喚", GachaUiState.SINGLE_PULL_COST, uiState.canPullSingle, bannerColors(banner.bannerType),
+                    compactHorizontal = true,
                     modifier = Modifier.weight(1f)
                 ) { viewModel.onIntent(GachaIntent.PullSingle(banner.id)) }
                 GlowPullButton(
                     "10連召喚", GachaUiState.MULTI_PULL_COST, uiState.canPullMulti, bannerColors(banner.bannerType),
                     isPrimary = true,
+                    compactHorizontal = true,
                     modifier = Modifier.weight(1f)
                 ) { viewModel.onIntent(GachaIntent.PullMulti(banner.id)) }
             }
@@ -905,6 +907,7 @@ private fun StoneCountBadge(stones: Int) {
 private fun GlowPullButton(
     label: String, cost: Int, enabled: Boolean, colors: List<Color>,
     isPrimary: Boolean = false,
+    compactHorizontal: Boolean = false,
     modifier: Modifier = Modifier.fillMaxWidth(),
     onClick: () -> Unit
 ) {
@@ -936,10 +939,9 @@ private fun GlowPullButton(
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val fontSize = if (isPrimary) 17.sp else 15.sp
-            val textColor = if (enabled) Color.White else Color.White.copy(alpha = 0.3f)
-            Text(label, fontSize = fontSize, fontWeight = FontWeight.Bold, color = textColor)
+        val fontSize = if (isPrimary) 17.sp else 15.sp
+        val textColor = if (enabled) Color.White else Color.White.copy(alpha = 0.3f)
+        val costChip: @Composable () -> Unit = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
@@ -950,6 +952,30 @@ private fun GlowPullButton(
                 Icon(Icons.Default.Star, null, tint = textColor, modifier = Modifier.size(14.dp))
                 Text("$cost", fontSize = fontSize, fontWeight = FontWeight.Bold, color = textColor,
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+            }
+        }
+        if (compactHorizontal) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    label, fontSize = fontSize, fontWeight = FontWeight.Bold, color = textColor,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                costChip()
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(label, fontSize = fontSize, fontWeight = FontWeight.Bold, color = textColor)
+                costChip()
             }
         }
     }

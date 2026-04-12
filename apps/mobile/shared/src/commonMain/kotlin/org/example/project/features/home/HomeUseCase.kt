@@ -21,7 +21,8 @@ class HomeUseCase(
         val user: User,
         val mainCharacter: UserCharacter?,
         val genres: List<MasterStudyGenre>,
-        val selectedDungeonName: String?
+        val selectedDungeonName: String?,
+        val selectedDungeonImageUrl: String?
     )
 
     suspend fun loadHomeData(): HomeData {
@@ -43,21 +44,23 @@ class HomeUseCase(
             emptyList()
         }
 
-        val selectedDungeonName: String? = try {
+        val (selectedDungeonName, selectedDungeonImageUrl) = try {
             val dungeonId = user.selectedDungeonId
             if (dungeonId != null) {
                 val dungeons = dungeonRepository.getDungeons()
-                dungeons.find { it.id == dungeonId }?.name
-            } else null
+                val d = dungeons.find { it.id == dungeonId }
+                Pair(d?.name, d?.imageUrl?.takeIf { it.isNotBlank() })
+            } else Pair(null, null)
         } catch (_: Exception) {
-            null
+            Pair(null, null)
         }
 
         return HomeData(
             user = user,
             mainCharacter = mainCharacter,
             genres = genres,
-            selectedDungeonName = selectedDungeonName
+            selectedDungeonName = selectedDungeonName,
+            selectedDungeonImageUrl = selectedDungeonImageUrl
         )
     }
 

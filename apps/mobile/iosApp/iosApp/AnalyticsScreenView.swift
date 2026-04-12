@@ -153,7 +153,6 @@ struct AnalyticsScreenView: View {
                     }
                 }
                 .frame(width: 48, height: 54)
-                .background(bgSurface)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
             } else {
                 recordPortraitSpriteOrEmoji(emoji: emoji)

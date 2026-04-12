@@ -2,6 +2,7 @@ package org.example.project.features.study
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -16,8 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -26,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,8 +43,11 @@ import org.example.project.components.DungeonBackground
 import org.example.project.components.PlayerSprite
 import org.example.project.components.PlayerSpriteMode
 import org.example.project.components.hasBackgroundResource
+import org.example.project.components.trainingBarrelDrawableId
 import org.example.project.components.hasPlayerWalkSprite
 import org.example.project.components.hasSpriteResource
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import org.example.project.di.getStudyQuestViewModel
 
 private val DarkBg = Color(0xFF0F172A)
@@ -65,6 +72,7 @@ fun StudyQuestScreenView(
     initialStudyMinutes: Int,
     genreId: String? = null,
     dungeonName: String? = null,
+    dungeonImageUrl: String? = null,
     isTrainingGround: Boolean = false,
     onDismiss: () -> Unit
 ) {
@@ -73,7 +81,7 @@ fun StudyQuestScreenView(
 
     LaunchedEffect(Unit) {
         viewModel.onIntent(
-            StudyQuestIntent.StartQuest(initialStudyMinutes, genreId, dungeonName, isTrainingGround)
+            StudyQuestIntent.StartQuest(initialStudyMinutes, genreId, dungeonName, isTrainingGround, dungeonImageUrl)
         )
     }
 
@@ -132,7 +140,8 @@ private fun MainQuestView(
     val progress = if (targetSeconds > 0 && !isOvertime) {
         (uiState.elapsedSeconds.toFloat() / targetSeconds).coerceIn(0f, 1f)
     } else if (isOvertime) 1f else 0f
-    val showEnemyHpBar = !isBreak && (phase == AdventurePhase.ENCOUNTER || phase == AdventurePhase.ATTACKING)
+    val showEnemyHpBar =
+        !isBreak && (phase == AdventurePhase.ENCOUNTER || phase == AdventurePhase.ATTACKING || phase == AdventurePhase.TRAINING)
 
     Column(
         modifier = Modifier
@@ -174,8 +183,12 @@ private fun MainQuestView(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         QuestMetaCapsule(text = studyQuestGenreDisplayLabel(uiState.genreId))
-                        uiState.dungeonName?.takeIf { it.isNotEmpty() }?.let { dn ->
-                            QuestMetaCapsule(text = dn, leadingEmoji = "🏰")
+                        if (uiState.isTrainingGround) {
+                            QuestMetaCapsule(text = "訓練場", leadingEmoji = "⚔️")
+                        } else {
+                            uiState.dungeonName?.takeIf { it.isNotEmpty() }?.let { dn ->
+                                QuestMetaCapsule(text = dn, leadingEmoji = "🏰")
+                            }
                         }
                     }
                 }
@@ -207,7 +220,7 @@ private fun MainQuestView(
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         )
                     }
-                    if (!isBreak) {
+                    if (!isBreak && !uiState.isTrainingGround) {
                         Text(
                             "F${uiState.currentFloor}/${uiState.totalFloors}",
                             fontSize = 11.sp,
@@ -287,10 +300,16 @@ private fun MainQuestView(
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(modifier = Modifier.weight(1f)) {
                             if (showEnemyHpBar) {
+                                val enemyFloatDmg =
+                                    if (phase == AdventurePhase.TRAINING) {
+                                        if (combatTurnMod(uiState.adventurePhaseTick) == 0L) 12 else 0
+                                    } else {
+                                        uiState.lastDamage
+                                    }
                                 QuestHpBarStrip(
                                     currentHp = uiState.enemyHp,
                                     maxHp = uiState.enemyMaxHp,
-                                    floatingDamage = uiState.lastDamage,
+                                    floatingDamage = enemyFloatDmg,
                                     adventurePhaseTick = uiState.adventurePhaseTick,
                                     floatTriggerTurnMod = 0L,
                                     modifier = Modifier.fillMaxWidth(),
@@ -344,8 +363,13 @@ private fun MainQuestView(
                 ) {
                     if (!isBreak) {
                         val context = LocalContext.current
-                        val hasBgRes = remember(uiState.dungeonName) { hasBackgroundResource(context, uiState.dungeonName) }
-                        if (!hasBgRes) {
+                        val hasRemoteBg = remember(uiState.dungeonImageUrl) {
+                            !uiState.dungeonImageUrl.isNullOrBlank()
+                        }
+                        val hasBgRes = remember(uiState.dungeonName, uiState.isTrainingGround) {
+                            hasBackgroundResource(context, uiState.dungeonName, uiState.isTrainingGround)
+                        }
+                        if (!hasBgRes && !hasRemoteBg) {
                             Column(modifier = Modifier.matchParentSize()) {
                                 Spacer(modifier = Modifier.weight(1f))
                                 Box(
@@ -368,6 +392,8 @@ private fun MainQuestView(
                             enemyMaxHp = uiState.enemyMaxHp,
                             lastDamage = uiState.lastDamage,
                             dungeonName = uiState.dungeonName,
+                            dungeonImageUrl = uiState.dungeonImageUrl,
+                            isTrainingGround = uiState.isTrainingGround,
                             currentFloor = uiState.currentFloor,
                             totalFloors = uiState.totalFloors,
                             adventurePhaseTick = uiState.adventurePhaseTick,
@@ -699,6 +725,83 @@ private fun combatPlayerMode(phaseTick: Long, lastDamage: Int): PlayerSpriteMode
         else -> PlayerSpriteMode.Idle
     }
 
+/** 訓練場: 毎ターン 0 で攻撃モーション（ダメージ発生の有無に依存しない） */
+private fun trainingPlayerMode(phaseTick: Long): PlayerSpriteMode =
+    when (combatTurnMod(phaseTick)) {
+        0L -> PlayerSpriteMode.Attack
+        1L -> PlayerSpriteMode.Idle
+        2L -> PlayerSpriteMode.Prep
+        else -> PlayerSpriteMode.Idle
+    }
+
+/** 訓練場：中央付近で idle→prep→attack をループ、樽を叩く見た目 */
+@Composable
+private fun TrainingGroundLayer(
+    adventurePhaseTick: Long,
+    hasPlayerSprite: Boolean
+) {
+    val context = LocalContext.current
+    val barrelResId = remember { trainingBarrelDrawableId(context) }
+    val mod = combatTurnMod(adventurePhaseTick)
+    val isStrikeFrame = mod == 0L
+    val barrelRotation by animateFloatAsState(
+        targetValue = if (isStrikeFrame) -18f else 0f,
+        animationSpec = tween(durationMillis = 85, easing = FastOutSlowInEasing),
+        label = "trainingBarrelTilt",
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.12f))
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val bottomPad = AdventureFloorInsetDp
+            if (hasPlayerSprite) {
+                PlayerSprite(
+                    mode = trainingPlayerMode(adventurePhaseTick),
+                    size = ConfrontPlayerSize,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset(x = (-48).dp + if (isStrikeFrame) 8.dp else 0.dp)
+                        .padding(bottom = bottomPad)
+                )
+            } else {
+                Text(
+                    "🧙‍♂️",
+                    fontSize = 56.sp,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset(x = (-48).dp)
+                        .padding(bottom = bottomPad)
+                )
+            }
+            if (barrelResId != 0) {
+                Image(
+                    painter = painterResource(barrelResId),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset(x = 58.dp, y = 6.dp)
+                        .size(80.dp)
+                        .rotate(barrelRotation)
+                        .padding(bottom = bottomPad)
+                )
+            } else {
+                Text(
+                    text = "🛢",
+                    fontSize = 64.sp,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset(x = 58.dp, y = 6.dp)
+                        .rotate(barrelRotation)
+                        .padding(bottom = bottomPad)
+                )
+            }
+        }
+    }
+}
+
 /** 遭遇〜戦闘：ステージ内テキストなし。床ラインのみ（敵 HP は MainQuestView）。 */
 @Composable
 private fun BattleConfrontationLayer(
@@ -810,6 +913,8 @@ private fun AdventureScene(
     enemyMaxHp: Int,
     lastDamage: Int,
     dungeonName: String?,
+    dungeonImageUrl: String?,
+    isTrainingGround: Boolean,
     currentFloor: Int,
     totalFloors: Int,
     adventurePhaseTick: Long,
@@ -820,7 +925,12 @@ private fun AdventureScene(
     val context = LocalContext.current
     val hasPlayerSprite = remember { hasPlayerWalkSprite(context) }
     val hasEnemySprite = remember(enemySpriteKey) { hasSpriteResource(context, "enemy", enemySpriteKey) }
-    val hasBg = remember(dungeonName) { hasBackgroundResource(context, dungeonName) }
+    val hasBg = remember(dungeonName, isTrainingGround) {
+        hasBackgroundResource(context, dungeonName, isTrainingGround)
+    }
+    val hasRemoteDungeonBg = remember(dungeonImageUrl, isTrainingGround) {
+        !isTrainingGround && !dungeonImageUrl.isNullOrBlank()
+    }
 
     val encounterKey = remember(enemySpriteKey, enemyMaxHp, currentFloor) {
         "${enemySpriteKey}_${enemyMaxHp}_$currentFloor"
@@ -861,13 +971,30 @@ private fun AdventureScene(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (hasBg) {
+        if (hasRemoteDungeonBg) {
+            AsyncImage(
+                model = ImageRequest.Builder(context).data(dungeonImageUrl).crossfade(true).build(),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(24.dp)),
+                contentScale = ContentScale.Crop,
+                alpha = 0.92f
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color.Black.copy(alpha = 0.28f))
+            )
+        } else if (hasBg) {
             DungeonBackground(
                 dungeonName = dungeonName,
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(24.dp)),
-                alpha = 0.82f
+                alpha = 0.82f,
+                isTrainingGround = isTrainingGround
             )
         }
 
@@ -895,25 +1022,10 @@ private fun AdventureScene(
             }
 
             AdventurePhase.TRAINING -> {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    if (hasPlayerSprite) {
-                        PlayerSprite(
-                            mode = PlayerSpriteMode.Walking,
-                            size = 118.dp,
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(start = 16.dp, bottom = AdventureFloorInsetDp)
-                        )
-                    } else {
-                        Text(
-                            "🧙‍♂️",
-                            fontSize = 56.sp,
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(start = 16.dp, bottom = AdventureFloorInsetDp)
-                        )
-                    }
-                }
+                TrainingGroundLayer(
+                    adventurePhaseTick = adventurePhaseTick,
+                    hasPlayerSprite = hasPlayerSprite
+                )
             }
 
             AdventurePhase.ENCOUNTER -> {

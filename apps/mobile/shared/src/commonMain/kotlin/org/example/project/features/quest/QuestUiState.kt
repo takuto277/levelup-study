@@ -32,6 +32,8 @@ data class Dungeon(
     val recommendedMinutes: Int,
     val rewards: DungeonReward,
     val iconEmoji: String,
+    /** サーバー `m_dungeons.image_url`（一覧・冒険シーンの背景用） */
+    val imageUrl: String = "",
     val isFromServer: Boolean = false,
     val isLocked: Boolean = false
 ) {

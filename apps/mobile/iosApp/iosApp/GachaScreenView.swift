@@ -485,7 +485,7 @@ private struct ConfirmView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            HStack(alignment: .center) {
                 Button(action: { store.backToBannerSelect() }) {
                     HStack(spacing: 6) {
                         Image(systemName: "chevron.left")
@@ -494,54 +494,16 @@ private struct ConfirmView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white.opacity(0.7))
                 }
-                Spacer()
+                Spacer(minLength: 8)
+                StoneCountBadge(stones: store.currentStones)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
             .padding(.bottom, 8)
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
                     if let banner = store.selectedBanner {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .fill(LinearGradient(colors: banner.type.colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                                .frame(height: 240)
-                            if let s = banner.pickupImageUrl, let u = URL(string: s) {
-                                ZStack {
-                                    AsyncImage(url: u) { phase in
-                                        switch phase {
-                                        case .success(let img):
-                                            img.resizable()
-                                                .scaledToFill()
-                                                .frame(height: 240)
-                                                .frame(maxWidth: .infinity)
-                                                .clipped()
-                                        default:
-                                            Color.clear.frame(height: 240)
-                                        }
-                                    }
-                                    LinearGradient(colors: [.clear, .black.opacity(0.5)], startPoint: .top, endPoint: .bottom)
-                                        .allowsHitTesting(false)
-                                }
-                            } else {
-                                ZStack {
-                                    Image("sprite_player_idle_1")
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(height: 240)
-                                        .frame(maxWidth: .infinity)
-                                        .clipped()
-                                    LinearGradient(colors: [.clear, .black.opacity(0.5)], startPoint: .top, endPoint: .bottom)
-                                        .allowsHitTesting(false)
-                                }
-                            }
-                        }
-                        .frame(height: 240)
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                        .scaleEffect(appeared ? 1 : 0.92)
-                        .opacity(appeared ? 1 : 0)
-
                         VStack(spacing: 4) {
                             Text(banner.name)
                                 .font(.system(size: 26, weight: .black))
@@ -553,45 +515,40 @@ private struct ConfirmView: View {
                         }
                         .opacity(appeared ? 1 : 0)
 
-                        SummoningOrb(bannerType: banner.type)
-                            .frame(height: 200)
-                            .scaleEffect(appeared ? 1 : 0.5)
+                        SummoningOrb(bannerType: banner.type, pickupImageUrl: banner.pickupImageUrl)
+                            .frame(height: 220)
+                            .scaleEffect(appeared ? 1 : 0.92)
                             .opacity(appeared ? 1 : 0)
+
+                        HStack(spacing: 10) {
+                            GlowPullButton(
+                                label: "単発召喚", cost: GachaStore.singleCost,
+                                enabled: store.canPullSingle, colors: banner.type.colors,
+                                compactHorizontal: true
+                            ) {
+                                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                                store.pullSingle()
+                            }
+                            .frame(maxWidth: .infinity)
+
+                            GlowPullButton(
+                                label: "10連召喚", cost: GachaStore.multiCost,
+                                enabled: store.canPullMulti, colors: banner.type.colors,
+                                isPrimary: true,
+                                compactHorizontal: true
+                            ) {
+                                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                                store.pullMulti()
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .opacity(appeared ? 1 : 0)
 
                         RateInfoCard().opacity(appeared ? 1 : 0)
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 200 + gachaMainTabBottomReserve)
-            }
-
-            if let banner = store.selectedBanner {
-                VStack(spacing: 10) {
-                    HStack {
-                        Text("所持結晶").font(.system(size: 12)).foregroundColor(.white.opacity(0.55))
-                        Spacer()
-                        StoneCountBadge(stones: store.currentStones)
-                    }
-                    GlowPullButton(
-                        label: "単発召喚", cost: GachaStore.singleCost,
-                        enabled: store.canPullSingle, colors: banner.type.colors
-                    ) {
-                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                        store.pullSingle()
-                    }
-                    GlowPullButton(
-                        label: "10連召喚", cost: GachaStore.multiCost,
-                        enabled: store.canPullMulti, colors: banner.type.colors,
-                        isPrimary: true
-                    ) {
-                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                        store.pullMulti()
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 12 + gachaMainTabBottomReserve)
-                .background(Color.black.opacity(0.55))
+                .padding(.bottom, 32 + gachaMainTabBottomReserve)
             }
         }
         .onAppear { withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { appeared = true } }
@@ -768,11 +725,38 @@ private struct PullAnimationView: View {
 
 private struct SummoningOrb: View {
     let bannerType: UIBannerType
+    let pickupImageUrl: String?
     @State private var pulse = false
     @State private var rotation: Double = 0
 
     var body: some View {
         ZStack {
+            Group {
+                if let s = pickupImageUrl, let u = URL(string: s) {
+                    AsyncImage(url: u) { phase in
+                        switch phase {
+                        case .success(let img):
+                            img.resizable()
+                                .scaledToFill()
+                                .frame(width: 108, height: 108)
+                                .clipped()
+                        default:
+                            Color.black.opacity(0.35)
+                                .frame(width: 108, height: 108)
+                        }
+                    }
+                } else {
+                    Image("sprite_player_idle_1")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 108, height: 108)
+                        .clipped()
+                }
+            }
+            .frame(width: 108, height: 108)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
+
             Circle()
                 .stroke(
                     AngularGradient(
@@ -793,10 +777,7 @@ private struct SummoningOrb: View {
             )
             .frame(width: 120, height: 120)
             .scaleEffect(pulse ? 1.15 : 0.9)
-            Image(systemName: bannerType.icon)
-                .font(.system(size: 36, weight: .light))
-                .foregroundColor(.white.opacity(0.8))
-                .scaleEffect(pulse ? 1.05 : 0.95)
+            .allowsHitTesting(false)
         }
         .onAppear {
             withAnimation(.linear(duration: 6).repeatForever(autoreverses: false)) { rotation = 360 }
@@ -1017,6 +998,8 @@ private struct StoneCountBadge: View {
 private struct GlowPullButton: View {
     let label: String; let cost: Int; let enabled: Bool; let colors: [Color]
     var isPrimary: Bool = false
+    /// 横並び2ボタン用（ラベル省略・コスト右寄せ）
+    var compactHorizontal: Bool = false
     let action: () -> Void
     @State private var shimmerOffset: CGFloat = -300
 
@@ -1039,17 +1022,29 @@ private struct GlowPullButton: View {
                         )
                         .offset(x: shimmerOffset).mask(Capsule())
                 }
-                HStack(spacing: 8) {
-                    Text(label).font(.system(size: isPrimary ? 17 : 15, weight: .bold))
-                    HStack(spacing: 3) {
-                        Image(systemName: "sparkles").font(.system(size: 12))
-                        Text("\(cost)").font(.system(size: isPrimary ? 17 : 15, weight: .bold, design: .monospaced))
+                Group {
+                    if compactHorizontal {
+                        HStack(spacing: 6) {
+                            Text(label)
+                                .font(.system(size: isPrimary ? 17 : 15, weight: .bold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.72)
+                                .frame(maxWidth: .infinity)
+                            costChip(isPrimary: isPrimary, enabled: enabled)
+                                .fixedSize()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 6)
+                    } else {
+                        HStack(spacing: 8) {
+                            Text(label).font(.system(size: isPrimary ? 17 : 15, weight: .bold))
+                            costChip(isPrimary: isPrimary, enabled: enabled)
+                        }
                     }
-                    .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(Capsule().fill(Color.white.opacity(enabled ? 0.2 : 0.05)))
                 }
                 .foregroundColor(enabled ? Color.white : Color.white.opacity(0.3))
             }
+            .frame(maxWidth: .infinity)
             .frame(height: isPrimary ? 56 : 48)
             .shadow(color: enabled ? colors.first!.opacity(0.4) : .clear, radius: 12, y: 4)
         }
@@ -1060,6 +1055,16 @@ private struct GlowPullButton: View {
                 withAnimation(.linear(duration: 2.0).repeatForever(autoreverses: false)) { shimmerOffset = 300 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func costChip(isPrimary: Bool, enabled: Bool) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: "sparkles").font(.system(size: 12))
+            Text("\(cost)").font(.system(size: isPrimary ? 17 : 15, weight: .bold, design: .monospaced))
+        }
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .background(Capsule().fill(Color.white.opacity(enabled ? 0.2 : 0.05)))
     }
 }
 

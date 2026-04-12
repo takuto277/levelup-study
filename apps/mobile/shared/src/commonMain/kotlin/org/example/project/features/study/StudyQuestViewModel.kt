@@ -195,7 +195,7 @@ class StudyQuestViewModel(
     )
 
     private val trainingGroundMessages = listOf(
-        "木人に向かってフォームを確認している…",
+        "練習樽に向かってフォームを確認している…",
         "呼吸を整えて集中を高めている",
         "基礎の反復。地味だが一番効く。",
         "メモを取りながら弱点を潰している",
@@ -217,7 +217,8 @@ class StudyQuestViewModel(
                 intent.studyMinutes,
                 intent.genreId,
                 intent.dungeonName,
-                intent.isTrainingGround
+                intent.isTrainingGround,
+                intent.dungeonImageUrl
             )
             is StudyQuestIntent.TogglePause -> togglePause()
             is StudyQuestIntent.EndQuest -> endQuest()
@@ -250,7 +251,8 @@ class StudyQuestViewModel(
         studyMinutes: Int,
         genreId: String?,
         dungeonName: String? = null,
-        isTrainingGround: Boolean = false
+        isTrainingGround: Boolean = false,
+        dungeonImageUrl: String? = null
     ) {
         if (_uiState.value.status == StudySessionStatus.RUNNING) return
 
@@ -272,8 +274,8 @@ class StudyQuestViewModel(
                     isTrainingGround = true,
                     adventurePhase = AdventurePhase.TRAINING,
                     adventurePhaseTick = 0L,
-                    enemyName = "木人",
-                    enemyEmoji = "🪵",
+                    enemyName = "練習樽",
+                    enemyEmoji = "🛢",
                     enemySpriteKey = EnemySpriteAssets.drawableKey("treant"),
                     enemyHp = 9999,
                     enemyMaxHp = 9999,
@@ -285,6 +287,7 @@ class StudyQuestViewModel(
                     serverRewards = emptyList(),
                     serverSynced = null,
                     dungeonName = null,
+                    dungeonImageUrl = null,
                     currentFloor = 1,
                     totalFloors = 1,
                     floorClearCount = 0,
@@ -326,6 +329,7 @@ class StudyQuestViewModel(
                     serverRewards = emptyList(),
                     serverSynced = null,
                     dungeonName = dungeonName,
+                    dungeonImageUrl = dungeonImageUrl?.takeIf { it.isNotBlank() },
                     currentFloor = 1,
                     totalFloors = 10,
                     floorClearCount = 0,
@@ -491,6 +495,7 @@ class StudyQuestViewModel(
                 targetBreakMinutes = it.targetBreakMinutes,
                 genreId = it.genreId,
                 dungeonName = it.dungeonName,
+                dungeonImageUrl = it.dungeonImageUrl,
                 partyLeadName = it.partyLeadName,
                 partyLeadImageUrl = it.partyLeadImageUrl,
                 partyLeadUserCharacterId = it.partyLeadUserCharacterId,

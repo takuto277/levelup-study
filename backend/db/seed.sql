@@ -167,12 +167,12 @@ INSERT INTO m_monsters (id, slug, name, emoji, hp, atk, def, image_url, is_activ
 --    UUID prefix: d0000000-0000-0000-0000-0000000000xx
 -- ────────────────────────────────────────────────
 INSERT INTO m_dungeons (id, name, sort_order, unlock_condition, image_url, is_active, created_at) VALUES
-  ('d0000000-0000-0000-0000-000000000001', 'はじまりの森',   1, NULL,                                           'https://placehold.co/400x200/22C55E/FFF?text=Forest',         true, NOW()),
-  ('d0000000-0000-0000-0000-000000000002', '水晶の洞窟',     2, NULL,                                           'https://placehold.co/400x200/3B82F6/FFF?text=Crystal+Cave',   true, NOW()),
-  ('d0000000-0000-0000-0000-000000000003', '炎の塔',         3, NULL,                                           'https://placehold.co/400x200/EF4444/FFF?text=Flame+Tower',    true, NOW()),
-  ('d0000000-0000-0000-0000-000000000004', 'コードの迷宮',   4, NULL,                                           'https://placehold.co/400x200/6366F1/FFF?text=Code+Labyrinth', true, NOW()),
-  ('d0000000-0000-0000-0000-000000000005', '天空の聖域',     5, '{"min_cleared_dungeons": 3}',                   'https://placehold.co/400x200/F59E0B/FFF?text=Sky+Sanctuary',  true, NOW()),
-  ('d0000000-0000-0000-0000-000000000006', '深淵の図書館',   6, '{"min_cleared_dungeons": 5, "min_level": 20}',  'https://placehold.co/400x200/7C3AED/FFF?text=Abyss+Library',  true, NOW());
+  ('d0000000-0000-0000-0000-000000000001', 'はじまりの森',   1, NULL,                                           'https://picsum.photos/seed/levelup-dungeon-forest/1200/675',         true, NOW()),
+  ('d0000000-0000-0000-0000-000000000002', '水晶の洞窟',     2, NULL,                                           'https://picsum.photos/seed/levelup-dungeon-crystal/1200/675',       true, NOW()),
+  ('d0000000-0000-0000-0000-000000000003', '炎の塔',         3, NULL,                                           'https://picsum.photos/seed/levelup-dungeon-flame/1200/675',        true, NOW()),
+  ('d0000000-0000-0000-0000-000000000004', 'コードの迷宮',   4, NULL,                                           'https://picsum.photos/seed/levelup-dungeon-code/1200/675',         true, NOW()),
+  ('d0000000-0000-0000-0000-000000000005', '天空の聖域',     5, '{"min_cleared_dungeons": 3}',                   'https://picsum.photos/seed/levelup-dungeon-sky/1200/675',          true, NOW()),
+  ('d0000000-0000-0000-0000-000000000006', '深淵の図書館',   6, '{"min_cleared_dungeons": 5, "min_level": 20}',  'https://picsum.photos/seed/levelup-dungeon-abyss/1200/675',        true, NOW());
 
 -- ────────────────────────────────────────────────
 -- 4.1 ダンジョンステージ
