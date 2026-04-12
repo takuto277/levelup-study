@@ -322,6 +322,8 @@ private struct BattleConfrontationIOSView: View {
     let lastDamage: Int32
     let currentFloor: Int
     let totalFloors: Int32
+    /// 撃破演出で敵をフェードアウト（1.0 = 通常）
+    var enemyVisualOpacity: Double = 1.0
 
     @State private var enemyNudge: CGFloat = 0
 
@@ -391,6 +393,8 @@ private struct BattleConfrontationIOSView: View {
                                     .offset(x: enemyLeft + enemyNudge)
                             }
                         }
+                        .opacity(enemyVisualOpacity)
+                        .animation(.easeOut(duration: 0.42), value: enemyVisualOpacity)
                         .padding(.bottom, adventureFloorInset)
                         .onChange(of: phaseTick) { _, newTick in
                             guard isAttackPhase, combatTurnMod(newTick) == 1 else { return }
@@ -500,12 +504,28 @@ private struct QuestHpBarStripView<Header: View>: View {
     let adventurePhaseTick: Int64
     /// 0: プレイヤー攻撃秒, 1: 敵反撃秒でフロート再生
     let floatTriggerTurnMod: Int64
+    /// 敵撃破直後（tick 条件なしで与ダメージフロートを出す）
+    var enemyDefeatFloatActive: Bool = false
     /// 敵 HP 非表示時はバーを隠しつつ、与ダメージフロートだけ右列に出す
     var showChrome: Bool = true
     @ViewBuilder let header: () -> Header
 
     @State private var floatOffsetY: CGFloat = 0
     @State private var floatOpacity: Double = 0
+
+    private func runFloatingDamageAnimation() {
+        floatOffsetY = 6
+        floatOpacity = 1
+        Task { @MainActor in
+            withAnimation(.easeOut(duration: 0.52)) {
+                floatOffsetY = -20
+            }
+            try? await Task.sleep(nanoseconds: 180_000_000)
+            withAnimation(.easeIn(duration: 0.42)) {
+                floatOpacity = 0
+            }
+        }
+    }
 
     private var hpFillRatio: CGFloat {
         maxHp > 0 ? CGFloat(currentHp) / CGFloat(maxHp) : 0
@@ -556,18 +576,12 @@ private struct QuestHpBarStripView<Header: View>: View {
         .frame(height: questHpBarRowTotalHeight, alignment: .top)
         .fixedSize(horizontal: false, vertical: true)
         .onChange(of: adventurePhaseTick) { _, newTick in
-            guard combatTurnMod(newTick) == floatTriggerTurnMod, floatingDamage > 0 else { return }
-            floatOffsetY = 6
-            floatOpacity = 1
-            Task { @MainActor in
-                withAnimation(.easeOut(duration: 0.52)) {
-                    floatOffsetY = -20
-                }
-                try? await Task.sleep(nanoseconds: 180_000_000)
-                withAnimation(.easeIn(duration: 0.42)) {
-                    floatOpacity = 0
-                }
-            }
+            guard !enemyDefeatFloatActive, combatTurnMod(newTick) == floatTriggerTurnMod, floatingDamage > 0 else { return }
+            runFloatingDamageAnimation()
+        }
+        .onChange(of: enemyDefeatFloatActive) { _, active in
+            guard active, floatingDamage > 0 else { return }
+            runFloatingDamageAnimation()
         }
     }
 }
@@ -622,6 +636,7 @@ struct StudyQuestScreenView: View {
             isTrainingGround: isTrainingGround,
             adventurePhase: .walking,
             adventurePhaseTick: 0,
+            enemyDefeatElapsedSeconds: 0,
             enemyName: "スライム",
             enemyEmoji: "🟢",
             enemySpriteKey: "slime",
@@ -728,7 +743,7 @@ struct StudyQuestScreenView: View {
             : (isOvertime ? 1.0 : 0.0)
         let glowColor: Color = isOvertime ? purpleGlow : (isBreak ? breakGlow : accentBlue)
 
-        let showEnemyHpBar = !isBreak && (phase == .encounter || phase == .attacking || phase == .training)
+        let showEnemyHpBar = !isBreak && (phase == .encounter || phase == .attacking || phase == .enemyDefeated || phase == .training)
 
         let enemyFloatingDamage: Int32 = {
             if phase == .training {
@@ -736,6 +751,7 @@ struct StudyQuestScreenView: View {
             }
             return uiState.lastDamage
         }()
+        let enemyDefeatFloatActive = phase == .enemyDefeated && uiState.enemyDefeatElapsedSeconds == 0 && enemyFloatingDamage > 0
 
         let dungeonDisplayName: String? = {
             guard !isBreak else { return nil }
@@ -881,7 +897,8 @@ struct StudyQuestScreenView: View {
                                     maxHp: uiState.enemyMaxHp,
                                     floatingDamage: enemyFloatingDamage,
                                     adventurePhaseTick: uiState.adventurePhaseTick,
-                                    floatTriggerTurnMod: 0
+                                    floatTriggerTurnMod: 0,
+                                    enemyDefeatFloatActive: enemyDefeatFloatActive
                                 ) {
                                     HStack {
                                         Text("\(uiState.enemyName)")
@@ -1204,7 +1221,23 @@ struct StudyQuestScreenView: View {
                     totalFloors: uiState.totalFloors
                 )
 
-            case .enemyDefeated, .floorClear:
+            case .enemyDefeated:
+                let vanish = uiState.enemyDefeatElapsedSeconds >= 1
+                BattleConfrontationIOSView(
+                    isAttackPhase: true,
+                    approach: 1,
+                    phaseTick: uiState.adventurePhaseTick,
+                    hasPlayerSprites: hasPlayerSprites,
+                    playerWalkFrames: playerWalkFrameNames(),
+                    enemyFirstFrameName: enemyFrames.first,
+                    enemyEmoji: uiState.enemyEmoji,
+                    lastDamage: uiState.lastDamage,
+                    currentFloor: Int(uiState.currentFloor),
+                    totalFloors: uiState.totalFloors,
+                    enemyVisualOpacity: vanish ? 0 : 1
+                )
+
+            case .floorClear:
                 EmptyView()
 
             case .resting:

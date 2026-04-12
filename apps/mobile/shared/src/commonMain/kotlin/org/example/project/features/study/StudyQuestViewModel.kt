@@ -209,6 +209,18 @@ class StudyQuestViewModel(
         const val DEAD_DURATION = 3L
     }
 
+    private data class PendingAfterEnemyDefeat(
+        val nextCurrentFloor: Int,
+        val nextPlayerHp: Int,
+        val nextFloorClearCount: Int,
+        val nextEnemyName: String,
+        val nextEnemyEmoji: String,
+        val nextEnemySpriteKey: String,
+        val nextEnemyHp: Int,
+        val nextEnemyMaxHp: Int,
+    )
+
+    private var pendingAfterEnemyDefeat: PendingAfterEnemyDefeat? = null
     private var phaseElapsed = 0L
 
     fun onIntent(intent: StudyQuestIntent) {
@@ -258,6 +270,7 @@ class StudyQuestViewModel(
 
         sessionStartedAt = Clock.System.now().toString()
         phaseElapsed = 0L
+        pendingAfterEnemyDefeat = null
 
         if (isTrainingGround) {
             currentEnemyTable = defaultEnemyPool
@@ -280,6 +293,7 @@ class StudyQuestViewModel(
                     isTrainingGround = true,
                     adventurePhase = AdventurePhase.TRAINING,
                     adventurePhaseTick = 0L,
+                    enemyDefeatElapsedSeconds = 0,
                     enemyName = "練習樽",
                     enemyEmoji = "🛢",
                     enemySpriteKey = EnemySpriteAssets.drawableKey("treant"),
@@ -322,6 +336,7 @@ class StudyQuestViewModel(
                     isTrainingGround = false,
                     adventurePhase = AdventurePhase.WALKING,
                     adventurePhaseTick = 0L,
+                    enemyDefeatElapsedSeconds = 0,
                     enemyName = firstEnemy.name,
                     enemyEmoji = firstEnemy.emoji,
                     enemySpriteKey = EnemySpriteAssets.drawableKey(firstEnemy.spriteKey),
@@ -369,6 +384,7 @@ class StudyQuestViewModel(
         val snapshot = _uiState.value
         val studyElapsed = snapshot.elapsedSeconds
         timerJob?.cancel()
+        pendingAfterEnemyDefeat = null
 
         val targetBreakSec = snapshot.targetBreakMinutes.toLong() * 60
         val genreId = snapshot.genreId
@@ -387,6 +403,7 @@ class StudyQuestViewModel(
                 displayTime = formatTime(targetBreakSec),
                 adventurePhase = AdventurePhase.RESTING,
                 adventurePhaseTick = 0L,
+                enemyDefeatElapsedSeconds = 0,
                 lastDamage = 0,
                 lastPlayerDamage = 0
             )
@@ -473,6 +490,7 @@ class StudyQuestViewModel(
                 displayTime = formatTime(targetSec),
                 adventurePhase = if (current.isTrainingGround) AdventurePhase.TRAINING else AdventurePhase.WALKING,
                 adventurePhaseTick = 0L,
+                enemyDefeatElapsedSeconds = 0,
                 lastDamage = 0,
                 lastPlayerDamage = 0,
                 defeatedCount = 0,
@@ -527,7 +545,9 @@ class StudyQuestViewModel(
                     }
 
                     val newElapsed = state.elapsedSeconds + 1
-                    phaseElapsed++
+                    if (state.adventurePhase != AdventurePhase.ENEMY_DEFEATED) {
+                        phaseElapsed++
+                    }
 
                     val overTime = state.type == StudySessionType.STUDY && newElapsed > targetSeconds
 
@@ -574,7 +594,8 @@ class StudyQuestViewModel(
                 currentLog = nl,
                 displayTime = formatTime(displaySec),
                 adventurePhase = AdventurePhase.TRAINING,
-                adventurePhaseTick = phaseElapsed
+                adventurePhaseTick = phaseElapsed,
+                enemyDefeatElapsedSeconds = 0
             )
         }
 
@@ -593,6 +614,7 @@ class StudyQuestViewModel(
         var playerHp = state.playerHp
         var currentFloor = state.currentFloor
         var floorClearCount = state.floorClearCount
+        var outDefeatSec = state.enemyDefeatElapsedSeconds
 
         when (phase) {
             AdventurePhase.WALKING -> {
@@ -619,12 +641,14 @@ class StudyQuestViewModel(
                     0L -> {
                         // プレイヤーターン：直前の敵ダメージ表示を消す
                         lastPlayerDamage = 0
+                        val prevHp = enemyHp
                         val baseDmg = (10..25).random()
                         val critRoll = (1..10).random()
                         val dmg = if (critRoll >= 9) baseDmg * 2 else baseDmg
                         val isCrit = critRoll >= 9
                         enemyHp = (enemyHp - dmg).coerceAtLeast(0)
-                        lastDamage = dmg
+                        // フロート表示は実HPに収まる量（過大表示を防ぐ）
+                        lastDamage = minOf(dmg, prevHp).coerceAtLeast(0)
 
                         val dmgMsg = if (isCrit) "💥 クリティカル！${enemyName}に${dmg}ダメージ！"
                         else "⚔️ ${enemyName}に${dmg}ダメージ！"
@@ -632,31 +656,41 @@ class StudyQuestViewModel(
 
                         if (enemyHp <= 0) {
                             defeatedCount++
+                            val newEnemy = currentEnemyTable.random()
+                            val sk = EnemySpriteAssets.drawableKey(newEnemy.spriteKey)
+                            newLogs = (newLogs + "🎉 ${enemyName}を倒した！").takeLast(5)
                             if (currentFloor >= state.totalFloors) {
                                 bossDefeats++
+                                floorClearCount++
+                                newLogs = (newLogs + "🏆 全${state.totalFloors}F制覇！ 1Fから再挑戦！").takeLast(5)
+                                pendingAfterEnemyDefeat = PendingAfterEnemyDefeat(
+                                    nextCurrentFloor = 1,
+                                    nextPlayerHp = state.playerMaxHp,
+                                    nextFloorClearCount = floorClearCount,
+                                    nextEnemyName = newEnemy.name,
+                                    nextEnemyEmoji = newEnemy.emoji,
+                                    nextEnemySpriteKey = sk,
+                                    nextEnemyHp = newEnemy.hp,
+                                    nextEnemyMaxHp = newEnemy.hp,
+                                )
                             } else {
                                 normalDefeats++
+                                val nextFloor = currentFloor + 1
+                                newLogs = (newLogs + "📍 ${nextFloor}Fへ進んだ…").takeLast(5)
+                                pendingAfterEnemyDefeat = PendingAfterEnemyDefeat(
+                                    nextCurrentFloor = nextFloor,
+                                    nextPlayerHp = playerHp,
+                                    nextFloorClearCount = floorClearCount,
+                                    nextEnemyName = newEnemy.name,
+                                    nextEnemyEmoji = newEnemy.emoji,
+                                    nextEnemySpriteKey = sk,
+                                    nextEnemyHp = newEnemy.hp,
+                                    nextEnemyMaxHp = newEnemy.hp,
+                                )
                             }
-                            newLogs = (newLogs + "🎉 ${enemyName}を倒した！").takeLast(5)
-                            lastDamage = 0
                             lastPlayerDamage = 0
-                            if (currentFloor >= state.totalFloors) {
-                                floorClearCount++
-                                currentFloor = 1
-                                playerHp = state.playerMaxHp
-                                newLogs = (newLogs + "🏆 全${state.totalFloors}F制覇！ 1Fから再挑戦！").takeLast(5)
-                            } else {
-                                currentFloor++
-                                newLogs = (newLogs + "📍 ${currentFloor}Fへ進んだ…").takeLast(5)
-                            }
-                            val newEnemy = currentEnemyTable.random()
-                            enemyName = newEnemy.name
-                            enemyEmoji = newEnemy.emoji
-                            enemySpriteKey = EnemySpriteAssets.drawableKey(newEnemy.spriteKey)
-                            enemyHp = newEnemy.hp
-                            enemyMaxHp = newEnemy.hp
-                            phase = AdventurePhase.WALKING
-                            phaseElapsed = 0L
+                            phase = AdventurePhase.ENEMY_DEFEATED
+                            outDefeatSec = 0
                         }
                     }
                     1L -> {
@@ -701,8 +735,38 @@ class StudyQuestViewModel(
 
             AdventurePhase.TRAINING -> { }
 
-            AdventurePhase.ENEMY_DEFEATED,
+            AdventurePhase.ENEMY_DEFEATED -> {
+                val next = state.enemyDefeatElapsedSeconds + 1
+                outDefeatSec = next
+                if (next >= 1) {
+                    lastDamage = 0
+                }
+                if (next >= 2) {
+                    val p = pendingAfterEnemyDefeat
+                    pendingAfterEnemyDefeat = null
+                    if (p != null) {
+                        currentFloor = p.nextCurrentFloor
+                        playerHp = p.nextPlayerHp
+                        floorClearCount = p.nextFloorClearCount
+                        enemyName = p.nextEnemyName
+                        enemyEmoji = p.nextEnemyEmoji
+                        enemySpriteKey = p.nextEnemySpriteKey
+                        enemyHp = p.nextEnemyHp
+                        enemyMaxHp = p.nextEnemyMaxHp
+                    }
+                    phase = AdventurePhase.WALKING
+                    phaseElapsed = 0L
+                    outDefeatSec = 0
+                    lastDamage = 0
+                    lastPlayerDamage = 0
+                }
+            }
+
             AdventurePhase.FLOOR_CLEAR -> { }
+        }
+
+        if (phase != AdventurePhase.ENEMY_DEFEATED) {
+            outDefeatSec = 0
         }
 
         return state.copy(
@@ -712,6 +776,7 @@ class StudyQuestViewModel(
             displayTime = formatTime(displaySec),
             adventurePhase = phase,
             adventurePhaseTick = phaseElapsed,
+            enemyDefeatElapsedSeconds = outDefeatSec,
             enemyName = enemyName,
             enemyEmoji = enemyEmoji,
             enemySpriteKey = enemySpriteKey,

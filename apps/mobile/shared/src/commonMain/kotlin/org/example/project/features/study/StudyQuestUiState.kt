@@ -30,6 +30,8 @@ data class StudyQuestUiState(
     val adventurePhase: AdventurePhase = AdventurePhase.WALKING,
     /** 現在フェーズ内の経過秒（タイマー1秒ごとに加算。戦闘中 idle→prep→attack の周期に使用） */
     val adventurePhaseTick: Long = 0,
+    /** 敵撃破演出中のみ進行（0=HP0表示・与ダメージフロート、1=消滅、2で次の探索へ）。それ以外のフェーズでは常に 0 */
+    val enemyDefeatElapsedSeconds: Int = 0,
     val enemyName: String = "スライム",
     val enemyEmoji: String = "👾",
     val enemySpriteKey: String = "slime",

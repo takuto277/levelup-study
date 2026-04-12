@@ -141,7 +141,10 @@ private fun MainQuestView(
         (uiState.elapsedSeconds.toFloat() / targetSeconds).coerceIn(0f, 1f)
     } else if (isOvertime) 1f else 0f
     val showEnemyHpBar =
-        !isBreak && (phase == AdventurePhase.ENCOUNTER || phase == AdventurePhase.ATTACKING || phase == AdventurePhase.TRAINING)
+        !isBreak && (
+            phase == AdventurePhase.ENCOUNTER || phase == AdventurePhase.ATTACKING ||
+                phase == AdventurePhase.ENEMY_DEFEATED || phase == AdventurePhase.TRAINING
+            )
 
     Column(
         modifier = Modifier
@@ -312,6 +315,8 @@ private fun MainQuestView(
                                     floatingDamage = enemyFloatDmg,
                                     adventurePhaseTick = uiState.adventurePhaseTick,
                                     floatTriggerTurnMod = 0L,
+                                    skipCombatTurnModForFloat = phase == AdventurePhase.ENEMY_DEFEATED &&
+                                        uiState.enemyDefeatElapsedSeconds == 0,
                                     modifier = Modifier.fillMaxWidth(),
                                     header = {
                                         Text(
@@ -394,6 +399,7 @@ private fun MainQuestView(
                             enemyHp = uiState.enemyHp,
                             enemyMaxHp = uiState.enemyMaxHp,
                             lastDamage = uiState.lastDamage,
+                            enemyDefeatElapsedSeconds = uiState.enemyDefeatElapsedSeconds,
                             dungeonName = uiState.dungeonName,
                             dungeonImageUrl = uiState.dungeonImageUrl,
                             isTrainingGround = uiState.isTrainingGround,
@@ -589,17 +595,22 @@ private fun hpRatioColor(ratio: Float): Color = when {
 }
 
 @Composable
-private fun FloatingDamageText(damage: Int, phaseSyncKey: Long, floatTriggerTurnMod: Long) {
+private fun FloatingDamageText(
+    damage: Int,
+    phaseSyncKey: Long,
+    floatTriggerTurnMod: Long,
+    skipCombatTurnModCheck: Boolean = false,
+) {
     var offsetY by remember { mutableFloatStateOf(0f) }
     var alphaV by remember { mutableFloatStateOf(0f) }
     fun lerpF(a: Float, b: Float, t: Float) = a + (b - a) * t
-    LaunchedEffect(damage, phaseSyncKey) {
+    LaunchedEffect(damage, phaseSyncKey, skipCombatTurnModCheck) {
         if (damage <= 0) {
             alphaV = 0f
             offsetY = 0f
             return@LaunchedEffect
         }
-        if (combatTurnMod(phaseSyncKey) != floatTriggerTurnMod) return@LaunchedEffect
+        if (!skipCombatTurnModCheck && combatTurnMod(phaseSyncKey) != floatTriggerTurnMod) return@LaunchedEffect
         offsetY = 6f
         alphaV = 1f
         val steps = 14
@@ -635,6 +646,7 @@ private fun QuestHpBarStrip(
     floatingDamage: Int,
     adventurePhaseTick: Long,
     floatTriggerTurnMod: Long,
+    skipCombatTurnModForFloat: Boolean = false,
     modifier: Modifier = Modifier,
     showChrome: Boolean = true,
     header: @Composable RowScope.() -> Unit,
@@ -688,7 +700,8 @@ private fun QuestHpBarStrip(
             FloatingDamageText(
                 damage = floatingDamage,
                 phaseSyncKey = adventurePhaseTick,
-                floatTriggerTurnMod = floatTriggerTurnMod
+                floatTriggerTurnMod = floatTriggerTurnMod,
+                skipCombatTurnModCheck = skipCombatTurnModForFloat,
             )
         }
     }
@@ -818,7 +831,8 @@ private fun BattleConfrontationLayer(
     enemyEmoji: String,
     lastDamage: Int,
     currentFloor: Int,
-    totalFloors: Int
+    totalFloors: Int,
+    enemyVisualAlpha: Float = 1f,
 ) {
     val isStriking = isAttackPhase && combatTurnMod(adventurePhaseTick) == 0L && lastDamage > 0
     val enemyBobY = if (!isAttackPhase) {
@@ -887,6 +901,7 @@ private fun BattleConfrontationLayer(
                         .align(Alignment.BottomStart)
                         .offset(x = enemyLeft + enemyNudgeX.dp, y = enemyBobY)
                         .padding(bottom = AdventureFloorInsetDp)
+                        .alpha(enemyVisualAlpha)
                 )
             } else {
                 Box(
@@ -894,7 +909,8 @@ private fun BattleConfrontationLayer(
                         .align(Alignment.BottomStart)
                         .offset(x = enemyLeft + enemyNudgeX.dp, y = enemyBobY)
                         .padding(bottom = AdventureFloorInsetDp)
-                        .size(enemySlotSize),
+                        .size(enemySlotSize)
+                        .alpha(enemyVisualAlpha),
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     Text(
@@ -915,6 +931,7 @@ private fun AdventureScene(
     enemyHp: Int,
     enemyMaxHp: Int,
     lastDamage: Int,
+    enemyDefeatElapsedSeconds: Int,
     dungeonName: String?,
     dungeonImageUrl: String?,
     isTrainingGround: Boolean,
@@ -1068,11 +1085,34 @@ private fun AdventureScene(
                     enemyEmoji = enemyEmoji,
                     lastDamage = lastDamage,
                     currentFloor = currentFloor,
-                    totalFloors = totalFloors
+                    totalFloors = totalFloors,
+                    enemyVisualAlpha = 1f,
                 )
             }
 
-            AdventurePhase.ENEMY_DEFEATED,
+            AdventurePhase.ENEMY_DEFEATED -> {
+                val vanishTarget = if (enemyDefeatElapsedSeconds >= 1) 0f else 1f
+                val enemyVanishAlpha by animateFloatAsState(
+                    targetValue = vanishTarget,
+                    animationSpec = tween(420, easing = FastOutSlowInEasing),
+                    label = "enemyDefeatVanish",
+                )
+                BattleConfrontationLayer(
+                    isAttackPhase = true,
+                    approachProgress = 1f,
+                    syncBob = false,
+                    adventurePhaseTick = adventurePhaseTick,
+                    hasPlayerSprite = hasPlayerSprite,
+                    hasEnemySprite = hasEnemySprite,
+                    enemySpriteKey = enemySpriteKey,
+                    enemyEmoji = enemyEmoji,
+                    lastDamage = lastDamage,
+                    currentFloor = currentFloor,
+                    totalFloors = totalFloors,
+                    enemyVisualAlpha = enemyVanishAlpha,
+                )
+            }
+
             AdventurePhase.FLOOR_CLEAR -> {
                 Box(modifier = Modifier.fillMaxSize())
             }
