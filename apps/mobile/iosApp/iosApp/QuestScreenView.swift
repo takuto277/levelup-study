@@ -43,17 +43,6 @@ private func diffGrad(_ d: DungeonDifficulty) -> [Color] {
     }
 }
 
-private func diffLabel(_ d: DungeonDifficulty) -> String {
-    switch d {
-    case .beginner: return "初級"
-    case .intermediate: return "中級"
-    case .advanced: return "上級"
-    case .expert: return "超級"
-    case .legendary: return "伝説"
-    default: return "?"
-    }
-}
-
 private let kTrainingDungeonId = "__app_local_training_ground__"
 
 /// 冒険タブ: 同梱 `bg_dungeon_*` のみ。未一致は訓練場。
@@ -71,18 +60,6 @@ private func questBannerImageName(dungeon: Dungeon_) -> String {
     let full = "bg_dungeon_\(key)"
     if UIImage(named: full) != nil { return full }
     return "bg_dungeon_training"
-}
-
-private func catEmoji(_ c: DungeonCategory) -> String {
-    switch c {
-    case .general: return "📚"
-    case .math: return "🔢"
-    case .science: return "🔬"
-    case .language: return "🌍"
-    case .programming: return "💻"
-    case .creative: return "🎨"
-    default: return "📚"
-    }
 }
 
 // MARK: - メイン画面
