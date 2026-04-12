@@ -34,6 +34,10 @@ data class StudyQuestUiState(
     val lastDamage: Int = 0,
     val lastPlayerDamage: Int = 0,
     val defeatedCount: Int = 0,
+    /** 最終フロア以外で倒した敵（サーバー経験値: +10/体） */
+    val normalDefeatCount: Int = 0,
+    /** 最終フロアで倒したボス（サーバー経験値: +50/体） */
+    val bossDefeatCount: Int = 0,
     val serverRewards: List<String> = emptyList(),
     val serverSynced: Boolean? = null,
     val partyLeadName: String = "冒険者",

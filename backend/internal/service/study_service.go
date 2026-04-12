@@ -25,12 +25,17 @@ import (
 
 // CompleteStudyRequest — クライアントから送られる勉強完了リクエスト
 type CompleteStudyRequest struct {
-	StartedAt         time.Time  `json:"started_at"`
-	EndedAt           time.Time  `json:"ended_at"`
-	DurationSeconds   int        `json:"duration_seconds"`
-	Category          *string    `json:"category"`
-	IsCompleted       bool       `json:"is_completed"`
-	UserCharacterID   *uuid.UUID `json:"user_character_id,omitempty"` // 冒険に出した所持キャラ（省略時はパーティ先頭スロット）
+	StartedAt       time.Time  `json:"started_at"`
+	EndedAt         time.Time  `json:"ended_at"`
+	DurationSeconds int        `json:"duration_seconds"`
+	Category        *string    `json:"category"`
+	IsCompleted     bool       `json:"is_completed"`
+	UserCharacterID *uuid.UUID `json:"user_character_id,omitempty"` // 冒険に出した所持キャラ（省略時はパーティ先頭スロット）
+	// 冒険クエスト用: 通常敵・ボス（最終フロア撃破）討伐数。旧クライアントは 0 のまま。
+	DefeatNormalCount int `json:"defeat_normal_count"`
+	DefeatBossCount   int `json:"defeat_boss_count"`
+	// ダンジョン難易度倍率（経験値のみ）。0 以下は 1 扱い。
+	DifficultyMultiplier float64 `json:"difficulty_multiplier"`
 }
 
 // CompleteStudyResponse — 勉強完了レスポンス
@@ -93,7 +98,13 @@ func (s *StudyService) CompleteStudy(userID uuid.UUID, req CompleteStudyRequest)
 		resp.SessionID = session.ID
 
 		// --- 3. 報酬計算 ---
-		rewards, totalStones, totalGold, totalXP := s.calculateRewards(session.ID, req.DurationSeconds, userID)
+		rewards, totalStones, totalGold, totalXP := s.calculateRewards(
+			session.ID,
+			req.DurationSeconds,
+			req.DefeatNormalCount,
+			req.DefeatBossCount,
+			req.DifficultyMultiplier,
+		)
 		if err := s.studyRepo.CreateRewards(tx, rewards); err != nil {
 			return fmt.Errorf("報酬保存に失敗: %w", err)
 		}
@@ -148,42 +159,41 @@ func (s *StudyService) validateRequest(req CompleteStudyRequest) error {
 }
 
 // calculateRewards — 報酬を計算する
-// docs/database/01_Database_Schema.md §5.1 に基づく
-func (s *StudyService) calculateRewards(sessionID uuid.UUID, durationSec int, userID uuid.UUID) ([]model.StudyReward, int, int, int) {
+//
+// 経験値: 10秒ごと +1、通常敵撃破 +10、ボス撃破 +50（いずれも難易度倍率を乗算。デフォルト等倍 1.0）
+// ダイヤ（stones）: 2分（120秒）ごとに +1
+// ゴールド: 10分ごとに +10（従来どおり）
+func (s *StudyService) calculateRewards(
+	sessionID uuid.UUID,
+	durationSec int,
+	defeatNormal int,
+	defeatBoss int,
+	difficultyMult float64,
+) ([]model.StudyReward, int, int, int) {
 	var rewards []model.StudyReward
 	totalStones := 0
 	totalGold := 0
 	totalXP := 0
 	minutes := durationSec / 60
 
-	// --- ガチャ石: 10分ごとに +5 ---
-	stonesBase := (minutes / 10) * 5
-	if stonesBase > 0 {
-		totalStones += stonesBase
+	if difficultyMult <= 0 {
+		difficultyMult = 1
+	}
+	if defeatNormal < 0 {
+		defeatNormal = 0
+	}
+	if defeatBoss < 0 {
+		defeatBoss = 0
+	}
+
+	// --- ダイヤ（知識の結晶 / stones）: 2分ごとに +1 ---
+	stonesFromTime := durationSec / 120
+	if stonesFromTime > 0 {
+		totalStones += stonesFromTime
 		rewards = append(rewards, model.StudyReward{
 			SessionID:  sessionID,
 			RewardType: "stones",
-			Amount:     stonesBase,
-		})
-	}
-
-	// --- 30分連続ボーナス: +10 ---
-	if minutes >= 30 {
-		totalStones += 10
-		rewards = append(rewards, model.StudyReward{
-			SessionID:  sessionID,
-			RewardType: "stones_bonus_30",
-			Amount:     10,
-		})
-	}
-
-	// --- 60分連続ボーナス: +25 ---
-	if minutes >= 60 {
-		totalStones += 25
-		rewards = append(rewards, model.StudyReward{
-			SessionID:  sessionID,
-			RewardType: "stones_bonus_60",
-			Amount:     25,
+			Amount:     stonesFromTime,
 		})
 	}
 
@@ -198,14 +208,19 @@ func (s *StudyService) calculateRewards(sessionID uuid.UUID, durationSec int, us
 		})
 	}
 
-	// --- 経験値: 1分ごとに +2 ---
-	xpBase := minutes * 2
-	if xpBase > 0 {
-		totalXP += xpBase
+	// --- 経験値: 時間 + 討伐（ボスは最終フロア撃破）× 難易度 ---
+	xpFromTime := durationSec / 10
+	xpFromKills := defeatNormal*10 + defeatBoss*50
+	rawXP := xpFromTime + xpFromKills
+	totalXP = int(float64(rawXP) * difficultyMult)
+	if totalXP < 0 {
+		totalXP = 0
+	}
+	if totalXP > 0 {
 		rewards = append(rewards, model.StudyReward{
 			SessionID:  sessionID,
 			RewardType: "xp",
-			Amount:     xpBase,
+			Amount:     totalXP,
 		})
 	}
 

@@ -21,7 +21,10 @@ class StudyRepositoryImpl(
         endedAt: String,
         durationSeconds: Int,
         isCompleted: Boolean,
-        userCharacterId: String?
+        userCharacterId: String?,
+        defeatNormalCount: Int,
+        defeatBossCount: Int,
+        difficultyMultiplier: Double
     ): StudyCompleteResult {
         val userId = UserSessionStore.requireUserId()
         val request = StudyCompleteRequest(
@@ -30,7 +33,10 @@ class StudyRepositoryImpl(
             endedAt = endedAt,
             durationSeconds = durationSeconds,
             isCompleted = isCompleted,
-            userCharacterId = userCharacterId
+            userCharacterId = userCharacterId,
+            defeatNormalCount = defeatNormalCount,
+            defeatBossCount = defeatBossCount,
+            difficultyMultiplier = difficultyMultiplier
         )
         val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
         userRepository.updateCachedUser(result.updatedUser)

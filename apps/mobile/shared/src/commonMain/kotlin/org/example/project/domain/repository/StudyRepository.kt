@@ -16,7 +16,10 @@ interface StudyRepository {
         endedAt: String,
         durationSeconds: Int,
         isCompleted: Boolean,
-        userCharacterId: String? = null
+        userCharacterId: String? = null,
+        defeatNormalCount: Int = 0,
+        defeatBossCount: Int = 0,
+        difficultyMultiplier: Double = 1.0
     ): StudyCompleteResult
 
     /** セッション履歴を取得 */

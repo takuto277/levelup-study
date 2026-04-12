@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.datetime.Clock
+import org.example.project.domain.model.RewardType
+import org.example.project.domain.model.StudyReward
 import org.example.project.domain.repository.PartyRepository
 
 class StudyQuestViewModel(
@@ -20,6 +22,20 @@ class StudyQuestViewModel(
     private var sessionStartedAt: String? = null
 
     init { loadPartyLead() }
+
+    private fun totalsFromServerRewards(rewards: List<StudyReward>): Pair<Int, Int> {
+        var xp = 0
+        var stones = 0
+        for (r in rewards) {
+            when (r.rewardType) {
+                RewardType.XP -> xp += r.amount
+                RewardType.STONES, RewardType.STONES_BONUS_30, RewardType.STONES_BONUS_60, RewardType.STONES_BONUS_DAILY ->
+                    stones += r.amount
+                else -> { }
+            }
+        }
+        return xp to stones
+    }
 
     private fun loadPartyLead() {
         val repo = partyRepository ?: return
@@ -246,6 +262,10 @@ class StudyQuestViewModel(
                 lastDamage = 0,
                 lastPlayerDamage = 0,
                 defeatedCount = 0,
+                normalDefeatCount = 0,
+                bossDefeatCount = 0,
+                serverRewards = emptyList(),
+                serverSynced = null,
                 dungeonName = dungeonName,
                 currentFloor = 1,
                 totalFloors = 10,
@@ -312,14 +332,20 @@ class StudyQuestViewModel(
                         endedAt = endedAt,
                         durationSeconds = studyElapsed.toInt(),
                         isCompleted = studyElapsed >= targetStudySec,
-                        userCharacterId = snapshot.partyLeadUserCharacterId.takeIf { it.isNotBlank() }
+                        userCharacterId = snapshot.partyLeadUserCharacterId.takeIf { it.isNotBlank() },
+                        defeatNormalCount = snapshot.normalDefeatCount,
+                        defeatBossCount = snapshot.bossDefeatCount,
+                        difficultyMultiplier = 1.0
                     )
+                    val (xpTotal, stoneTotal) = totalsFromServerRewards(result.rewards)
                     _uiState.update {
                         it.copy(
                             serverRewards = result.rewards.map { r ->
                                 "${r.rewardType.name}: +${r.amount}"
                             },
-                            serverSynced = true
+                            serverSynced = true,
+                            earnedXp = xpTotal,
+                            earnedStones = stoneTotal
                         )
                     }
                 } catch (_: Exception) {
@@ -351,6 +377,13 @@ class StudyQuestViewModel(
                 adventurePhaseTick = 0L,
                 lastDamage = 0,
                 lastPlayerDamage = 0,
+                defeatedCount = 0,
+                normalDefeatCount = 0,
+                bossDefeatCount = 0,
+                earnedXp = 0,
+                earnedStones = 0,
+                serverRewards = emptyList(),
+                serverSynced = null,
                 currentFloor = 1,
                 playerHp = it.playerMaxHp
             )
@@ -440,11 +473,11 @@ class StudyQuestViewModel(
         var lastDamage = 0
         var lastPlayerDamage = 0
         var defeatedCount = state.defeatedCount
+        var normalDefeats = state.normalDefeatCount
+        var bossDefeats = state.bossDefeatCount
         var playerHp = state.playerHp
         var currentFloor = state.currentFloor
         var floorClearCount = state.floorClearCount
-        var earnedXp = state.earnedXp
-        var earnedStones = state.earnedStones
 
         when (phase) {
             AdventurePhase.WALKING -> {
@@ -484,17 +517,19 @@ class StudyQuestViewModel(
 
                         if (enemyHp <= 0) {
                             defeatedCount++
-                            val xpGain = enemyMaxHp / 2
-                            earnedXp += xpGain
-                            newLogs = (newLogs + "🎉 ${enemyName}を倒した！ EXP+${xpGain}").takeLast(5)
+                            if (currentFloor >= state.totalFloors) {
+                                bossDefeats++
+                            } else {
+                                normalDefeats++
+                            }
+                            newLogs = (newLogs + "🎉 ${enemyName}を倒した！").takeLast(5)
                             lastDamage = 0
                             lastPlayerDamage = 0
                             if (currentFloor >= state.totalFloors) {
                                 floorClearCount++
-                                earnedStones += 5
                                 currentFloor = 1
                                 playerHp = state.playerMaxHp
-                                newLogs = (newLogs + "🏆 全${state.totalFloors}F制覇！ 💎+5 1Fから再挑戦！").takeLast(5)
+                                newLogs = (newLogs + "🏆 全${state.totalFloors}F制覇！ 1Fから再挑戦！").takeLast(5)
                             } else {
                                 currentFloor++
                                 newLogs = (newLogs + "📍 ${currentFloor}Fへ進んだ…").takeLast(5)
@@ -568,11 +603,13 @@ class StudyQuestViewModel(
             lastDamage = lastDamage,
             lastPlayerDamage = lastPlayerDamage,
             defeatedCount = defeatedCount,
+            normalDefeatCount = normalDefeats,
+            bossDefeatCount = bossDefeats,
             playerHp = playerHp,
             currentFloor = currentFloor,
             floorClearCount = floorClearCount,
-            earnedXp = earnedXp,
-            earnedStones = earnedStones
+            earnedXp = state.earnedXp,
+            earnedStones = state.earnedStones
         )
     }
 

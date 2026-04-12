@@ -53,7 +53,11 @@ data class StudyCompleteRequest(
     @SerialName("duration_seconds") val durationSeconds: Int,
     @SerialName("is_completed") val isCompleted: Boolean,
     /** 冒険に出した所持キャラID（省略時はサーバーでパーティ先頭） */
-    @SerialName("user_character_id") val userCharacterId: String? = null
+    @SerialName("user_character_id") val userCharacterId: String? = null,
+    @SerialName("defeat_normal_count") val defeatNormalCount: Int = 0,
+    @SerialName("defeat_boss_count") val defeatBossCount: Int = 0,
+    /** ダンジョン難易度による経験値倍率。1.0 で等倍。 */
+    @SerialName("difficulty_multiplier") val difficultyMultiplier: Double = 1.0
 )
 
 // ── Mapper ──────────────────────────────────────

@@ -20,7 +20,10 @@ class StudyUseCase(
         endedAt: String,
         durationSeconds: Int,
         isCompleted: Boolean,
-        userCharacterId: String? = null
+        userCharacterId: String? = null,
+        defeatNormalCount: Int = 0,
+        defeatBossCount: Int = 0,
+        difficultyMultiplier: Double = 1.0
     ): StudyCompleteResult {
         return studyRepository.completeSession(
             category = category,
@@ -28,7 +31,10 @@ class StudyUseCase(
             endedAt = endedAt,
             durationSeconds = durationSeconds,
             isCompleted = isCompleted,
-            userCharacterId = userCharacterId
+            userCharacterId = userCharacterId,
+            defeatNormalCount = defeatNormalCount,
+            defeatBossCount = defeatBossCount,
+            difficultyMultiplier = difficultyMultiplier
         )
     }
 

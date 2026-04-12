@@ -503,6 +503,8 @@ struct StudyQuestScreenView: View {
             lastDamage: 0,
             lastPlayerDamage: 0,
             defeatedCount: 0,
+            normalDefeatCount: 0,
+            bossDefeatCount: 0,
             serverRewards: [],
             serverSynced: nil,
             partyLeadName: "冒険者",
