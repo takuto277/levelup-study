@@ -10,7 +10,9 @@ enum class AdventurePhase {
     ENEMY_DEFEATED,
     RESTING,
     PLAYER_DEAD,
-    FLOOR_CLEAR
+    FLOOR_CLEAR,
+    /** オフライン訓練場（敵戦闘なし） */
+    TRAINING
 }
 
 data class StudyQuestUiState(
@@ -23,6 +25,8 @@ data class StudyQuestUiState(
     val currentLog: List<String> = listOf("冒険の準備が整った！"),
     val displayTime: String = "25:00",
     val genreId: String? = null,
+    /** オフライン時の訓練場（討伐カウントは常に 0 でサーバー送信） */
+    val isTrainingGround: Boolean = false,
     val adventurePhase: AdventurePhase = AdventurePhase.WALKING,
     /** 現在フェーズ内の経過秒（タイマー1秒ごとに加算。戦闘中 idle→prep→attack の周期に使用） */
     val adventurePhaseTick: Long = 0,

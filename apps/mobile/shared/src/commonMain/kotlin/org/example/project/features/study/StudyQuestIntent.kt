@@ -9,7 +9,8 @@ sealed interface StudyQuestIntent {
     data class StartQuest(
         val studyMinutes: Int,
         val genreId: String? = null,
-        val dungeonName: String? = null
+        val dungeonName: String? = null,
+        val isTrainingGround: Boolean = false
     ) : StudyQuestIntent
 
     /** 一時停止 / 再開のトグル */

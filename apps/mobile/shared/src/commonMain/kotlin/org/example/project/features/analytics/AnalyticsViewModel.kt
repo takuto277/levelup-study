@@ -7,13 +7,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.example.project.domain.repository.StudyRepository
 
 /**
  * 記録（Analytics）画面の ViewModel
  * 勉強時間の統計・グラフ・カレンダー表示を管理
  */
 class AnalyticsViewModel(
-    private val analyticsUseCase: AnalyticsUseCase
+    private val analyticsUseCase: AnalyticsUseCase,
+    private val studyRepository: StudyRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AnalyticsUiState())
@@ -34,6 +36,9 @@ class AnalyticsViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
+                try {
+                    studyRepository.syncPendingSessions()
+                } catch (_: Exception) { }
                 val data = analyticsUseCase.loadAnalyticsData()
                 val dailyMap = analyticsUseCase.calculateDailyStudy(data.recentSessions)
 

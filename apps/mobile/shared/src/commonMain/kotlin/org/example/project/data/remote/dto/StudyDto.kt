@@ -70,7 +70,8 @@ fun StudySessionResponse.toDomain(): StudySession = StudySession(
     endedAt = endedAt,
     durationSeconds = durationSeconds,
     isCompleted = isCompleted,
-    createdAt = createdAt
+    createdAt = createdAt,
+    isPendingLocal = false
 )
 
 fun StudyRewardResponse.toDomain(): StudyReward = StudyReward(

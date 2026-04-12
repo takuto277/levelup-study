@@ -18,7 +18,4 @@ interface GachaRepository {
 
     /** ガチャ履歴を取得 */
     suspend fun getGachaHistory(bannerId: String? = null, limit: Int = 20): List<GachaResult>
-
-    /** 天井カウント（現在のバナー内累計回数）を取得 */
-    suspend fun getPityCount(bannerId: String): Int
 }

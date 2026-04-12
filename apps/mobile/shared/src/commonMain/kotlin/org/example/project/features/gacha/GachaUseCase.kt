@@ -7,7 +7,7 @@ import org.example.project.domain.repository.UserRepository
 
 /**
  * 召喚画面のユースケース
- * バナー取得・ガチャ実行・天井カウント管理
+ * バナー取得・ガチャ実行
  */
 class GachaUseCase(
     private val gachaRepository: GachaRepository,
@@ -16,11 +16,6 @@ class GachaUseCase(
     /** バナー一覧を取得 */
     suspend fun loadBanners(): List<GachaBanner> {
         return gachaRepository.getActiveBanners()
-    }
-
-    /** 天井カウントを取得 */
-    suspend fun getPityCount(bannerId: String): Int {
-        return gachaRepository.getPityCount(bannerId)
     }
 
     /** 現在の石数を取得 */

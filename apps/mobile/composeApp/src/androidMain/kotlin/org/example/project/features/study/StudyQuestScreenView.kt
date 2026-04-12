@@ -41,6 +41,7 @@ import org.example.project.components.PlayerSpriteMode
 import org.example.project.components.hasBackgroundResource
 import org.example.project.components.hasPlayerWalkSprite
 import org.example.project.components.hasSpriteResource
+import org.example.project.di.getStudyQuestViewModel
 
 private val DarkBg = Color(0xFF0F172A)
 private val DarkCard = Color(0xFF1E293B)
@@ -64,13 +65,16 @@ fun StudyQuestScreenView(
     initialStudyMinutes: Int,
     genreId: String? = null,
     dungeonName: String? = null,
+    isTrainingGround: Boolean = false,
     onDismiss: () -> Unit
 ) {
-    val viewModel = remember { StudyQuestViewModel() }
+    val viewModel = remember { getStudyQuestViewModel() }
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.onIntent(StudyQuestIntent.StartQuest(initialStudyMinutes, genreId, dungeonName))
+        viewModel.onIntent(
+            StudyQuestIntent.StartQuest(initialStudyMinutes, genreId, dungeonName, isTrainingGround)
+        )
     }
 
     val isBreak = uiState.type == StudySessionType.BREAK
@@ -869,6 +873,28 @@ private fun AdventureScene(
 
         when (phase) {
             AdventurePhase.WALKING -> {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (hasPlayerSprite) {
+                        PlayerSprite(
+                            mode = PlayerSpriteMode.Walking,
+                            size = 118.dp,
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(start = 16.dp, bottom = AdventureFloorInsetDp)
+                        )
+                    } else {
+                        Text(
+                            "🧙‍♂️",
+                            fontSize = 56.sp,
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(start = 16.dp, bottom = AdventureFloorInsetDp)
+                        )
+                    }
+                }
+            }
+
+            AdventurePhase.TRAINING -> {
                 Box(modifier = Modifier.fillMaxSize()) {
                     if (hasPlayerSprite) {
                         PlayerSprite(

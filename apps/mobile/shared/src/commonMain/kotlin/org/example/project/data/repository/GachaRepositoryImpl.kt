@@ -31,8 +31,4 @@ class GachaRepositoryImpl(
     override suspend fun getGachaHistory(bannerId: String?, limit: Int): List<GachaResult> {
         return emptyList()
     }
-
-    override suspend fun getPityCount(bannerId: String): Int {
-        return 0
-    }
 }

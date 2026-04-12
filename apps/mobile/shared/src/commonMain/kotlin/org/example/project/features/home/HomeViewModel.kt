@@ -8,11 +8,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.example.project.core.network.NetworkException
+import org.example.project.core.network.isDeviceOnline
+import org.example.project.domain.repository.StudyRepository
 import org.example.project.domain.repository.UserRepository
 
 class HomeViewModel(
     private val homeUseCase: HomeUseCase,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val studyRepository: StudyRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -50,15 +53,21 @@ class HomeViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
+                try {
+                    studyRepository.syncPendingSessions()
+                } catch (_: Exception) { }
                 val data = homeUseCase.loadHomeData()
                 applyHomeData(data, clearLoading = true)
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update {
+                    it.copy(isLoading = false, error = e.message, isOfflineTraining = !isDeviceOnline())
+                }
             }
         }
     }
 
     private fun applyHomeData(data: HomeUseCase.HomeData, clearLoading: Boolean) {
+        val offlineTraining = !isDeviceOnline()
         _uiState.update {
             it.copy(
                 totalStudySeconds = data.user.totalStudySeconds,
@@ -69,7 +78,8 @@ class HomeViewModel(
                 genres = data.genres,
                 selectedDungeonId = data.user.selectedDungeonId ?: it.selectedDungeonId,
                 selectedDungeonName = data.selectedDungeonName ?: it.selectedDungeonName,
-                isLoading = if (clearLoading) false else it.isLoading
+                isLoading = if (clearLoading) false else it.isLoading,
+                isOfflineTraining = offlineTraining
             )
         }
     }

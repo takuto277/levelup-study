@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
@@ -17,9 +18,11 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import org.example.project.domain.model.MasterStudyGenre
 import org.example.project.domain.model.StudySession
+import org.example.project.domain.repository.StudyRepository
 
 class RecordViewModel(
-    private val recordUseCase: RecordUseCase
+    private val recordUseCase: RecordUseCase,
+    private val studyRepository: StudyRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RecordUiState())
@@ -53,6 +56,9 @@ class RecordViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
+                try {
+                    studyRepository.syncPendingSessions()
+                } catch (_: Exception) { }
                 val data = recordUseCase.loadRecordData()
                 allSessions = data.sessions
                 genreMap = buildGenreMap(data.genres)
@@ -76,6 +82,7 @@ class RecordViewModel(
                         totalStudyMinutes = totalMinutes,
                         streakDays = streakDays,
                         todaySessions = todayCount,
+                        mainCharacter = data.mainCharacter,
                         characterEmoji = "\uD83E\uDDD9\u200D\u2642\uFE0F",
                         characterMessage = "",
                         isLoading = false,
@@ -174,7 +181,44 @@ class RecordViewModel(
             .sortedByDescending { it.value }
             .map { GenreStudyTime(genre = it.key, minutes = it.value, ratio = it.value.toFloat() / grandTotal) }
 
-        _uiState.update { it.copy(chartBars = bars, periodTotalMinutes = periodTotal, genreBreakdown = breakdown) }
+        val encouragement = encouragementMessage(state.selectedPeriod, periodTotal)
+
+        _uiState.update {
+            it.copy(
+                chartBars = bars,
+                periodTotalMinutes = periodTotal,
+                genreBreakdown = breakdown,
+                characterMessage = encouragement
+            )
+        }
+    }
+
+    private fun encouragementMessage(period: RecordPeriod, periodMinutes: Int): String {
+        if (periodMinutes < 1) return ""
+        val lines = when (period) {
+            RecordPeriod.TODAY -> listOf(
+                "今日の1分、ちゃんと積み上がってるぞ",
+                "その調子だ。続けていこう",
+                "よくやった。身体にちゃんと入ってる",
+                "集中できたな。次もいける",
+                "小さくても前に進んでる"
+            )
+            RecordPeriod.WEEKLY -> listOf(
+                "今週も頑張ったな",
+                "7日分、見応えあるぞ",
+                "週でここまでやるのは強い",
+                "続けてるのが一番の武器だ",
+                "今週の流れ、いい感じだ"
+            )
+            RecordPeriod.MONTHLY -> listOf(
+                "今月も立派だ",
+                "月で見ると、かなり太いぞ",
+                "このペース、自信を持っていい",
+                "一ヶ月続いた努力はでかい",
+                "今月の積み重ね、えらいぞ"
+            )
+        }
+        return lines[Random.nextInt(lines.size)]
     }
 
     private fun resolveGenre(category: String?): GenreInfo {

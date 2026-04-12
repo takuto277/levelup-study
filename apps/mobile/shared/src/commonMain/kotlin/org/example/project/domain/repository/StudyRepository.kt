@@ -1,5 +1,6 @@
 package org.example.project.domain.repository
 
+import org.example.project.domain.model.PendingStudyCompletion
 import org.example.project.domain.model.StudyCompleteResult
 import org.example.project.domain.model.StudySession
 
@@ -25,9 +26,9 @@ interface StudyRepository {
     /** セッション履歴を取得 */
     suspend fun getSessionHistory(limit: Int = 20, offset: Int = 0): List<StudySession>
 
-    /** オフライン時の未同期セッションをローカルに保存 */
-    suspend fun savePendingSession(session: StudySession)
+    /** オフライン／送信失敗時に未同期の完了ペイロードをローカルへ保存 */
+    suspend fun savePendingCompletion(pending: PendingStudyCompletion)
 
-    /** 未同期セッションをサーバーに一括送信 */
+    /** 未同期セッションをサーバーへ順次送信（成功分のみローカルから削除） */
     suspend fun syncPendingSessions()
 }

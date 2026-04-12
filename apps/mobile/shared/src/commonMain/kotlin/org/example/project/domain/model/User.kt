@@ -1,9 +1,12 @@
 package org.example.project.domain.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * ユーザー基本情報
  * Source of Truth: サーバー（Go backend model.User に対応）
  */
+@Serializable
 data class User(
     val id: String,
     val displayName: String,

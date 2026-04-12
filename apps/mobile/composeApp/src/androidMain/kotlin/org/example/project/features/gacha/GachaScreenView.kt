@@ -2,6 +2,7 @@ package org.example.project.features.gacha
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
@@ -63,6 +65,9 @@ private fun rarityColor(rarity: Int): Color = when (rarity) {
 }
 
 private fun rarityStars(rarity: Int): String = "★".repeat(rarity)
+
+/** メインタブの BottomNavigation と重ならないよう確保 */
+private val GachaMainTabBottomReserve = 88.dp
 
 private fun bannerColors(type: BannerType): List<Color> = when (type) {
     BannerType.CHARACTER -> listOf(Color(0xFF4B32C8), Color(0xFF8033E6))
@@ -167,42 +172,58 @@ private fun GachaFeaturedHeroPanel(
 ) {
     val accent = bannerColors(bannerType).first()
     val url = featured?.imageUrl?.takeIf { it.isNotBlank() }
+    val ctx = LocalContext.current
+    val localIdleRes = remember(ctx) {
+        ctx.resources.getIdentifier("sprite_player_idle_1", "drawable", ctx.packageName)
+    }
+    val vignette = Modifier
+        .fillMaxSize()
+        .background(
+            Brush.verticalGradient(
+                listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))
+            )
+        )
+
     Box(modifier = modifier.clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))) {
-        if (url != null) {
-            val ctx = LocalContext.current
-            AsyncImage(
-                model = ImageRequest.Builder(ctx).data(url).crossfade(320).build(),
-                contentDescription = featured.itemName.ifBlank { "ピックアップ" },
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                alignment = Alignment.TopCenter
-            )
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))
-                        )
-                    )
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(accent.copy(alpha = 0.5f), Color.Transparent)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    bannerIcon(bannerType),
-                    contentDescription = null,
-                    modifier = Modifier.size(96.dp),
-                    tint = Color.White.copy(alpha = 0.22f)
+        when {
+            url != null -> {
+                AsyncImage(
+                    model = ImageRequest.Builder(ctx).data(url).crossfade(320).build(),
+                    contentDescription = featured?.itemName?.ifBlank { "ピックアップ" } ?: "ピックアップ",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter
                 )
+                Box(vignette)
+            }
+            localIdleRes != 0 -> {
+                Image(
+                    painter = painterResource(localIdleRes),
+                    contentDescription = featured?.itemName?.ifBlank { "プレイヤー" } ?: "プレイヤー",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter
+                )
+                Box(vignette)
+            }
+            else -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(accent.copy(alpha = 0.5f), Color.Transparent)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        bannerIcon(bannerType),
+                        contentDescription = null,
+                        modifier = Modifier.size(96.dp),
+                        tint = Color.White.copy(alpha = 0.22f)
+                    )
+                }
             }
         }
     }
@@ -215,6 +236,7 @@ private fun GachaStonesBottomBar(stones: Int) {
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
+                .padding(bottom = GachaMainTabBottomReserve)
                 .padding(horizontal = 20.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -376,6 +398,7 @@ private fun ConfirmPhase(viewModel: GachaViewModel, uiState: GachaUiState) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
+                        .padding(bottom = GachaMainTabBottomReserve)
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -386,11 +409,6 @@ private fun ConfirmPhase(viewModel: GachaViewModel, uiState: GachaUiState) {
                     ) {
                         Text("所持結晶", fontSize = 12.sp, color = Color.White.copy(alpha = 0.55f))
                         StoneCountBadge(uiState.currentStones)
-                    }
-                    banner.pityThreshold?.let { threshold ->
-                        if (threshold > 0) {
-                            PityCounter(uiState.pityCount, threshold)
-                        }
                     }
                     GlowPullButton(
                         "単発召喚", GachaUiState.SINGLE_PULL_COST, uiState.canPullSingle, bannerColors(banner.bannerType)
@@ -462,42 +480,6 @@ private fun ConfirmPhase(viewModel: GachaViewModel, uiState: GachaUiState) {
 
             RateInfoCard()
             Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-}
-
-// ── 天井カウンター ─────────────────────────────
-
-@Composable
-private fun PityCounter(current: Int, threshold: Int) {
-    val progress = (current.toFloat() / threshold).coerceIn(0f, 1f)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(14.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
-            .padding(16.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("天井カウント", fontSize = 13.sp, color = Color.White.copy(alpha = 0.6f))
-            Spacer(modifier = Modifier.weight(1f))
-            Text("$current / $threshold", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-        Box(
-            modifier = Modifier.fillMaxWidth().height(6.dp)
-                .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(3.dp))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(progress)
-                    .background(
-                        Brush.horizontalGradient(listOf(Color(0xFF4DB8FF), Color(0xFF9966FF))),
-                        RoundedCornerShape(3.dp)
-                    )
-            )
         }
     }
 }

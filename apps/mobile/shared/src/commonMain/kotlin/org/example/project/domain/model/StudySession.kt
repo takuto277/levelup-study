@@ -12,7 +12,9 @@ data class StudySession(
     val endedAt: String,
     val durationSeconds: Int,
     val isCompleted: Boolean,
-    val createdAt: String
+    val createdAt: String,
+    /** 未同期のローカル保持分（記録画面の勉強時間集計に含める） */
+    val isPendingLocal: Boolean = false
 )
 
 /**

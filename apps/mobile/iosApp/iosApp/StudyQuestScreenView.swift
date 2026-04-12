@@ -469,6 +469,7 @@ struct StudyQuestScreenView: View {
     let initialStudyMinutes: Int
     let genreId: String?
     let dungeonName: String?
+    let isTrainingGround: Bool
 
     private final class ViewModelHolder: ObservableObject {
         let viewModel: StudyQuestViewModel
@@ -485,10 +486,11 @@ struct StudyQuestScreenView: View {
     @State private var confrontationApproach: CGFloat = 0
     @State private var didStartQuest = false
 
-    init(initialStudyMinutes: Int, genreId: String? = nil, dungeonName: String? = nil) {
+    init(initialStudyMinutes: Int, genreId: String? = nil, dungeonName: String? = nil, isTrainingGround: Bool = false) {
         self.initialStudyMinutes = initialStudyMinutes
         self.genreId = genreId
         self.dungeonName = dungeonName
+        self.isTrainingGround = isTrainingGround
         _uiState = State(initialValue: StudyQuestUiState(
             type: .study,
             status: .ready,
@@ -499,6 +501,7 @@ struct StudyQuestScreenView: View {
             currentLog: [],
             displayTime: "\(initialStudyMinutes < 10 ? "0" : "")\(initialStudyMinutes):00",
             genreId: genreId,
+            isTrainingGround: isTrainingGround,
             adventurePhase: .walking,
             adventurePhaseTick: 0,
             enemyName: "スライム",
@@ -539,7 +542,7 @@ struct StudyQuestScreenView: View {
         .onAppear {
             if !didStartQuest {
                 didStartQuest = true
-                holder.viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId, dungeonName: dungeonName))
+                holder.viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId, dungeonName: dungeonName, isTrainingGround: isTrainingGround))
             }
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 pulsePhase = true
@@ -975,7 +978,7 @@ struct StudyQuestScreenView: View {
             }
 
             switch phase {
-            case .walking:
+            case .walking, .training:
                 VStack {
                     Spacer()
                     HStack(alignment: .bottom) {

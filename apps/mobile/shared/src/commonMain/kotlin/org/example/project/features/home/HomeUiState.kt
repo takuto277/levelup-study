@@ -13,7 +13,9 @@ data class HomeUiState(
     val selectedDungeonName: String? = null,
     val genres: List<MasterStudyGenre> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    /** ネット未接続時はダンジョンの代わりに訓練場モードで勉強する */
+    val isOfflineTraining: Boolean = false
 ) {
     val formattedStudyTime: String
         get() {

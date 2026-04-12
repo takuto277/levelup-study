@@ -17,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -28,8 +30,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import java.time.DayOfWeek as JavaDayOfWeek
 import java.time.LocalDate as JavaLocalDate
+import org.example.project.components.PlayerSprite
+import org.example.project.components.PlayerSpriteMode
+import org.example.project.components.hasPartyPlayerSprite
 
 // ── カラーパレット（青テーマ）──────────────────────
 private val BgColor = Color(0xFF0B1120)
@@ -201,8 +208,84 @@ private fun RecordHeader(uiState: RecordUiState) {
                 Text(formatMinutes(uiState.monthStudyMinutes), fontSize = 11.sp, fontWeight = FontWeight.Black, color = TextPrimary)
             }
         }
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(uiState.characterEmoji, fontSize = 30.sp)
+        Spacer(modifier = Modifier.width(6.dp))
+        RecordHeaderCharacterBlock(uiState)
+    }
+}
+
+@Composable
+private fun RecordHeaderCharacterBlock(uiState: RecordUiState) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        if (uiState.characterMessage.isNotBlank()) {
+            RecordMiniSpeechBubble(uiState.characterMessage)
+        }
+        RecordCroppedIdlePortrait(uiState)
+    }
+}
+
+@Composable
+private fun RecordMiniSpeechBubble(text: String) {
+    Box(
+        modifier = Modifier
+            .widthIn(max = 132.dp)
+            .shadow(4.dp, RoundedCornerShape(14.dp))
+            .background(CardWhite, RoundedCornerShape(14.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = "「$text」",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun RecordCroppedIdlePortrait(uiState: RecordUiState) {
+    val context = LocalContext.current
+    val master = uiState.mainCharacter?.character
+    val url = master?.imageUrl?.takeIf { it.isNotBlank() }
+        ?: master?.idleAnimationUrl?.takeIf { it.isNotBlank() }
+    Box(
+        modifier = Modifier
+            .width(48.dp)
+            .height(54.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(BgSurface),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        when {
+            url != null -> {
+                AsyncImage(
+                    model = ImageRequest.Builder(context).data(url).crossfade(true).build(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter
+                )
+            }
+            hasPartyPlayerSprite(context) -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    PlayerSprite(
+                        mode = PlayerSpriteMode.Idle,
+                        size = 76.dp,
+                        modifier = Modifier.offset(y = 2.dp)
+                    )
+                }
+            }
+            else -> {
+                Text(uiState.characterEmoji, fontSize = 28.sp)
+            }
+        }
     }
 }
 

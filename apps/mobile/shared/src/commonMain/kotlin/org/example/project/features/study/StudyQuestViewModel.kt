@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.datetime.Clock
+import org.example.project.core.network.isDeviceOnline
 import org.example.project.domain.model.RewardType
 import org.example.project.domain.model.StudyReward
 import org.example.project.domain.repository.PartyRepository
@@ -193,6 +194,14 @@ class StudyQuestViewModel(
         "仲間と次の作戦を練っている…"
     )
 
+    private val trainingGroundMessages = listOf(
+        "木人に向かってフォームを確認している…",
+        "呼吸を整えて集中を高めている",
+        "基礎の反復。地味だが一番効く。",
+        "メモを取りながら弱点を潰している",
+        "訓練場の静けさの中、時間だけが進む。"
+    )
+
     private companion object {
         const val WALK_DURATION = 6L
         /** 接近演出＋向かい合い（HP表示）の秒数。UI の接近アニメと同期させる */
@@ -204,7 +213,12 @@ class StudyQuestViewModel(
 
     fun onIntent(intent: StudyQuestIntent) {
         when (intent) {
-            is StudyQuestIntent.StartQuest -> startQuest(intent.studyMinutes, intent.genreId, intent.dungeonName)
+            is StudyQuestIntent.StartQuest -> startQuest(
+                intent.studyMinutes,
+                intent.genreId,
+                intent.dungeonName,
+                intent.isTrainingGround
+            )
             is StudyQuestIntent.TogglePause -> togglePause()
             is StudyQuestIntent.EndQuest -> endQuest()
             is StudyQuestIntent.NextSession -> nextSession()
@@ -232,50 +246,96 @@ class StudyQuestViewModel(
         }
     }
 
-    private fun startQuest(studyMinutes: Int, genreId: String?, dungeonName: String? = null) {
+    private fun startQuest(
+        studyMinutes: Int,
+        genreId: String?,
+        dungeonName: String? = null,
+        isTrainingGround: Boolean = false
+    ) {
         if (_uiState.value.status == StudySessionStatus.RUNNING) return
 
         sessionStartedAt = Clock.System.now().toString()
-        currentEnemyTable = getEnemiesForDungeon(dungeonName)
-        val firstEnemy = currentEnemyTable.random()
         phaseElapsed = 0L
 
-        _uiState.update {
-            it.copy(
-                type = StudySessionType.STUDY,
-                status = StudySessionStatus.RUNNING,
-                targetStudyMinutes = studyMinutes,
-                elapsedSeconds = 0,
-                isOvertime = false,
-                currentLog = listOf(
-                    if (dungeonName != null) "「${dungeonName}」1F の探索を開始した！" else "冒険を開始した！"
-                ),
-                displayTime = formatTime(studyMinutes.toLong() * 60),
-                genreId = genreId,
-                adventurePhase = AdventurePhase.WALKING,
-                adventurePhaseTick = 0L,
-                enemyName = firstEnemy.name,
-                enemyEmoji = firstEnemy.emoji,
-                enemySpriteKey = EnemySpriteAssets.drawableKey(firstEnemy.spriteKey),
-                enemyHp = firstEnemy.hp,
-                enemyMaxHp = firstEnemy.hp,
-                lastDamage = 0,
-                lastPlayerDamage = 0,
-                defeatedCount = 0,
-                normalDefeatCount = 0,
-                bossDefeatCount = 0,
-                serverRewards = emptyList(),
-                serverSynced = null,
-                dungeonName = dungeonName,
-                currentFloor = 1,
-                totalFloors = 10,
-                floorClearCount = 0,
-                playerHp = 100,
-                playerMaxHp = 100,
-                earnedXp = 0,
-                earnedStones = 0,
-                completedStudyElapsedSeconds = 0L
-            )
+        if (isTrainingGround) {
+            currentEnemyTable = defaultEnemyPool
+            _uiState.update {
+                it.copy(
+                    type = StudySessionType.STUDY,
+                    status = StudySessionStatus.RUNNING,
+                    targetStudyMinutes = studyMinutes,
+                    elapsedSeconds = 0,
+                    isOvertime = false,
+                    currentLog = listOf("訓練場で集中トレーニングを開始した。（オフライン中はダンジョンに潜れません）"),
+                    displayTime = formatTime(studyMinutes.toLong() * 60),
+                    genreId = genreId,
+                    isTrainingGround = true,
+                    adventurePhase = AdventurePhase.TRAINING,
+                    adventurePhaseTick = 0L,
+                    enemyName = "木人",
+                    enemyEmoji = "🪵",
+                    enemySpriteKey = EnemySpriteAssets.drawableKey("treant"),
+                    enemyHp = 9999,
+                    enemyMaxHp = 9999,
+                    lastDamage = 0,
+                    lastPlayerDamage = 0,
+                    defeatedCount = 0,
+                    normalDefeatCount = 0,
+                    bossDefeatCount = 0,
+                    serverRewards = emptyList(),
+                    serverSynced = null,
+                    dungeonName = null,
+                    currentFloor = 1,
+                    totalFloors = 1,
+                    floorClearCount = 0,
+                    playerHp = 100,
+                    playerMaxHp = 100,
+                    earnedXp = 0,
+                    earnedStones = 0,
+                    completedStudyElapsedSeconds = 0L
+                )
+            }
+        } else {
+            currentEnemyTable = getEnemiesForDungeon(dungeonName)
+            val firstEnemy = currentEnemyTable.random()
+            _uiState.update {
+                it.copy(
+                    type = StudySessionType.STUDY,
+                    status = StudySessionStatus.RUNNING,
+                    targetStudyMinutes = studyMinutes,
+                    elapsedSeconds = 0,
+                    isOvertime = false,
+                    currentLog = listOf(
+                        if (dungeonName != null) "「${dungeonName}」1F の探索を開始した！" else "冒険を開始した！"
+                    ),
+                    displayTime = formatTime(studyMinutes.toLong() * 60),
+                    genreId = genreId,
+                    isTrainingGround = false,
+                    adventurePhase = AdventurePhase.WALKING,
+                    adventurePhaseTick = 0L,
+                    enemyName = firstEnemy.name,
+                    enemyEmoji = firstEnemy.emoji,
+                    enemySpriteKey = EnemySpriteAssets.drawableKey(firstEnemy.spriteKey),
+                    enemyHp = firstEnemy.hp,
+                    enemyMaxHp = firstEnemy.hp,
+                    lastDamage = 0,
+                    lastPlayerDamage = 0,
+                    defeatedCount = 0,
+                    normalDefeatCount = 0,
+                    bossDefeatCount = 0,
+                    serverRewards = emptyList(),
+                    serverSynced = null,
+                    dungeonName = dungeonName,
+                    currentFloor = 1,
+                    totalFloors = 10,
+                    floorClearCount = 0,
+                    playerHp = 100,
+                    playerMaxHp = 100,
+                    earnedXp = 0,
+                    earnedStones = 0,
+                    completedStudyElapsedSeconds = 0L
+                )
+            }
         }
         startTimer()
     }
@@ -325,31 +385,55 @@ class StudyQuestViewModel(
         val useCase = studyUseCase
         if (useCase != null) {
             viewModelScope.launch {
-                try {
-                    val result = useCase.completeSession(
+                val training = snapshot.isTrainingGround
+                val normalKills = if (training) 0 else snapshot.normalDefeatCount
+                val bossKills = if (training) 0 else snapshot.bossDefeatCount
+                val offline = !isDeviceOnline()
+                suspend fun persistPending() {
+                    useCase.savePendingStudyCompletion(
                         category = genreId,
                         startedAt = sessionStart,
                         endedAt = endedAt,
                         durationSeconds = studyElapsed.toInt(),
                         isCompleted = studyElapsed >= targetStudySec,
                         userCharacterId = snapshot.partyLeadUserCharacterId.takeIf { it.isNotBlank() },
-                        defeatNormalCount = snapshot.normalDefeatCount,
-                        defeatBossCount = snapshot.bossDefeatCount,
-                        difficultyMultiplier = 1.0
+                        defeatNormalCount = normalKills,
+                        defeatBossCount = bossKills,
+                        difficultyMultiplier = 1.0,
+                        isTrainingGround = training
                     )
-                    val (xpTotal, stoneTotal) = totalsFromServerRewards(result.rewards)
-                    _uiState.update {
-                        it.copy(
-                            serverRewards = result.rewards.map { r ->
-                                "${r.rewardType.name}: +${r.amount}"
-                            },
-                            serverSynced = true,
-                            earnedXp = xpTotal,
-                            earnedStones = stoneTotal
-                        )
-                    }
-                } catch (_: Exception) {
+                }
+                if (offline) {
+                    runCatching { persistPending() }
                     _uiState.update { it.copy(serverSynced = false) }
+                } else {
+                    try {
+                        val result = useCase.completeSession(
+                            category = genreId,
+                            startedAt = sessionStart,
+                            endedAt = endedAt,
+                            durationSeconds = studyElapsed.toInt(),
+                            isCompleted = studyElapsed >= targetStudySec,
+                            userCharacterId = snapshot.partyLeadUserCharacterId.takeIf { it.isNotBlank() },
+                            defeatNormalCount = normalKills,
+                            defeatBossCount = bossKills,
+                            difficultyMultiplier = 1.0
+                        )
+                        val (xpTotal, stoneTotal) = totalsFromServerRewards(result.rewards)
+                        _uiState.update {
+                            it.copy(
+                                serverRewards = result.rewards.map { r ->
+                                    "${r.rewardType.name}: +${r.amount}"
+                                },
+                                serverSynced = true,
+                                earnedXp = xpTotal,
+                                earnedStones = stoneTotal
+                            )
+                        }
+                    } catch (_: Exception) {
+                        runCatching { persistPending() }
+                        _uiState.update { it.copy(serverSynced = false) }
+                    }
                 }
             }
         }
@@ -371,9 +455,13 @@ class StudyQuestViewModel(
                 completedStudyElapsedSeconds = 0L,
                 elapsedSeconds = 0,
                 isOvertime = false,
-                currentLog = listOf("次の冒険へ出発だ！"),
+                currentLog = if (current.isTrainingGround) {
+                    listOf("訓練の続きだ。集中を保とう！")
+                } else {
+                    listOf("次の冒険へ出発だ！")
+                },
                 displayTime = formatTime(targetSec),
-                adventurePhase = AdventurePhase.WALKING,
+                adventurePhase = if (current.isTrainingGround) AdventurePhase.TRAINING else AdventurePhase.WALKING,
                 adventurePhaseTick = 0L,
                 lastDamage = 0,
                 lastPlayerDamage = 0,
@@ -385,7 +473,8 @@ class StudyQuestViewModel(
                 serverRewards = emptyList(),
                 serverSynced = null,
                 currentFloor = 1,
-                playerHp = it.playerMaxHp
+                playerHp = it.playerMaxHp,
+                isTrainingGround = current.isTrainingGround
             )
         }
         startTimer()
@@ -463,6 +552,21 @@ class StudyQuestViewModel(
         overTime: Boolean,
         displaySec: Long
     ): StudyQuestUiState {
+        if (state.type == StudySessionType.STUDY && state.isTrainingGround) {
+            var nl = state.currentLog
+            if (newElapsed > 0 && newElapsed % 4 == 0L) {
+                nl = (nl + trainingGroundMessages.random()).takeLast(5)
+            }
+            return state.copy(
+                elapsedSeconds = newElapsed,
+                isOvertime = overTime,
+                currentLog = nl,
+                displayTime = formatTime(displaySec),
+                adventurePhase = AdventurePhase.TRAINING,
+                adventurePhaseTick = phaseElapsed
+            )
+        }
+
         var newLogs = state.currentLog
         var phase = state.adventurePhase
         var enemyHp = state.enemyHp
@@ -583,6 +687,8 @@ class StudyQuestViewModel(
             }
 
             AdventurePhase.RESTING -> { }
+
+            AdventurePhase.TRAINING -> { }
 
             AdventurePhase.ENEMY_DEFEATED,
             AdventurePhase.FLOOR_CLEAR -> { }

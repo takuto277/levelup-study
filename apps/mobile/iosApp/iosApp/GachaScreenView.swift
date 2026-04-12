@@ -35,11 +35,13 @@ private enum UIBannerType: String {
     }
 }
 
+/// メインタブの BottomNavigation と重ならないよう確保（pt）
+private let gachaMainTabBottomReserve: CGFloat = 88
+
 private struct BannerDisplay: Identifiable {
     let id: String
     let name: String
     let type: UIBannerType
-    let pityThreshold: Int
     let featuredRarity: Int
     let description: String
     /// ピックアップ立ち絵（マスタの image_url）
@@ -87,7 +89,6 @@ private class GachaStore: ObservableObject {
     @Published var banners: [BannerDisplay] = []
     @Published var selectedBanner: BannerDisplay?
     @Published var currentStones: Int = 0
-    @Published var pityCount: Int = 0
     @Published var pullResults: [ResultItem] = []
     @Published var lastPullCount: Int = 0
     @Published var error: String?
@@ -151,7 +152,6 @@ private class GachaStore: ObservableObject {
         }
 
         currentStones = Int(state.currentStones)
-        pityCount = Int(state.pityCount)
         lastPullCount = Int(state.lastPullCount)
         error = state.error
 
@@ -192,7 +192,6 @@ private class GachaStore: ObservableObject {
         }()
         return BannerDisplay(
             id: b.id, name: b.name, type: bt,
-            pityThreshold: b.pityThreshold?.intValue ?? 0,
             featuredRarity: max(1, min(rarity, 5)),
             description: desc,
             pickupImageUrl: pickupUrl,
@@ -333,7 +332,8 @@ private struct GachaStonesBottomBar: View {
             StoneCountBadge(stones: stones)
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 14)
+        .padding(.top, 14)
+        .padding(.bottom, 14 + gachaMainTabBottomReserve)
         .background(Color.black.opacity(0.5))
     }
 }
@@ -386,13 +386,22 @@ private struct BannerCard: View {
                             .frame(height: 210)
                             .clipped()
                         } else {
-                            LinearGradient(colors: banner.type.colors, startPoint: .top, endPoint: .bottom)
-                                .frame(height: 210)
-                                .overlay(
-                                    Image(systemName: banner.type.icon)
-                                        .font(.system(size: 88, weight: .ultraLight))
-                                        .foregroundColor(.white.opacity(0.22))
+                            ZStack {
+                                Image("sprite_player_idle_1")
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(height: 210)
+                                    .frame(maxWidth: .infinity)
+                                    .clipped()
+                                LinearGradient(
+                                    colors: [.clear, .black.opacity(0.55)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
                                 )
+                                .allowsHitTesting(false)
+                            }
+                            .frame(height: 210)
+                            .clipped()
                         }
                     }
                     .frame(height: 210)
@@ -516,9 +525,16 @@ private struct ConfirmView: View {
                                         .allowsHitTesting(false)
                                 }
                             } else {
-                                Image(systemName: banner.type.icon)
-                                    .font(.system(size: 96, weight: .ultraLight))
-                                    .foregroundColor(.white.opacity(0.22))
+                                ZStack {
+                                    Image("sprite_player_idle_1")
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(height: 240)
+                                        .frame(maxWidth: .infinity)
+                                        .clipped()
+                                    LinearGradient(colors: [.clear, .black.opacity(0.5)], startPoint: .top, endPoint: .bottom)
+                                        .allowsHitTesting(false)
+                                }
                             }
                         }
                         .frame(height: 240)
@@ -546,7 +562,7 @@ private struct ConfirmView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 200)
+                .padding(.bottom, 200 + gachaMainTabBottomReserve)
             }
 
             if let banner = store.selectedBanner {
@@ -555,9 +571,6 @@ private struct ConfirmView: View {
                         Text("所持結晶").font(.system(size: 12)).foregroundColor(.white.opacity(0.55))
                         Spacer()
                         StoneCountBadge(stones: store.currentStones)
-                    }
-                    if banner.pityThreshold > 0 {
-                        PityCounter(current: store.pityCount, threshold: banner.pityThreshold)
                     }
                     GlowPullButton(
                         label: "単発召喚", cost: GachaStore.singleCost,
@@ -576,53 +589,13 @@ private struct ConfirmView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 12 + gachaMainTabBottomReserve)
                 .background(Color.black.opacity(0.55))
             }
         }
         .onAppear { withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { appeared = true } }
         .onDisappear { appeared = false }
-    }
-}
-
-private struct PityCounter: View {
-    let current: Int
-    let threshold: Int
-    var progress: Double { min(Double(current) / Double(threshold), 1.0) }
-
-    var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text("天井カウント")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white.opacity(0.6))
-                Spacer()
-                Text("\(current) / \(threshold)")
-                    .font(.system(size: 15, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white)
-            }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.1)).frame(height: 6)
-                    Capsule()
-                        .fill(LinearGradient(
-                            colors: [Color(red: 0.3, green: 0.7, blue: 1.0), Color(red: 0.6, green: 0.4, blue: 1.0)],
-                            startPoint: .leading, endPoint: .trailing
-                        ))
-                        .frame(width: geo.size.width * progress, height: 6)
-                }
-            }
-            .frame(height: 6)
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.08))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-        )
     }
 }
 

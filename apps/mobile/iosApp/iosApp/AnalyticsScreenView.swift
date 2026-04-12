@@ -78,21 +78,98 @@ struct AnalyticsScreenView: View {
 
     // MARK: - Header
     private var header: some View {
-        HStack(alignment: .center) {
+        HStack(alignment: .center, spacing: 6) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("記 録").font(.system(size: 28, weight: .black)).foregroundColor(textW)
                 Text("あなたの冒険の軌跡").font(.caption).foregroundColor(textSub)
             }
-            Spacer()
+            Spacer(minLength: 4)
             VStack(alignment: .trailing, spacing: 3) {
                 HStack(spacing: 3) { Text("📅").font(.system(size: 8)); Text("今日").font(.system(size: 8, weight: .bold)).foregroundColor(textSub); Text(fmtMin(Int(uiState.todayStudyMinutes))).font(.system(size: 10, weight: .heavy)).foregroundColor(textW) }
                 HStack(spacing: 3) { Text("📆").font(.system(size: 8)); Text("今週").font(.system(size: 8, weight: .bold)).foregroundColor(textSub); Text(fmtMin(Int(uiState.weekStudyMinutes))).font(.system(size: 10, weight: .heavy)).foregroundColor(textW) }
                 HStack(spacing: 3) { Text("🗓️").font(.system(size: 8)); Text("月間").font(.system(size: 8, weight: .bold)).foregroundColor(textSub); Text(fmtMin(Int(uiState.monthStudyMinutes))).font(.system(size: 10, weight: .heavy)).foregroundColor(textW) }
             }
             .padding(8).background(bgCard).cornerRadius(10)
-            Text(uiState.characterEmoji).font(.system(size: 26))
+            HStack(alignment: .center, spacing: 6) {
+                let msg = String(uiState.characterMessage)
+                if !msg.isEmpty {
+                    Text("「\(msg)」")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(textW)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                        .frame(maxWidth: 132, alignment: .leading)
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                        .background(bgCard).cornerRadius(14)
+                        .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+                }
+                recordHeaderPortrait
+            }
         }
         .padding(.horizontal, 20).padding(.vertical, 12)
+    }
+
+    @ViewBuilder
+    private var recordHeaderPortrait: some View {
+        let emoji = String(uiState.characterEmoji)
+        if let m = uiState.mainCharacter?.character {
+            let p = String(m.imageUrl).trimmingCharacters(in: .whitespacesAndNewlines)
+            let idleStr: String = {
+                guard let s = m.idleAnimationUrl else { return "" }
+                return String(s).trimmingCharacters(in: .whitespacesAndNewlines)
+            }()
+            let urlStr = !p.isEmpty ? p : idleStr
+            if !urlStr.isEmpty, let u = URL(string: urlStr) {
+                AsyncImage(url: u) { phase in
+                    switch phase {
+                    case .success(let img):
+                        img.resizable()
+                            .interpolation(.medium)
+                            .scaledToFill()
+                            .frame(width: 48, height: 54)
+                            .clipped()
+                    case .failure:
+                        recordPortraitSpriteOrEmoji(emoji: emoji)
+                    case .empty:
+                        ProgressView().frame(width: 48, height: 54)
+                    @unknown default:
+                        recordPortraitSpriteOrEmoji(emoji: emoji)
+                    }
+                }
+                .frame(width: 48, height: 54)
+                .background(bgSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+            } else {
+                recordPortraitSpriteOrEmoji(emoji: emoji)
+            }
+        } else {
+            recordPortraitSpriteOrEmoji(emoji: emoji)
+        }
+    }
+
+    @ViewBuilder
+    private func recordPortraitSpriteOrEmoji(emoji: String) -> some View {
+        if UIImage(named: "sprite_player_idle_1") != nil {
+            Image("sprite_player_idle_1")
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: 76, height: 76)
+                .frame(width: 48, height: 54, alignment: .top)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+        } else if UIImage(named: "sprite_player_prep_1") != nil {
+            Image("sprite_player_prep_1")
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: 76, height: 76)
+                .frame(width: 48, height: 54, alignment: .top)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+        } else {
+            Text(emoji).font(.system(size: 26))
+        }
     }
 
     // MARK: - Total

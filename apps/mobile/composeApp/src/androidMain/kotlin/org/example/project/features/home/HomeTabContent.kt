@@ -124,6 +124,7 @@ fun HomeTabContent(
 
         HomeAdventureContextRow(
             dungeonName = homeState.selectedDungeonName,
+            isOfflineTraining = homeState.isOfflineTraining,
             selectedGenreSlug = selectedGenreSlug,
             genreTriples = genreTriples,
             onGenreChange = onGenreChange,
@@ -150,7 +151,10 @@ fun HomeTabContent(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        StartAdventureButton(onClick = onStartStudy)
+        StartAdventureButton(
+            isOfflineTraining = homeState.isOfflineTraining,
+            onClick = onStartStudy
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
     }
@@ -367,7 +371,9 @@ private fun StudyDurationStepper(
 }
 
 @Composable
-private fun StartAdventureButton(onClick: () -> Unit) {
+private fun StartAdventureButton(isOfflineTraining: Boolean, onClick: () -> Unit) {
+    val label = if (isOfflineTraining) "訓練を始める" else "冒険に出発する"
+    val emoji = if (isOfflineTraining) "🏋️" else "⚔️"
     Button(
         onClick = onClick,
         shape = RoundedCornerShape(24.dp),
@@ -382,7 +388,13 @@ private fun StartAdventureButton(onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    brush = Brush.linearGradient(listOf(HomeTheme.FireRed, HomeTheme.FireOrange)),
+                    brush = Brush.linearGradient(
+                        if (isOfflineTraining) {
+                            listOf(HomeTheme.AccentIndigo, HomeTheme.AccentBlue)
+                        } else {
+                            listOf(HomeTheme.FireRed, HomeTheme.FireOrange)
+                        }
+                    ),
                     shape = RoundedCornerShape(24.dp)
                 ),
             contentAlignment = Alignment.Center
@@ -391,8 +403,8 @@ private fun StartAdventureButton(onClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text("⚔️", fontSize = 22.sp)
-                Text("冒険に出発する", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White)
+                Text(emoji, fontSize = 22.sp)
+                Text(label, fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White)
             }
         }
     }

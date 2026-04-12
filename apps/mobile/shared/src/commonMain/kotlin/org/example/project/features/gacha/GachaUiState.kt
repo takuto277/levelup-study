@@ -39,7 +39,6 @@ data class GachaUiState(
     val banners: List<GachaBanner> = emptyList(),
     val selectedBanner: GachaBanner? = null,
     val currentStones: Int = 0,
-    val pityCount: Int = 0,
     val pullResults: List<GachaResultItem> = emptyList(),
     val lastPullCount: Int = 0,
     val isLoading: Boolean = false,

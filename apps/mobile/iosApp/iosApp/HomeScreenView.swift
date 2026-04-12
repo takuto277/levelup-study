@@ -105,7 +105,12 @@ struct HomeScreenView: View {
         .fullScreenCover(isPresented: $showStudySheet, onDismiss: {
             homeViewModel.onIntent(intent: HomeIntentRefresh())
         }) {
-            StudyQuestScreenView(initialStudyMinutes: studyMinutes, genreId: selectedGenreSlug, dungeonName: homeState?.selectedDungeonName)
+            StudyQuestScreenView(
+                initialStudyMinutes: studyMinutes,
+                genreId: selectedGenreSlug,
+                dungeonName: homeState?.selectedDungeonName,
+                isTrainingGround: homeState?.isOfflineTraining == true
+            )
         }
         .sheet(isPresented: $showAddGenreSheet, onDismiss: {
             homeViewModel.clearError()
@@ -140,7 +145,10 @@ struct HomeScreenView: View {
     private var adventureContextRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                contextStatChip(title: "ダンジョン", value: homeState?.selectedDungeonName ?? "—")
+                contextStatChip(
+                    title: (homeState?.isOfflineTraining == true) ? "モード" : "ダンジョン",
+                    value: (homeState?.isOfflineTraining == true) ? "訓練場" : (homeState?.selectedDungeonName ?? "—")
+                )
                 genreMenuChip
                 Button(action: { showAddGenreSheet = true }) {
                     Image(systemName: "plus")
@@ -397,13 +405,20 @@ struct HomeScreenView: View {
 
     // MARK: - Start Button
     private var startButton: some View {
-        Button(action: { showStudySheet = true }) {
+        let training = homeState?.isOfflineTraining == true
+        return Button(action: { showStudySheet = true }) {
             HStack(spacing: 8) {
-                Text("⚔️").font(.system(size: 20))
-                Text("冒険に出発する").font(.system(size: 17, weight: .heavy))
+                Text(training ? "🏋️" : "⚔️").font(.system(size: 20))
+                Text(training ? "訓練を始める" : "冒険に出発する").font(.system(size: 17, weight: .heavy))
             }
             .foregroundColor(.white).frame(maxWidth: .infinity).padding(.vertical, 16)
-            .background(LinearGradient(colors: fireGradient, startPoint: .leading, endPoint: .trailing))
+            .background(
+                LinearGradient(
+                    colors: training ? [accentIndigo, accentBlue] : fireGradient,
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
             .cornerRadius(22).shadow(color: Color(hex: 0xF59E0B).opacity(0.4), radius: 10, y: 5)
         }
         .padding(.horizontal, 32)

@@ -1,5 +1,7 @@
 package org.example.project.features.record
 
+import org.example.project.domain.model.UserCharacter
+
 data class RecordUiState(
     val totalStudyMinutes: Int = 0,
     val selectedPeriod: RecordPeriod = RecordPeriod.TODAY,
@@ -9,6 +11,8 @@ data class RecordUiState(
     val selectedGenre: GenreInfo? = null,
     val streakDays: Int = 0,
     val todaySessions: Int = 0,
+    /** 編成のメインキャラ（立ち絵URLなど） */
+    val mainCharacter: UserCharacter? = null,
     val characterMessage: String = "",
     val characterEmoji: String = "🧙‍♂️",
     val isLoading: Boolean = false,

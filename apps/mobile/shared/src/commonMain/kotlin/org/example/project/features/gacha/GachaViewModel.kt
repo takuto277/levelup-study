@@ -70,12 +70,9 @@ class GachaViewModel(
     }
 
     private fun selectBanner(bannerId: String) {
-        viewModelScope.launch {
-            val banner = _uiState.value.banners.find { it.id == bannerId }
-            val pity = runCatching { gachaUseCase.getPityCount(bannerId) }.getOrDefault(0)
-            _uiState.update {
-                it.copy(phase = GachaPhase.CONFIRM, selectedBanner = banner, pityCount = pity)
-            }
+        val banner = _uiState.value.banners.find { it.id == bannerId }
+        _uiState.update {
+            it.copy(phase = GachaPhase.CONFIRM, selectedBanner = banner)
         }
     }
 
