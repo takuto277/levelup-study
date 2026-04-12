@@ -150,7 +150,13 @@ func (r *MasterRepository) ListDungeons() ([]model.MasterDungeon, error) {
 	var list []model.MasterDungeon
 	err := r.db.
 		Where("is_active = true").
-		Preload("Stages").
+		Preload("Stages", func(db *gorm.DB) *gorm.DB {
+			return db.Order("stage_number ASC")
+		}).
+		Preload("Stages.Enemies", func(db *gorm.DB) *gorm.DB {
+			return db.Order("sort_order ASC")
+		}).
+		Preload("Stages.Enemies.Monster").
 		Order("sort_order ASC").
 		Find(&list).Error
 	return list, err
@@ -159,7 +165,16 @@ func (r *MasterRepository) ListDungeons() ([]model.MasterDungeon, error) {
 // GetDungeon — ダンジョンを1件取得する
 func (r *MasterRepository) GetDungeon(id uuid.UUID) (*model.MasterDungeon, error) {
 	var d model.MasterDungeon
-	err := r.db.Preload("Stages").Where("id = ?", id).First(&d).Error
+	err := r.db.
+		Preload("Stages", func(db *gorm.DB) *gorm.DB {
+			return db.Order("stage_number ASC")
+		}).
+		Preload("Stages.Enemies", func(db *gorm.DB) *gorm.DB {
+			return db.Order("sort_order ASC")
+		}).
+		Preload("Stages.Enemies.Monster").
+		Where("id = ?", id).
+		First(&d).Error
 	if err != nil {
 		return nil, err
 	}
@@ -190,6 +205,10 @@ func (r *MasterRepository) ListStagesByDungeon(dungeonID uuid.UUID) ([]model.Mas
 	var list []model.MasterDungeonStage
 	err := r.db.
 		Where("dungeon_id = ?", dungeonID).
+		Preload("Enemies", func(db *gorm.DB) *gorm.DB {
+			return db.Order("sort_order ASC")
+		}).
+		Preload("Enemies.Monster").
 		Order("stage_number ASC").
 		Find(&list).Error
 	return list, err

@@ -28,6 +28,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.DayOfWeek as JavaDayOfWeek
+import java.time.LocalDate as JavaLocalDate
 
 // ── カラーパレット（青テーマ）──────────────────────
 private val BgColor = Color(0xFF0B1120)
@@ -39,8 +41,42 @@ private val AccentBlue = Color(0xFF3B82F6)
 private val AccentIndigo = Color(0xFF6366F1)
 private val AccentCyan = Color(0xFF22D3EE)
 private val BgSurface = Color(0xFF1A2744)
+private val WeekdaySundayRed = Color(0xFFEF4444)
+private val WeekdaySaturdayBlue = Color(0xFF3B82F6)
+private val WeekdayMutedGray = Color(0xFF64748B)
 
 private fun genreColor(genre: GenreInfo): Color = Color(genre.colorHex)
+
+/** 週間チャートの曜日ラベル色（日=赤・土=青・平日=グレー） */
+private fun weekdayRecordAxisColor(isoDate: String): Color {
+    if (isoDate.isBlank()) return TextTertiary
+    return try {
+        when (JavaLocalDate.parse(isoDate).dayOfWeek) {
+            JavaDayOfWeek.SUNDAY -> WeekdaySundayRed
+            JavaDayOfWeek.SATURDAY -> WeekdaySaturdayBlue
+            else -> WeekdayMutedGray
+        }
+    } catch (_: Exception) {
+        TextTertiary
+    }
+}
+
+private fun weekdayJpFromIso(isoDate: String): String {
+    if (isoDate.isBlank()) return ""
+    return try {
+        when (JavaLocalDate.parse(isoDate).dayOfWeek) {
+            JavaDayOfWeek.MONDAY -> "月"
+            JavaDayOfWeek.TUESDAY -> "火"
+            JavaDayOfWeek.WEDNESDAY -> "水"
+            JavaDayOfWeek.THURSDAY -> "木"
+            JavaDayOfWeek.FRIDAY -> "金"
+            JavaDayOfWeek.SATURDAY -> "土"
+            JavaDayOfWeek.SUNDAY -> "日"
+        }
+    } catch (_: Exception) {
+        ""
+    }
+}
 
 private fun formatMinutes(minutes: Int): String {
     val h = minutes / 60
@@ -317,8 +353,8 @@ private fun PeriodSummaryCard(uiState: RecordUiState) {
             )
         }
 
-        // ミニドーナツ（ジャンル比率を可視化）
-        if (uiState.genreBreakdown.isNotEmpty()) {
+        // 今日タブでは下段の円グラフと重複するためミニドーナツは非表示
+        if (uiState.genreBreakdown.isNotEmpty() && uiState.selectedPeriod != RecordPeriod.TODAY) {
             MiniDonutChart(
                 breakdown = uiState.genreBreakdown,
                 modifier = Modifier.size(64.dp)
@@ -357,11 +393,17 @@ private fun MiniDonutChart(breakdown: List<GenreStudyTime>, modifier: Modifier =
 
 @Composable
 private fun BarChartCard(uiState: RecordUiState) {
+    val selectedGenre = uiState.selectedGenre
+
+    if (uiState.selectedPeriod == RecordPeriod.TODAY) {
+        TodayGenrePieCard(uiState = uiState)
+        return
+    }
+
     val bars = uiState.chartBars
     if (bars.isEmpty()) return
 
     val maxMinutes = bars.maxOfOrNull { it.minutes }?.coerceAtLeast(1) ?: 1
-    val selectedGenre = uiState.selectedGenre
 
     Column(
         modifier = Modifier
@@ -378,6 +420,14 @@ private fun BarChartCard(uiState: RecordUiState) {
             color = TextPrimary
         )
         Spacer(modifier = Modifier.height(4.dp))
+        if (uiState.selectedPeriod == RecordPeriod.WEEKLY) {
+            Text(
+                "日曜始まり・土曜終わりの週（7日固定）",
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
         Text(
             if (selectedGenre != null) "${selectedGenre.emoji} ${selectedGenre.label}のみ表示中"
             else "全ジャンル",
@@ -402,6 +452,101 @@ private fun BarChartCard(uiState: RecordUiState) {
                     selectedGenre = selectedGenre,
                     barCount = bars.size
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TodayGenrePieCard(uiState: RecordUiState) {
+    val breakdown = uiState.genreBreakdown
+    val total = uiState.periodTotalMinutes
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .shadow(2.dp, RoundedCornerShape(20.dp))
+            .background(CardWhite, RoundedCornerShape(20.dp))
+            .padding(20.dp)
+    ) {
+        Text(
+            "今日のジャンル別",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            if (uiState.selectedGenre != null) "${uiState.selectedGenre!!.emoji} ${uiState.selectedGenre!!.label}のみ表示中"
+            else "全ジャンル",
+            fontSize = 11.sp,
+            color = TextSecondary
+        )
+        Spacer(modifier = Modifier.height(18.dp))
+
+        if (breakdown.isEmpty() || total <= 0) {
+            Text(
+                "この日の記録はまだありません",
+                fontSize = 13.sp,
+                color = TextSecondary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                textAlign = TextAlign.Center
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                MiniDonutChart(
+                    breakdown = breakdown,
+                    modifier = Modifier.size(180.dp)
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        formatMinutes(total),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextPrimary
+                    )
+                    Text("合計", fontSize = 10.sp, color = TextSecondary)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            breakdown.forEach { item ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(genreColor(item.genre))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(item.genre.emoji, fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        item.genre.label,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        "${formatMinutes(item.minutes)} (${(item.ratio * 100).toInt()}%)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = genreColor(item.genre)
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
             }
         }
     }
@@ -477,14 +622,35 @@ private fun BarItem(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // 日付ラベル
-        Text(
-            bar.label,
-            fontSize = 8.sp,
-            color = TextTertiary,
-            maxLines = 1,
-            textAlign = TextAlign.Center
-        )
+        if (bar.isoDate.isNotEmpty()) {
+            val wd = weekdayJpFromIso(bar.isoDate)
+            val axisColor = weekdayRecordAxisColor(bar.isoDate)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    wd,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = axisColor,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    bar.label,
+                    fontSize = 8.sp,
+                    color = TextTertiary,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            Text(
+                bar.label,
+                fontSize = 8.sp,
+                color = TextTertiary,
+                maxLines = 1,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 

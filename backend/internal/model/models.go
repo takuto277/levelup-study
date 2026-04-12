@@ -135,8 +135,49 @@ func (MasterDungeon) TableName() string                 { return "m_dungeons" }
 func (d *MasterDungeon) BeforeCreate(tx *gorm.DB) error { ensureUUID(&d.ID); return nil }
 
 // ============================================================
+// m_monsters — 敵マスタ（正規化）
+// slug はクライアントのバンドル画像キーに寄せる。image_url は将来 CDN 用（空なら slug でローカル asset にフォールバック可）。
+// ============================================================
+
+type MasterMonster struct {
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	Slug      string    `gorm:"type:varchar(64);not null;uniqueIndex"           json:"slug"`
+	Name      string    `gorm:"type:varchar(100);not null"                      json:"name"`
+	Emoji     string    `gorm:"type:varchar(20);not null;default:''"            json:"emoji"`
+	Hp        int       `gorm:"not null"                                        json:"hp"`
+	Atk       int       `gorm:"not null"                                        json:"atk"`
+	Def       int       `gorm:"not null;default:0"                             json:"def"`
+	ImageURL  string    `gorm:"type:text;not null;default:''"                   json:"image_url"`
+	IsActive  bool      `gorm:"not null;default:true"                           json:"is_active"`
+	CreatedAt time.Time `gorm:"autoCreateTime"                                  json:"created_at"`
+}
+
+func (MasterMonster) TableName() string                 { return "m_monsters" }
+func (m *MasterMonster) BeforeCreate(tx *gorm.DB) error { ensureUUID(&m.ID); return nil }
+
+// ============================================================
+// m_dungeon_stage_enemies — ステージと敵の紐付け（出現順・体数）
+// ============================================================
+
+type MasterDungeonStageEnemy struct {
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	StageID   uuid.UUID `gorm:"type:uuid;not null;index"                        json:"stage_id"`
+	MonsterID uuid.UUID `gorm:"type:uuid;not null;index"                        json:"monster_id"`
+	SortOrder int       `gorm:"not null"                                        json:"sort_order"`
+	Count     int       `gorm:"not null;default:1"                              json:"count"`
+
+	Monster *MasterMonster `gorm:"foreignKey:MonsterID" json:"monster,omitempty"`
+}
+
+func (MasterDungeonStageEnemy) TableName() string { return "m_dungeon_stage_enemies" }
+func (e *MasterDungeonStageEnemy) BeforeCreate(tx *gorm.DB) error {
+	ensureUUID(&e.ID)
+	return nil
+}
+
+// ============================================================
 // m_dungeon_stages — ダンジョンステージマスタ
-// 敵構成・ドロップは JSON で柔軟に定義。
+// 敵は m_dungeon_stage_enemies 経由で参照。enemy_composition は後方互換のため空配列を保持可能。
 // ============================================================
 
 type MasterDungeonStage struct {
@@ -144,8 +185,10 @@ type MasterDungeonStage struct {
 	DungeonID        uuid.UUID       `gorm:"type:uuid;not null;index"                       json:"dungeon_id"`
 	StageNumber      int             `gorm:"not null"                                       json:"stage_number"`
 	RecommendedPower int             `gorm:"not null"                                       json:"recommended_power"` // 推奨戦力
-	EnemyComposition json.RawMessage `gorm:"type:jsonb;not null"                            json:"enemy_composition"` // [{name, hp, atk}]
+	EnemyComposition json.RawMessage `gorm:"type:jsonb;not null"                            json:"enemy_composition"` // 非推奨: 正は enemies
 	DropTable        json.RawMessage `gorm:"type:jsonb;not null"                            json:"drop_table"`        // [{item_id, rate}]
+
+	Enemies []MasterDungeonStageEnemy `gorm:"foreignKey:StageID" json:"enemies,omitempty"`
 }
 
 func (MasterDungeonStage) TableName() string                 { return "m_dungeon_stages" }
@@ -306,7 +349,9 @@ func AllModels() []interface{} {
 		&MasterCharacter{},
 		&MasterWeapon{},
 		&MasterDungeon{},
+		&MasterMonster{},
 		&MasterDungeonStage{},
+		&MasterDungeonStageEnemy{},
 		&MasterGachaBanner{},
 		&MasterGachaBannerFeatured{},
 		&MasterStudyGenre{},

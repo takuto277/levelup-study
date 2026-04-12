@@ -53,9 +53,12 @@ data class GenreInfo(
 }
 
 data class ChartBar(
+    /** 月間など従来の短い軸ラベル（週間では補助用） */
     val label: String,
     val minutes: Int,
-    val genreMinutes: Map<GenreInfo, Int> = emptyMap()
+    val genreMinutes: Map<GenreInfo, Int> = emptyMap(),
+    /** yyyy-MM-dd。週間チャートで曜日色・日付行の算出に使う */
+    val isoDate: String = ""
 )
 
 data class GenreStudyTime(

@@ -21,6 +21,35 @@ private func genreColor(_ g: GenreInfo) -> Color { Color(hex: UInt(g.colorHex)) 
 private func fmtMin(_ m: Int) -> String { let h = m/60, r = m%60; return h > 0 ? "\(h)h \(r)m" : "\(r)m" }
 private func fmtHM(_ m: Int) -> (String, String) { (String(m/60), String(format: "%02d", m%60)) }
 
+private let weekSunRed = Color(hex: 0xEF4444)
+private let weekSatBlue = Color(hex: 0x3B82F6)
+private let weekDayGray = Color(hex: 0x64748B)
+
+private func parseYmdLocal(_ s: String) -> Date? {
+    let f = DateFormatter()
+    f.calendar = Calendar(identifier: .gregorian)
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.timeZone = TimeZone.current
+    f.dateFormat = "yyyy-MM-dd"
+    return f.date(from: s)
+}
+
+/// Calendar.current weekday: 1=日 … 7=土（ロケールの一般的な並び）
+private func weekdayJpFromIso(_ iso: String) -> String {
+    guard let d = parseYmdLocal(iso) else { return "" }
+    let wd = Calendar.current.component(.weekday, from: d)
+    let names = ["", "日", "月", "火", "水", "木", "金", "土"]
+    return (wd >= 1 && wd <= 7) ? names[wd] : ""
+}
+
+private func weekdayAxisColor(iso: String) -> Color {
+    guard let d = parseYmdLocal(iso) else { return textDim }
+    let wd = Calendar.current.component(.weekday, from: d)
+    if wd == 1 { return weekSunRed }
+    if wd == 7 { return weekSatBlue }
+    return weekDayGray
+}
+
 struct AnalyticsScreenView: View {
     private let viewModel: RecordViewModel
     @State private var uiState: RecordUiState
@@ -139,7 +168,7 @@ struct AnalyticsScreenView: View {
                 Text(fmtMin(Int(uiState.periodTotalMinutes))).font(.system(size: 28, weight: .heavy)).foregroundColor(textW)
             }
             Spacer()
-            if !uiState.genreBreakdown.isEmpty { donut }
+            if !uiState.genreBreakdown.isEmpty && uiState.selectedPeriod != .today { donut }
         }
         .padding(18).background(bgCard).cornerRadius(18).padding(.horizontal, 16)
     }
@@ -158,10 +187,72 @@ struct AnalyticsScreenView: View {
 
     // MARK: - Chart
     private var chartCard: some View {
-        let bars = uiState.chartBars; let mx = bars.map { Int($0.minutes) }.max() ?? 1; let sg = uiState.selectedGenre
+        Group {
+            if uiState.selectedPeriod == .today {
+                todayPieChartCard
+            } else {
+                barChartCardInner
+            }
+        }
+    }
+
+    private var todayPieChartCard: some View {
+        let bd = uiState.genreBreakdown as! [GenreStudyTime]
+        let total = Int(uiState.periodTotalMinutes)
+        let sg = uiState.selectedGenre
+        return VStack(alignment: .leading, spacing: 14) {
+            Text("今日のジャンル別").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
+            Text(sg != nil ? "\(sg!.emoji) \(sg!.label)のみ" : "全ジャンル").font(.system(size: 10)).foregroundColor(textSub)
+            if bd.isEmpty || total <= 0 {
+                Text("この日の記録はまだありません")
+                    .font(.system(size: 13))
+                    .foregroundColor(textSub)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 28)
+            } else {
+                ZStack {
+                    Canvas { ctx, sz in
+                        let c = CGPoint(x: sz.width / 2, y: sz.height / 2), r = min(sz.width, sz.height) / 2 - 8
+                        var s = Angle.degrees(-90)
+                        for i in bd {
+                            let sw = Angle.degrees(Double(i.ratio) * 360)
+                            let p = Path { p in p.addArc(center: c, radius: r, startAngle: s, endAngle: s + sw, clockwise: false) }
+                            ctx.stroke(p, with: .color(genreColor(i.genre)), lineWidth: 12)
+                            s = s + sw
+                        }
+                    }
+                    .frame(height: 200)
+                    VStack(spacing: 2) {
+                        Text(fmtMin(total)).font(.system(size: 22, weight: .heavy)).foregroundColor(textW)
+                        Text("合計").font(.system(size: 10)).foregroundColor(textSub)
+                    }
+                }
+                ForEach(Array(bd.enumerated()), id: \.offset) { _, i in
+                    HStack(spacing: 8) {
+                        Circle().fill(genreColor(i.genre)).frame(width: 10, height: 10)
+                        Text(i.genre.emoji).font(.system(size: 14))
+                        Text(i.genre.label).font(.system(size: 12, weight: .semibold)).foregroundColor(textW)
+                        Spacer(minLength: 0)
+                        Text("\(fmtMin(Int(i.minutes))) (\(Int(i.ratio * 100))%)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(genreColor(i.genre))
+                    }
+                }
+            }
+        }
+        .padding(18).background(bgCard).cornerRadius(18).padding(.horizontal, 16)
+    }
+
+    private var barChartCardInner: some View {
+        let bars = uiState.chartBars as! [ChartBar]
+        let mx = bars.map { Int($0.minutes) }.max() ?? 1
+        let sg = uiState.selectedGenre
         return VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("学習時間の推移").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
+                if uiState.selectedPeriod == .weekly {
+                    Text("日曜始まり・土曜終わりの週（7日固定）").font(.system(size: 10)).foregroundColor(textSub)
+                }
                 Text(sg != nil ? "\(sg!.emoji) \(sg!.label)のみ" : "全ジャンル").font(.system(size: 10)).foregroundColor(textSub)
             }
             if !bars.isEmpty {
@@ -177,6 +268,7 @@ struct AnalyticsScreenView: View {
 
     private func barItem(_ b: ChartBar, mx: Int, sg: GenreInfo?, cnt: Int) -> some View {
         let fr = CGFloat(b.minutes) / CGFloat(max(mx, 1)); let bh = max(120 * fr, 3); let bw: CGFloat = cnt <= 7 ? 34 : (cnt <= 14 ? 26 : 20)
+        let iso = "\(b.isoDate)"
         return VStack(spacing: 0) {
             if b.minutes > 0 { Text("\(b.minutes)").font(.system(size: 8, weight: .bold)).foregroundColor(textSub); Spacer().frame(height: 2) }
             Spacer()
@@ -189,7 +281,16 @@ struct AnalyticsScreenView: View {
                 }.clipShape(RoundedRectangle(cornerRadius: 5))
             }
             Spacer().frame(height: 3)
-            Text(b.label).font(.system(size: 7)).foregroundColor(textDim).lineLimit(1)
+            if !iso.isEmpty {
+                VStack(spacing: 1) {
+                    Text(weekdayJpFromIso(iso))
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(weekdayAxisColor(iso: iso))
+                    Text(b.label).font(.system(size: 7)).foregroundColor(textDim).lineLimit(1)
+                }
+            } else {
+                Text(b.label).font(.system(size: 7)).foregroundColor(textDim).lineLimit(1)
+            }
         }.frame(width: bw)
     }
 

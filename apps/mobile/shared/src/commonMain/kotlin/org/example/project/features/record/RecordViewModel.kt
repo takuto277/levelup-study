@@ -11,6 +11,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
@@ -65,7 +66,7 @@ class RecordViewModel(
 
                 val today = todayDateString()
                 val todayMin = sessionMinutesForDates(allSessions, setOf(today))
-                val weekMin = sessionMinutesForDates(allSessions, last7Days(today))
+                val weekMin = sessionMinutesForDates(allSessions, sundayStartWeekDateStrings(today).toSet())
                 val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
                 val monthDates = datesInMonth(now.year, now.monthNumber)
                 val monthMin = sessionMinutesForDates(allSessions, monthDates)
@@ -114,7 +115,7 @@ class RecordViewModel(
         val filteredSessions: List<StudySession> = when (state.selectedPeriod) {
             RecordPeriod.TODAY -> allSessions.filter { extractDate(it.startedAt) == today }
             RecordPeriod.WEEKLY -> {
-                val dates = last7Days(today)
+                val dates = sundayStartWeekDateStrings(today).toSet()
                 allSessions.filter { extractDate(it.startedAt) in dates }
             }
             RecordPeriod.MONTHLY -> {
@@ -124,18 +125,41 @@ class RecordViewModel(
         }
 
         val dailyData = filteredSessions.groupBy { extractDate(it.startedAt) }
-        val sortedDays = dailyData.keys.sorted()
 
-        val bars = sortedDays.map { date ->
-            val daySessions = dailyData[date] ?: emptyList()
-            val genreMinutes = mutableMapOf<GenreInfo, Int>()
-            for (s in daySessions) {
-                val gi = resolveGenre(s.category)
-                genreMinutes[gi] = (genreMinutes[gi] ?: 0) + s.durationSeconds / 60
+        val bars = when (state.selectedPeriod) {
+            RecordPeriod.WEEKLY -> {
+                val weekDays = sundayStartWeekDateStrings(today)
+                weekDays.map { date ->
+                    val daySessions = dailyData[date] ?: emptyList()
+                    val genreMinutes = mutableMapOf<GenreInfo, Int>()
+                    for (s in daySessions) {
+                        val gi = resolveGenre(s.category)
+                        genreMinutes[gi] = (genreMinutes[gi] ?: 0) + s.durationSeconds / 60
+                    }
+                    val filtered = if (genre != null) mapOf(genre to (genreMinutes[genre] ?: 0)) else genreMinutes.toMap()
+                    val total = if (genre != null) (genreMinutes[genre] ?: 0) else genreMinutes.values.sum()
+                    ChartBar(
+                        label = formatDateLabel(date),
+                        minutes = total,
+                        genreMinutes = filtered,
+                        isoDate = date
+                    )
+                }
             }
-            val filtered = if (genre != null) mapOf(genre to (genreMinutes[genre] ?: 0)) else genreMinutes.toMap()
-            val total = if (genre != null) (genreMinutes[genre] ?: 0) else genreMinutes.values.sum()
-            ChartBar(label = formatDateLabel(date), minutes = total, genreMinutes = filtered)
+            else -> {
+                val sortedDays = dailyData.keys.sorted()
+                sortedDays.map { date ->
+                    val daySessions = dailyData[date] ?: emptyList()
+                    val genreMinutes = mutableMapOf<GenreInfo, Int>()
+                    for (s in daySessions) {
+                        val gi = resolveGenre(s.category)
+                        genreMinutes[gi] = (genreMinutes[gi] ?: 0) + s.durationSeconds / 60
+                    }
+                    val filtered = if (genre != null) mapOf(genre to (genreMinutes[genre] ?: 0)) else genreMinutes.toMap()
+                    val total = if (genre != null) (genreMinutes[genre] ?: 0) else genreMinutes.values.sum()
+                    ChartBar(label = formatDateLabel(date), minutes = total, genreMinutes = filtered, isoDate = "")
+                }
+            }
         }
 
         val periodTotal = bars.sumOf { it.minutes }
@@ -208,11 +232,39 @@ class RecordViewModel(
             return now.toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
         }
 
-        internal fun last7Days(today: String): Set<String> = lastNDays(today, 7)
+        /** 今日を含む暦週: 日曜始まり・土曜終わり（7日）の ISO 日付リスト（日→土の順） */
+        internal fun sundayStartWeekDateStrings(today: String): List<String> {
+            val d = LocalDate.parse(today)
+            val daysBackFromSunday = when (d.dayOfWeek) {
+                DayOfWeek.SUNDAY -> 0
+                DayOfWeek.MONDAY -> 1
+                DayOfWeek.TUESDAY -> 2
+                DayOfWeek.WEDNESDAY -> 3
+                DayOfWeek.THURSDAY -> 4
+                DayOfWeek.FRIDAY -> 5
+                DayOfWeek.SATURDAY -> 6
+            }
+            val sunday = d.minus(DatePeriod(days = daysBackFromSunday))
+            return (0..6).map { dayOffset ->
+                sunday.plus(DatePeriod(days = dayOffset)).toString()
+            }
+        }
 
-        private fun lastNDays(today: String, n: Int): Set<String> {
-            val date = LocalDate.parse(today)
-            return (0 until n).map { date.minus(DatePeriod(days = it)).toString() }.toSet()
+        /** 日本語曜日1文字 */
+        internal fun weekdayJpOneLetter(day: DayOfWeek): String = when (day) {
+            DayOfWeek.MONDAY -> "月"
+            DayOfWeek.TUESDAY -> "火"
+            DayOfWeek.WEDNESDAY -> "水"
+            DayOfWeek.THURSDAY -> "木"
+            DayOfWeek.FRIDAY -> "金"
+            DayOfWeek.SATURDAY -> "土"
+            DayOfWeek.SUNDAY -> "日"
+        }
+
+        /** M/d（先頭ゼロなしに近い表示） */
+        internal fun formatMonthDayLabel(date: String): String {
+            val parts = date.split("-")
+            return if (parts.size >= 3) "${parts[1].trimStart('0')}/${parts[2].trimStart('0')}" else date
         }
 
         internal fun datesInMonth(year: Int, month: Int): Set<String> {
