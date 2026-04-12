@@ -94,7 +94,8 @@ class HomeViewModel(
                 Triple(
                     data.user.selectedDungeonId ?: prev.selectedDungeonId,
                     data.selectedDungeonName ?: prev.selectedDungeonName,
-                    data.selectedDungeonImageUrl ?: prev.selectedDungeonImageUrl
+                    // ホームデータ側の方針（同梱背景）に合わせ、前回のリモート URL は引き継がない
+                    data.selectedDungeonImageUrl
                 )
             }
             prev.copy(

@@ -98,7 +98,7 @@ fun QuestScreenView() {
                     org.example.project.features.home.HomeIntent.SelectDungeon(
                         id = pick.id,
                         name = pick.name,
-                        imageUrl = if (LocalDungeonIds.isTrainingGround(pick.id)) null else pick.imageUrl.takeIf { it.isNotBlank() }
+                        imageUrl = null
                     )
                 )
             }
@@ -152,7 +152,7 @@ fun QuestScreenView() {
                         org.example.project.features.home.HomeIntent.SelectDungeon(
                             id = dungeon.id,
                             name = dungeon.name,
-                            imageUrl = if (LocalDungeonIds.isTrainingGround(dungeon.id)) null else dungeon.imageUrl.takeIf { it.isNotBlank() }
+                            imageUrl = null
                         )
                     )
                     viewModel.onIntent(QuestIntent.DismissDetail)
