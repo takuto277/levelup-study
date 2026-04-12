@@ -25,6 +25,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -111,6 +112,7 @@ fun GachaScreenView() {
 
         Crossfade(
             targetState = uiState.phase,
+            modifier = Modifier.fillMaxSize(),
             animationSpec = tween(400),
             label = "phase"
         ) { phase ->
@@ -276,6 +278,7 @@ private fun BannerSelectPhase(viewModel: GachaViewModel, uiState: GachaUiState) 
 
         Column(
             modifier = Modifier
+                .fillMaxWidth()
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp),
@@ -285,6 +288,7 @@ private fun BannerSelectPhase(viewModel: GachaViewModel, uiState: GachaUiState) 
                 var visible by remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) { delay(index * 120L); visible = true }
                 AnimatedVisibility(
+                    modifier = Modifier.fillMaxWidth(),
                     visible = visible,
                     enter = fadeIn(tween(400)) + slideInVertically(tween(500)) { it / 2 }
                 ) {
@@ -317,21 +321,28 @@ private fun BannerCard(banner: GachaBanner, onClick: () -> Unit) {
             .height(312.dp)
             .clip(RoundedCornerShape(24.dp))
             .clickable(onClick = onClick)
-            .background(Brush.linearGradient(accent))
-            .drawBehind {
-                drawRect(
-                    Brush.linearGradient(
-                        listOf(Color.Transparent, Color.White.copy(alpha = 0.14f), Color.Transparent),
-                        start = Offset(shimmerX, 0f), end = Offset(shimmerX + 200f, size.height)
-                    )
-                )
-            }
     ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(Brush.linearGradient(accent))
+                .drawBehind {
+                    clipRect(0f, 0f, size.width, size.height) {
+                        drawRect(
+                            Brush.linearGradient(
+                                listOf(Color.Transparent, Color.White.copy(alpha = 0.14f), Color.Transparent),
+                                start = Offset(shimmerX, 0f),
+                                end = Offset(shimmerX + 200f, size.height)
+                            )
+                        )
+                    }
+                }
+        )
         GachaFeaturedHeroPanel(
             featured = hero,
             bannerType = banner.bannerType,
             modifier = Modifier.fillMaxSize(),
-            contentClip = RoundedCornerShape(24.dp)
+            contentClip = RectangleShape
         )
 
         Box(

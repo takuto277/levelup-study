@@ -306,6 +306,7 @@ private struct BannerSelectView: View {
                 }
                 Spacer()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
             .padding(.top, 16)
             .padding(.bottom, 12)
@@ -317,6 +318,7 @@ private struct BannerSelectView: View {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             store.selectBanner(banner)
                         }
+                        .frame(maxWidth: .infinity)
                         .offset(y: appeared ? 0 : 60)
                         .opacity(appeared ? 1 : 0)
                         .animation(
@@ -325,12 +327,14 @@ private struct BannerSelectView: View {
                         )
                     }
                 }
+                .frame(maxWidth: .infinity)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
             }
 
             GachaStonesBottomBar(stones: store.currentStones)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear { appeared = true }
     }
 }
@@ -367,6 +371,7 @@ private struct BannerCard: View {
                         colors: banner.type.colors,
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     ))
+                    .frame(maxWidth: .infinity)
                     .frame(height: 312)
 
                 Group {
@@ -382,6 +387,7 @@ private struct BannerCard: View {
                                     .clipped()
                             default:
                                 LinearGradient(colors: banner.type.colors, startPoint: .top, endPoint: .bottom)
+                                    .frame(maxWidth: .infinity)
                                     .frame(height: 312)
                             }
                         }
@@ -394,6 +400,7 @@ private struct BannerCard: View {
                             .clipped()
                     }
                 }
+                .frame(maxWidth: .infinity)
                 .frame(height: 312)
                 .clipped()
 
@@ -402,6 +409,7 @@ private struct BannerCard: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
+                .frame(maxWidth: .infinity)
                 .frame(height: 312)
                 .allowsHitTesting(false)
 
@@ -413,9 +421,14 @@ private struct BannerCard: View {
                             endPoint: .trailing
                         )
                     )
+                    .frame(maxWidth: .infinity)
                     .frame(height: 312)
                     .offset(x: shimmerOffset)
-                    .mask(RoundedRectangle(cornerRadius: 24, style: .continuous).frame(height: 312))
+                    .mask(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 312)
+                    )
 
                 Text("✦")
                     .font(.system(size: 16, weight: .medium))
@@ -451,10 +464,12 @@ private struct BannerCard: View {
                 }
                 .padding(18)
             }
+            .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .shadow(color: banner.type.colors.first!.opacity(0.42), radius: 18, y: 10)
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
         .onAppear {
             withAnimation(.linear(duration: 2.5).repeatForever(autoreverses: false)) {
                 shimmerOffset = 400
