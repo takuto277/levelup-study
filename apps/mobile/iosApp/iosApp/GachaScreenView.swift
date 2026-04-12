@@ -42,6 +42,9 @@ private struct BannerDisplay: Identifiable {
     let pityThreshold: Int
     let featuredRarity: Int
     let description: String
+    /// ピックアップ立ち絵（マスタの image_url）
+    let pickupImageUrl: String?
+    let pickupName: String
 }
 
 private enum ItemType: String {
@@ -179,11 +182,21 @@ private class GachaStore: ObservableObject {
         else { bt = .mixed }
         let sub = b.featuredSummary
         let desc = sub.isEmpty ? "期間限定召喚開催中！" : "ピックアップ: \(sub)"
+        let hero = b.primaryFeaturedForHero()
+        let urlStr = hero?.imageUrl
+        let pickupUrl: String? = (urlStr?.isEmpty == false) ? urlStr : nil
+        let pName = hero?.itemName ?? ""
+        let rarity: Int = {
+            guard let h = hero else { return 5 }
+            return Int(h.rarity)
+        }()
         return BannerDisplay(
             id: b.id, name: b.name, type: bt,
             pityThreshold: b.pityThreshold?.intValue ?? 0,
-            featuredRarity: 5,
-            description: desc
+            featuredRarity: max(1, min(rarity, 5)),
+            description: desc,
+            pickupImageUrl: pickupUrl,
+            pickupName: pName
         )
     }
 
@@ -272,16 +285,15 @@ private struct BannerSelectView: View {
                     Text("召 喚")
                         .font(.system(size: 28, weight: .black))
                         .foregroundColor(.white)
-                    Text("知識の結晶で仲間を召喚しよう")
+                    Text("バナーを選んで詳細へ")
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.6))
                 }
                 Spacer()
-                StoneCountBadge(stones: store.currentStones)
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)
-            .padding(.bottom, 24)
+            .padding(.bottom, 12)
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 16) {
@@ -299,10 +311,30 @@ private struct BannerSelectView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 120)
+                .padding(.bottom, 12)
             }
+
+            GachaStonesBottomBar(stones: store.currentStones)
         }
         .onAppear { appeared = true }
+    }
+}
+
+private struct GachaStonesBottomBar: View {
+    let stones: Int
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("知識の結晶").font(.system(size: 11)).foregroundColor(.white.opacity(0.55))
+                Text("消費して召喚").font(.system(size: 13, weight: .semibold)).foregroundColor(.white.opacity(0.85))
+            }
+            Spacer()
+            StoneCountBadge(stones: stones)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(Color.black.opacity(0.5))
     }
 }
 
@@ -310,6 +342,11 @@ private struct BannerCard: View {
     let banner: BannerDisplay
     let onTap: () -> Void
     @State private var shimmerOffset: CGFloat = -200
+
+    private var subtitle: String {
+        if !banner.pickupName.isEmpty { return banner.pickupName }
+        return banner.description
+    }
 
     var body: some View {
         Button(action: onTap) {
@@ -319,7 +356,50 @@ private struct BannerCard: View {
                         colors: banner.type.colors,
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     ))
-                    .frame(height: 180)
+                    .frame(height: 288)
+
+                VStack(spacing: 0) {
+                    ZStack {
+                        if let s = banner.pickupImageUrl, let u = URL(string: s) {
+                            ZStack {
+                                AsyncImage(url: u) { phase in
+                                    switch phase {
+                                    case .success(let img):
+                                        img
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(height: 210)
+                                            .frame(maxWidth: .infinity)
+                                            .clipped()
+                                    default:
+                                        LinearGradient(colors: banner.type.colors, startPoint: .top, endPoint: .bottom)
+                                            .frame(height: 210)
+                                    }
+                                }
+                                LinearGradient(
+                                    colors: [.clear, .black.opacity(0.55)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                                .allowsHitTesting(false)
+                            }
+                            .frame(height: 210)
+                            .clipped()
+                        } else {
+                            LinearGradient(colors: banner.type.colors, startPoint: .top, endPoint: .bottom)
+                                .frame(height: 210)
+                                .overlay(
+                                    Image(systemName: banner.type.icon)
+                                        .font(.system(size: 88, weight: .ultraLight))
+                                        .foregroundColor(.white.opacity(0.22))
+                                )
+                        }
+                    }
+                    .frame(height: 210)
+
+                    Spacer(minLength: 0)
+                }
+                .frame(height: 288, alignment: .top)
 
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(
@@ -328,16 +408,16 @@ private struct BannerCard: View {
                             startPoint: .leading, endPoint: .trailing
                         )
                     )
-                    .frame(height: 180)
+                    .frame(height: 288)
                     .offset(x: shimmerOffset)
-                    .mask(RoundedRectangle(cornerRadius: 20, style: .continuous).frame(height: 180))
+                    .mask(RoundedRectangle(cornerRadius: 20, style: .continuous).frame(height: 288))
 
                 Image(systemName: banner.type.icon)
-                    .font(.system(size: 80, weight: .ultraLight))
-                    .foregroundColor(.white.opacity(0.1))
-                    .offset(x: 120, y: -20)
+                    .font(.system(size: 56, weight: .ultraLight))
+                    .foregroundColor(.white.opacity(0.12))
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .clipped()
+                    .padding(.trailing, 12)
+                    .padding(.top, 8)
 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 4) {
@@ -359,11 +439,12 @@ private struct BannerCard: View {
                     Text(banner.name)
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(.white)
-                        .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
+                        .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
 
-                    Text(banner.description)
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.8))
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.88))
+                        .lineLimit(2)
 
                     HStack(spacing: 2) {
                         ForEach(0..<banner.featuredRarity, id: \.self) { _ in
@@ -399,31 +480,61 @@ private struct ConfirmView: View {
                 Button(action: { store.backToBannerSelect() }) {
                     HStack(spacing: 6) {
                         Image(systemName: "chevron.left")
-                        Text("バナー選択")
+                        Text("召喚確認")
                     }
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white.opacity(0.7))
                 }
                 Spacer()
-                StoneCountBadge(stones: store.currentStones)
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)
-            .padding(.bottom, 12)
+            .padding(.bottom, 8)
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
+                VStack(spacing: 20) {
                     if let banner = store.selectedBanner {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .fill(LinearGradient(colors: banner.type.colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(height: 240)
+                            if let s = banner.pickupImageUrl, let u = URL(string: s) {
+                                ZStack {
+                                    AsyncImage(url: u) { phase in
+                                        switch phase {
+                                        case .success(let img):
+                                            img.resizable()
+                                                .scaledToFill()
+                                                .frame(height: 240)
+                                                .frame(maxWidth: .infinity)
+                                                .clipped()
+                                        default:
+                                            Color.clear.frame(height: 240)
+                                        }
+                                    }
+                                    LinearGradient(colors: [.clear, .black.opacity(0.5)], startPoint: .top, endPoint: .bottom)
+                                        .allowsHitTesting(false)
+                                }
+                            } else {
+                                Image(systemName: banner.type.icon)
+                                    .font(.system(size: 96, weight: .ultraLight))
+                                    .foregroundColor(.white.opacity(0.22))
+                            }
+                        }
+                        .frame(height: 240)
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .scaleEffect(appeared ? 1 : 0.92)
+                        .opacity(appeared ? 1 : 0)
+
                         VStack(spacing: 4) {
                             Text(banner.name)
                                 .font(.system(size: 26, weight: .black))
                                 .foregroundColor(.white)
                                 .multilineTextAlignment(.center)
-                            Text(banner.description)
+                            Text("知識の結晶を消費して召喚します")
                                 .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.6))
                         }
-                        .scaleEffect(appeared ? 1 : 0.8)
                         .opacity(appeared ? 1 : 0)
 
                         SummoningOrb(bannerType: banner.type)
@@ -431,37 +542,42 @@ private struct ConfirmView: View {
                             .scaleEffect(appeared ? 1 : 0.5)
                             .opacity(appeared ? 1 : 0)
 
-                        if banner.pityThreshold > 0 {
-                            PityCounter(current: store.pityCount, threshold: banner.pityThreshold)
-                                .opacity(appeared ? 1 : 0)
-                        }
-
-                        VStack(spacing: 12) {
-                            GlowPullButton(
-                                label: "単発召喚", cost: GachaStore.singleCost,
-                                enabled: store.canPullSingle, colors: banner.type.colors
-                            ) {
-                                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                                store.pullSingle()
-                            }
-                            GlowPullButton(
-                                label: "10連召喚", cost: GachaStore.multiCost,
-                                enabled: store.canPullMulti, colors: banner.type.colors,
-                                isPrimary: true
-                            ) {
-                                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                                store.pullMulti()
-                            }
-                        }
-                        .padding(.top, 8)
-                        .offset(y: appeared ? 0 : 40)
-                        .opacity(appeared ? 1 : 0)
-
                         RateInfoCard().opacity(appeared ? 1 : 0)
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 120)
+                .padding(.bottom, 200)
+            }
+
+            if let banner = store.selectedBanner {
+                VStack(spacing: 10) {
+                    HStack {
+                        Text("所持結晶").font(.system(size: 12)).foregroundColor(.white.opacity(0.55))
+                        Spacer()
+                        StoneCountBadge(stones: store.currentStones)
+                    }
+                    if banner.pityThreshold > 0 {
+                        PityCounter(current: store.pityCount, threshold: banner.pityThreshold)
+                    }
+                    GlowPullButton(
+                        label: "単発召喚", cost: GachaStore.singleCost,
+                        enabled: store.canPullSingle, colors: banner.type.colors
+                    ) {
+                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                        store.pullSingle()
+                    }
+                    GlowPullButton(
+                        label: "10連召喚", cost: GachaStore.multiCost,
+                        enabled: store.canPullMulti, colors: banner.type.colors,
+                        isPrimary: true
+                    ) {
+                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                        store.pullMulti()
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(Color.black.opacity(0.55))
             }
         }
         .onAppear { withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { appeared = true } }

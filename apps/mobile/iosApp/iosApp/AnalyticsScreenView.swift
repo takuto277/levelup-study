@@ -199,10 +199,8 @@ struct AnalyticsScreenView: View {
     private var todayPieChartCard: some View {
         let bd = uiState.genreBreakdown as! [GenreStudyTime]
         let total = Int(uiState.periodTotalMinutes)
-        let sg = uiState.selectedGenre
         return VStack(alignment: .leading, spacing: 14) {
             Text("今日のジャンル別").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
-            Text(sg != nil ? "\(sg!.emoji) \(sg!.label)のみ" : "全ジャンル").font(.system(size: 10)).foregroundColor(textSub)
             if bd.isEmpty || total <= 0 {
                 Text("この日の記録はまだありません")
                     .font(.system(size: 13))
@@ -240,36 +238,47 @@ struct AnalyticsScreenView: View {
                 }
             }
         }
-        .padding(18).background(bgCard).cornerRadius(18).padding(.horizontal, 16)
+        .padding(.horizontal, 12).padding(.vertical, 14).background(bgCard).cornerRadius(18).padding(.horizontal, 16)
     }
 
     private var barChartCardInner: some View {
         let bars = uiState.chartBars as! [ChartBar]
         let mx = bars.map { Int($0.minutes) }.max() ?? 1
         let sg = uiState.selectedGenre
-        return VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("学習時間の推移").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
-                if uiState.selectedPeriod == .weekly {
-                    Text("日曜始まり・土曜終わりの週（7日固定）").font(.system(size: 10)).foregroundColor(textSub)
-                }
-                Text(sg != nil ? "\(sg!.emoji) \(sg!.label)のみ" : "全ジャンル").font(.system(size: 10)).foregroundColor(textSub)
-            }
+        let useEqualWeek = uiState.selectedPeriod == .weekly && bars.count == 7
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("学習時間の推移").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
             if !bars.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .bottom, spacing: 5) {
-                        ForEach(Array(bars.enumerated()), id: \.offset) { _, b in barItem(b, mx: mx, sg: sg, cnt: bars.count) }
-                    }.frame(height: 150).padding(.bottom, 4)
+                Group {
+                    if useEqualWeek {
+                        HStack(alignment: .bottom, spacing: 3) {
+                            ForEach(Array(bars.enumerated()), id: \.offset) { _, b in
+                                barItem(b, mx: mx, sg: sg, cnt: bars.count, fillCell: true)
+                            }
+                        }
+                        .frame(height: 150)
+                    } else {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(alignment: .bottom, spacing: 4) {
+                                ForEach(Array(bars.enumerated()), id: \.offset) { _, b in barItem(b, mx: mx, sg: sg, cnt: bars.count, fillCell: false) }
+                            }
+                            .frame(height: 150)
+                            .padding(.bottom, 2)
+                        }
+                    }
                 }
             }
         }
-        .padding(18).background(bgCard).cornerRadius(18).padding(.horizontal, 16)
+        .padding(.horizontal, 12).padding(.vertical, 14).background(bgCard).cornerRadius(18).padding(.horizontal, 16)
     }
 
-    private func barItem(_ b: ChartBar, mx: Int, sg: GenreInfo?, cnt: Int) -> some View {
-        let fr = CGFloat(b.minutes) / CGFloat(max(mx, 1)); let bh = max(120 * fr, 3); let bw: CGFloat = cnt <= 7 ? 34 : (cnt <= 14 ? 26 : 20)
+    @ViewBuilder
+    private func barItem(_ b: ChartBar, mx: Int, sg: GenreInfo?, cnt: Int, fillCell: Bool = false) -> some View {
+        let fr = CGFloat(b.minutes) / CGFloat(max(mx, 1))
+        let bh = max(120 * fr, 3)
+        let bw: CGFloat = cnt <= 7 ? 34 : (cnt <= 14 ? 26 : 20)
         let iso = "\(b.isoDate)"
-        return VStack(spacing: 0) {
+        let inner = VStack(spacing: 0) {
             if b.minutes > 0 { Text("\(b.minutes)").font(.system(size: 8, weight: .bold)).foregroundColor(textSub); Spacer().frame(height: 2) }
             Spacer()
             if let g = sg { RoundedRectangle(cornerRadius: 5).fill(genreColor(g)).frame(height: bh) }
@@ -291,7 +300,12 @@ struct AnalyticsScreenView: View {
             } else {
                 Text(b.label).font(.system(size: 7)).foregroundColor(textDim).lineLimit(1)
             }
-        }.frame(width: bw)
+        }
+        if fillCell {
+            inner.frame(maxWidth: .infinity)
+        } else {
+            inner.frame(width: bw)
+        }
     }
 
     // MARK: - Genre

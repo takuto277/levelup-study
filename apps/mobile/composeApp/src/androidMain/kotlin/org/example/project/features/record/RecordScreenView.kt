@@ -405,13 +405,17 @@ private fun BarChartCard(uiState: RecordUiState) {
 
     val maxMinutes = bars.maxOfOrNull { it.minutes }?.coerceAtLeast(1) ?: 1
 
+    val chartInnerPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp)
+    val useWeightedWeekBars =
+        uiState.selectedPeriod == RecordPeriod.WEEKLY && bars.size == 7
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .shadow(2.dp, RoundedCornerShape(20.dp))
             .background(CardWhite, RoundedCornerShape(20.dp))
-            .padding(20.dp)
+            .padding(chartInnerPadding)
     ) {
         Text(
             "学習時間の推移",
@@ -419,39 +423,46 @@ private fun BarChartCard(uiState: RecordUiState) {
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
-        Spacer(modifier = Modifier.height(4.dp))
-        if (uiState.selectedPeriod == RecordPeriod.WEEKLY) {
-            Text(
-                "日曜始まり・土曜終わりの週（7日固定）",
-                fontSize = 10.sp,
-                color = TextSecondary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-        }
-        Text(
-            if (selectedGenre != null) "${selectedGenre.emoji} ${selectedGenre.label}のみ表示中"
-            else "全ジャンル",
-            fontSize = 11.sp,
-            color = TextSecondary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        // スクロール可能なバーチャート
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .height(160.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            bars.forEach { bar ->
-                BarItem(
-                    bar = bar,
-                    maxMinutes = maxMinutes,
-                    selectedGenre = selectedGenre,
-                    barCount = bars.size
-                )
+        if (useWeightedWeekBars) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                for (bar in bars) {
+                    BarItem(
+                        bar = bar,
+                        maxMinutes = maxMinutes,
+                        selectedGenre = selectedGenre,
+                        barCount = bars.size,
+                        modifier = Modifier.weight(1f),
+                        fillCell = true
+                    )
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .height(160.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                bars.forEach { bar ->
+                    BarItem(
+                        bar = bar,
+                        maxMinutes = maxMinutes,
+                        selectedGenre = selectedGenre,
+                        barCount = bars.size,
+                        modifier = Modifier,
+                        fillCell = false
+                    )
+                }
             }
         }
     }
@@ -468,7 +479,7 @@ private fun TodayGenrePieCard(uiState: RecordUiState) {
             .padding(horizontal = 16.dp)
             .shadow(2.dp, RoundedCornerShape(20.dp))
             .background(CardWhite, RoundedCornerShape(20.dp))
-            .padding(20.dp)
+            .padding(horizontal = 12.dp, vertical = 14.dp)
     ) {
         Text(
             "今日のジャンル別",
@@ -476,14 +487,7 @@ private fun TodayGenrePieCard(uiState: RecordUiState) {
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            if (uiState.selectedGenre != null) "${uiState.selectedGenre!!.emoji} ${uiState.selectedGenre!!.label}のみ表示中"
-            else "全ジャンル",
-            fontSize = 11.sp,
-            color = TextSecondary
-        )
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         if (breakdown.isEmpty() || total <= 0) {
             Text(
@@ -557,7 +561,9 @@ private fun BarItem(
     bar: ChartBar,
     maxMinutes: Int,
     selectedGenre: GenreInfo?,
-    barCount: Int
+    barCount: Int,
+    modifier: Modifier = Modifier,
+    fillCell: Boolean = false
 ) {
     val fraction = bar.minutes.toFloat() / maxMinutes
     val barHeight = (130 * fraction).coerceAtLeast(4f)
@@ -569,7 +575,9 @@ private fun BarItem(
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(barWidth)
+        modifier = modifier
+            .fillMaxHeight()
+            .then(if (fillCell) Modifier.fillMaxWidth() else Modifier.width(barWidth))
     ) {
         // 時間ラベル
         if (bar.minutes > 0) {

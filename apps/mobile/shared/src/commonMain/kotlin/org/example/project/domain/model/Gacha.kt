@@ -63,3 +63,13 @@ enum class GachaResultType {
     WEAPON,
     COSTUME
 }
+
+/**
+ * 召喚 UI のメイン立ち絵用。画像 URL があるピックアップを優先し、なければキャラ枠→先頭。
+ */
+fun GachaBanner.primaryFeaturedForHero(): GachaBannerFeatured? {
+    if (featured.isEmpty()) return null
+    featured.firstOrNull { it.imageUrl.isNotBlank() }?.let { return it }
+    featured.firstOrNull { it.itemType == GachaResultType.CHARACTER }?.let { return it }
+    return featured.first()
+}
