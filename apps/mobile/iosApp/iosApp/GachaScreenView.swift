@@ -177,11 +177,13 @@ private class GachaStore: ObservableObject {
         if kbt == BannerType.character { bt = .character }
         else if kbt == BannerType.weapon { bt = .weapon }
         else { bt = .mixed }
+        let sub = b.featuredSummary
+        let desc = sub.isEmpty ? "期間限定召喚開催中！" : "ピックアップ: \(sub)"
         return BannerDisplay(
             id: b.id, name: b.name, type: bt,
             pityThreshold: b.pityThreshold?.intValue ?? 0,
             featuredRarity: 5,
-            description: "期間限定召喚開催中！"
+            description: desc
         )
     }
 

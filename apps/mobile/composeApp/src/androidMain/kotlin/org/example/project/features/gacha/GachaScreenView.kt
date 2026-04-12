@@ -292,6 +292,22 @@ private fun ConfirmPhase(viewModel: GachaViewModel, uiState: GachaUiState) {
             Text("知識の結晶を消費して召喚します", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f))
             Spacer(modifier = Modifier.height(24.dp))
 
+            if (banner.featured.isNotEmpty()) {
+                Text("ピックアップ", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.85f))
+                Spacer(modifier = Modifier.height(8.dp))
+                banner.featured.forEach { f ->
+                    val label = f.itemName.ifBlank { f.itemId.take(8) + "…" }
+                    val pct = (f.rateUp * 100f).toInt()
+                    Text(
+                        "・$label  （レート係数 1+${f.rateUp} ≒ +$pct%）",
+                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.72f),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             // 召喚オーブ
             SummoningOrb(banner.bannerType)
             Spacer(modifier = Modifier.height(24.dp))

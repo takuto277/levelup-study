@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -114,6 +115,17 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 	if err := json.Unmarshal(banner.RateTable, &rateTable); err != nil {
 		return nil, fmt.Errorf("排出テーブルの読み込みに失敗: %w", err)
 	}
+	if err := s.validateRateTable(rateTable); err != nil {
+		return nil, err
+	}
+	featured, err := s.masterRepo.ListFeaturedByBannerID(req.BannerID)
+	if err != nil {
+		return nil, fmt.Errorf("ピックアップ情報の取得に失敗: %w", err)
+	}
+	effectiveRates, err := mergeFeaturedIntoRateTable(rateTable, featured)
+	if err != nil {
+		return nil, fmt.Errorf("排出テーブルの合成に失敗: %w", err)
+	}
 
 	// --- 現在の天井カウント取得 ---
 	currentPity, err := s.gachaRepo.GetPityCount(userID, req.BannerID)
@@ -150,7 +162,7 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 			currentPity++
 
 			// 排出アイテムを抽選する
-			entry := s.rollGacha(rateTable, currentPity, banner.PityThreshold)
+			entry := s.rollGacha(effectiveRates, currentPity, banner.PityThreshold)
 
 			// 名前とレアリティを取得
 			name := ""
@@ -243,6 +255,35 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 		RemainingStones: remaining,
 		UpdatedUser:     updatedUser,
 	}, nil
+}
+
+// validateRateTable — rate_table の各 item_id が有効なマスタを指すか検証する
+func (s *GachaService) validateRateTable(entries []RateTableEntry) error {
+	for _, e := range entries {
+		switch strings.ToLower(e.ResultType) {
+		case "character":
+			c, err := s.masterRepo.GetCharacter(e.ItemID)
+			if err != nil || c == nil {
+				return fmt.Errorf("キャラマスタが見つかりません: %s", e.ItemID)
+			}
+			if !c.IsActive {
+				return fmt.Errorf("キャラマスタが無効です: %s", e.ItemID)
+			}
+		case "weapon":
+			w, err := s.masterRepo.GetWeapon(e.ItemID)
+			if err != nil || w == nil {
+				return fmt.Errorf("武器マスタが見つかりません: %s", e.ItemID)
+			}
+			if !w.IsActive {
+				return fmt.Errorf("武器マスタが無効です: %s", e.ItemID)
+			}
+		case "costume":
+			// 衣装マスタ（m_costumes）導入後にここで検証する
+		default:
+			return fmt.Errorf("不明な result_type: %s", e.ResultType)
+		}
+	}
+	return nil
 }
 
 // rollGacha — 排出テーブルから1件を抽選する

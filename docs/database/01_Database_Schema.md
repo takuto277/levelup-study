@@ -539,10 +539,12 @@ erDiagram
 | `banner_id` | `UUID` | No | FK → m_gacha_banners | 対象バナー |
 | `item_id` | `UUID` | No | — | ピックアップ対象のマスタID |
 | `item_type` | `VARCHAR(20)` | No | — | `character` / `weapon` / `costume` |
-| `rate_up` | `FLOAT` | No | — | 排出率上昇値（例: 0.5 = 50%ピックアップ確率） |
+| `rate_up` | `FLOAT` | No | — | レートアップ係数。Pull 時に `rate_table` の同一 `item_id` / `item_type` 行の `rate` に **`(1 + rate_up)` を乗算**し、その後プール全体を正規化する（実装は `GachaService` + `mergeFeaturedIntoRateTable`）。 |
 
 **インデックス:**
 - `idx_banner_featured_banner_id` ON `(banner_id)`
+
+**詳細仕様・API・運用フロー:** [ガチャバナー・ピックアップ設計](../gacha-banners-and-featured.md)
 
 ---
 

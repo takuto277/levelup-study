@@ -249,6 +249,23 @@ func (r *MasterRepository) DeactivateBanner(id uuid.UUID) error {
 		Update("is_active", false).Error
 }
 
+// ListFeaturedByBannerID — 1バナーのピックアップ行を取得する
+func (r *MasterRepository) ListFeaturedByBannerID(bannerID uuid.UUID) ([]model.MasterGachaBannerFeatured, error) {
+	var rows []model.MasterGachaBannerFeatured
+	err := r.db.Where("banner_id = ?", bannerID).Order("id ASC").Find(&rows).Error
+	return rows, err
+}
+
+// ListFeaturedByBannerIDs — 複数バナーのピックアップを一括取得する（API 一覧用）
+func (r *MasterRepository) ListFeaturedByBannerIDs(bannerIDs []uuid.UUID) ([]model.MasterGachaBannerFeatured, error) {
+	if len(bannerIDs) == 0 {
+		return nil, nil
+	}
+	var rows []model.MasterGachaBannerFeatured
+	err := r.db.Where("banner_id IN ?", bannerIDs).Order("banner_id, id ASC").Find(&rows).Error
+	return rows, err
+}
+
 // --- 勉強ジャンルマスタ ---
 
 // ListStudyGenres — 有効なジャンル一覧を取得する（sort_order 昇順）

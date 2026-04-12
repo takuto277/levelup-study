@@ -12,7 +12,11 @@ data class GachaBanner(
     val endAt: String,
     val pityThreshold: Int?,
     val rateTable: String,
-    val isActive: Boolean
+    val isActive: Boolean,
+    /** ピックアップ行（サーバー `m_gacha_banner_featured`） */
+    val featured: List<GachaBannerFeatured> = emptyList(),
+    /** 表示用: ピックアップの `item_name` を「 · 」で連結（空なら UI でフォールバック） */
+    val featuredSummary: String = ""
 )
 
 /** バナー種別 */
@@ -31,7 +35,10 @@ data class GachaBannerFeatured(
     val bannerId: String,
     val itemId: String,
     val itemType: GachaResultType,
-    val rateUp: Float
+    val rateUp: Float,
+    val itemName: String = "",
+    val rarity: Int = 0,
+    val imageUrl: String = ""
 )
 
 /**

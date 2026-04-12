@@ -456,6 +456,12 @@ private struct QuestHpBarStripView<Header: View>: View {
     }
 }
 
+/// パーティ先頭名（KMM の文字列をそのまま表示、空は「冒険者」）
+private func playerDisplayName(_ raw: String) -> String {
+    let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    return s.isEmpty ? "冒険者" : s
+}
+
 // MARK: - メイン
 
 struct StudyQuestScreenView: View {
@@ -707,8 +713,6 @@ struct StudyQuestScreenView: View {
             VStack(spacing: 0) {
                 if !isBreak {
                     HStack(alignment: .center, spacing: 8) {
-                        Text("🧙‍♂️").font(.system(size: 16))
-
                         QuestHpBarStripView(
                             currentHp: uiState.playerHp,
                             maxHp: uiState.playerMaxHp,
@@ -717,9 +721,11 @@ struct StudyQuestScreenView: View {
                             floatTriggerTurnMod: 1
                         ) {
                             HStack {
-                                Text("HP")
+                                Text(playerDisplayName("\(uiState.partyLeadName)"))
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(textMuted)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.6)
                                 Spacer(minLength: 0)
                                 Text("\(uiState.playerHp)/\(uiState.playerMaxHp)")
                                     .font(.system(size: 10, weight: .bold))
@@ -737,10 +743,8 @@ struct StudyQuestScreenView: View {
                                     adventurePhaseTick: uiState.adventurePhaseTick,
                                     floatTriggerTurnMod: 0
                                 ) {
-                                    HStack(spacing: 4) {
-                                        Text(uiState.enemyEmoji)
-                                            .font(.system(size: 12))
-                                        Text(uiState.enemyName)
+                                    HStack {
+                                        Text("\(uiState.enemyName)")
                                             .font(.system(size: 10, weight: .bold))
                                             .foregroundColor(textMuted)
                                             .lineLimit(1)

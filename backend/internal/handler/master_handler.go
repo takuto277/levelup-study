@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/takuto277/levelup-study/backend/internal/model"
 	"github.com/takuto277/levelup-study/backend/internal/repository"
 	"gorm.io/gorm"
@@ -58,14 +60,77 @@ func (h *MasterHandler) ListDungeons(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListActiveBanners — GET /api/v1/master/gacha/banners
-// 現在開催中のガチャバナー一覧を返す
+// 現在開催中のガチャバナー一覧を返す（各バナーに featured[] とマスタ解決済みの表示用フィールドを含む）
 func (h *MasterHandler) ListActiveBanners(w http.ResponseWriter, r *http.Request) {
 	list, err := h.repo.ListActiveBanners()
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "バナー取得に失敗しました")
 		return
 	}
-	respondJSON(w, http.StatusOK, map[string]interface{}{"banners": list})
+	ids := make([]uuid.UUID, len(list))
+	for i := range list {
+		ids[i] = list[i].ID
+	}
+	featuredRows, err := h.repo.ListFeaturedByBannerIDs(ids)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "ピックアップ情報の取得に失敗しました")
+		return
+	}
+	byBanner := make(map[uuid.UUID][]model.MasterGachaBannerFeatured)
+	for _, row := range featuredRows {
+		byBanner[row.BannerID] = append(byBanner[row.BannerID], row)
+	}
+	out := make([]map[string]interface{}, 0, len(list))
+	for i := range list {
+		out = append(out, h.buildGachaBannerJSON(list[i], byBanner[list[i].ID]))
+	}
+	respondJSON(w, http.StatusOK, map[string]interface{}{"banners": out})
+}
+
+func (h *MasterHandler) buildGachaBannerJSON(b model.MasterGachaBanner, feats []model.MasterGachaBannerFeatured) map[string]interface{} {
+	m := map[string]interface{}{
+		"id":              b.ID.String(),
+		"name":            b.Name,
+		"banner_type":     b.BannerType,
+		"start_at":        b.StartAt,
+		"end_at":          b.EndAt,
+		"pity_threshold":  b.PityThreshold,
+		"rate_table":      json.RawMessage(b.RateTable),
+		"is_active":       b.IsActive,
+	}
+	arr := make([]map[string]interface{}, 0, len(feats))
+	for _, f := range feats {
+		arr = append(arr, h.enrichGachaFeaturedJSON(f))
+	}
+	m["featured"] = arr
+	return m
+}
+
+func (h *MasterHandler) enrichGachaFeaturedJSON(f model.MasterGachaBannerFeatured) map[string]interface{} {
+	out := map[string]interface{}{
+		"id":        f.ID.String(),
+		"banner_id": f.BannerID.String(),
+		"item_id":   f.ItemID.String(),
+		"item_type": f.ItemType,
+		"rate_up":   f.RateUp,
+	}
+	switch strings.ToLower(f.ItemType) {
+	case "character":
+		if c, err := h.repo.GetCharacter(f.ItemID); err == nil && c != nil {
+			out["item_name"] = c.Name
+			out["rarity"] = c.Rarity
+			out["image_url"] = c.ImageURL
+		}
+	case "weapon":
+		if w, err := h.repo.GetWeapon(f.ItemID); err == nil && w != nil {
+			out["item_name"] = w.Name
+			out["rarity"] = w.Rarity
+			out["image_url"] = w.ImageURL
+		}
+	case "costume":
+		// 衣装マスタ連携後に item_name 等を埋める
+	}
+	return out
 }
 
 // ListStudyGenres — GET /api/v1/master/genres

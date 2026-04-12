@@ -15,6 +15,7 @@ BEGIN;
 -- ────────────────────────────────────────────────
 TRUNCATE
   gacha_histories,
+  m_gacha_banner_featured,
   user_dungeon_progresses,
   user_party_slots,
   user_weapons,
@@ -290,8 +291,14 @@ INSERT INTO m_gacha_banners (id, name, banner_type, start_at, end_at, pity_thres
      {"item_id":"b0000000-0000-0000-0000-00000000000d","result_type":"weapon","rarity":3,"rate":0.117},
      {"item_id":"b0000000-0000-0000-0000-00000000000e","result_type":"weapon","rarity":3,"rate":0.117},
      {"item_id":"b0000000-0000-0000-0000-00000000000f","result_type":"weapon","rarity":3,"rate":0.118}
-   ]'::jsonb, true),
+   ]'::jsonb, true);
 
+-- ピックアップ（バナー × マスタID）。Pull 時に rate_table の該当行へ (1+rate_up) を乗算する。
+INSERT INTO m_gacha_banner_featured (id, banner_id, item_id, item_type, rate_up) VALUES
+  ('f1000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'character', 0.5),
+  ('f1000000-0000-0000-0000-000000000002', 'f0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 'weapon', 0.3);
+
+INSERT INTO m_gacha_banners (id, name, banner_type, start_at, end_at, pity_threshold, rate_table, is_active) VALUES
   ('f0000000-0000-0000-0000-000000000003', '新学期スペシャル召喚', 'mixed',
    '2026-01-01 00:00:00+00', '2027-12-31 23:59:59+00', NULL,
    '[

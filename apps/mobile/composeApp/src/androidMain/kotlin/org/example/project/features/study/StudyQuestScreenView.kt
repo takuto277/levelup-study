@@ -252,11 +252,9 @@ private fun MainQuestView(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
-                            .padding(vertical = 2.dp),
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("🧙‍♂️", fontSize = 16.sp)
-                        Spacer(modifier = Modifier.width(8.dp))
                         QuestHpBarStrip(
                             currentHp = uiState.playerHp,
                             maxHp = uiState.playerMaxHp,
@@ -265,8 +263,15 @@ private fun MainQuestView(
                             floatTriggerTurnMod = 1L,
                             modifier = Modifier.weight(1f),
                             header = {
-                                Text("HP", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted)
-                                Spacer(modifier = Modifier.weight(1f))
+                                Text(
+                                    uiState.partyLeadName.ifBlank { "冒険者" },
+                                    modifier = Modifier.weight(1f),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextMuted,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                                 Text(
                                     "${uiState.playerHp}/${uiState.playerMaxHp}",
                                     fontSize = 10.sp,
@@ -286,8 +291,6 @@ private fun MainQuestView(
                                     floatTriggerTurnMod = 0L,
                                     modifier = Modifier.fillMaxWidth(),
                                     header = {
-                                        Text(uiState.enemyEmoji, fontSize = 12.sp)
-                                        Spacer(modifier = Modifier.width(4.dp))
                                         Text(
                                             uiState.enemyName,
                                             modifier = Modifier.weight(1f),

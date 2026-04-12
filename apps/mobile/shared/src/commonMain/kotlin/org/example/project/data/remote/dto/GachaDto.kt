@@ -5,10 +5,23 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import org.example.project.domain.model.BannerType
 import org.example.project.domain.model.GachaBanner
+import org.example.project.domain.model.GachaBannerFeatured
 import org.example.project.domain.model.GachaResult
 import org.example.project.domain.model.GachaResultType
 
 // ── Response ────────────────────────────────────
+
+@Serializable
+data class GachaBannerFeaturedResponse(
+    val id: String,
+    @SerialName("banner_id") val bannerId: String,
+    @SerialName("item_id") val itemId: String,
+    @SerialName("item_type") val itemType: String,
+    @SerialName("rate_up") val rateUp: Double = 0.0,
+    @SerialName("item_name") val itemName: String = "",
+    val rarity: Int = 0,
+    @SerialName("image_url") val imageUrl: String = ""
+)
 
 @Serializable
 data class GachaBannerResponse(
@@ -19,7 +32,8 @@ data class GachaBannerResponse(
     @SerialName("end_at") val endAt: String,
     @SerialName("pity_threshold") val pityThreshold: Int? = null,
     @SerialName("rate_table") val rateTable: JsonElement,
-    @SerialName("is_active") val isActive: Boolean
+    @SerialName("is_active") val isActive: Boolean,
+    val featured: List<GachaBannerFeaturedResponse> = emptyList()
 )
 
 @Serializable
@@ -76,17 +90,35 @@ data class GachaPullRequest(
 
 // ── Mapper ──────────────────────────────────────
 
-fun GachaBannerResponse.toDomain(): GachaBanner = GachaBanner(
+fun GachaBannerFeaturedResponse.toDomain(): GachaBannerFeatured = GachaBannerFeatured(
     id = id,
-    name = name,
-    bannerType = runCatching { BannerType.valueOf(bannerType.uppercase()) }
-        .getOrDefault(BannerType.MIXED),
-    startAt = startAt,
-    endAt = endAt,
-    pityThreshold = pityThreshold,
-    rateTable = rateTable.toString(),
-    isActive = isActive
+    bannerId = bannerId,
+    itemId = itemId,
+    itemType = runCatching { GachaResultType.valueOf(itemType.uppercase()) }
+        .getOrDefault(GachaResultType.CHARACTER),
+    rateUp = rateUp.toFloat(),
+    itemName = itemName,
+    rarity = rarity,
+    imageUrl = imageUrl
 )
+
+fun GachaBannerResponse.toDomain(): GachaBanner {
+    val feat = featured.map { it.toDomain() }
+    val summary = feat.mapNotNull { f -> f.itemName.takeIf { it.isNotBlank() } }.joinToString(" · ")
+    return GachaBanner(
+        id = id,
+        name = name,
+        bannerType = runCatching { BannerType.valueOf(bannerType.uppercase()) }
+            .getOrDefault(BannerType.MIXED),
+        startAt = startAt,
+        endAt = endAt,
+        pityThreshold = pityThreshold,
+        rateTable = rateTable.toString(),
+        isActive = isActive,
+        featured = feat,
+        featuredSummary = summary
+    )
+}
 
 fun GachaPullResultResponse.toDomain(): GachaResult = GachaResult(
     id = "",

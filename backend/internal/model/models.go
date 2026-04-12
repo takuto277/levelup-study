@@ -170,6 +170,22 @@ func (MasterGachaBanner) TableName() string                 { return "m_gacha_ba
 func (b *MasterGachaBanner) BeforeCreate(tx *gorm.DB) error { ensureUUID(&b.ID); return nil }
 
 // ============================================================
+// m_gacha_banner_featured — バナーごとのピックアップ（レートアップ対象）
+// rate_table 内の同一 item_id / item_type の行に対し、サーバー側で重みに (1+rate_up) を乗算する。
+// ============================================================
+
+type MasterGachaBannerFeatured struct {
+	ID       uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	BannerID uuid.UUID `gorm:"type:uuid;not null;index:idx_gacha_featured_banner" json:"banner_id"`
+	ItemID   uuid.UUID `gorm:"type:uuid;not null" json:"item_id"`
+	ItemType string    `gorm:"type:varchar(20);not null" json:"item_type"` // character / weapon / costume
+	RateUp   float64   `gorm:"type:double precision;not null" json:"rate_up"`
+}
+
+func (MasterGachaBannerFeatured) TableName() string                 { return "m_gacha_banner_featured" }
+func (f *MasterGachaBannerFeatured) BeforeCreate(tx *gorm.DB) error { ensureUUID(&f.ID); return nil }
+
+// ============================================================
 // m_study_genres — 勉強ジャンルマスタ
 // デフォルト6ジャンル。将来的にユーザーカスタムジャンル対応可。
 // ============================================================
@@ -292,6 +308,7 @@ func AllModels() []interface{} {
 		&MasterDungeon{},
 		&MasterDungeonStage{},
 		&MasterGachaBanner{},
+		&MasterGachaBannerFeatured{},
 		&MasterStudyGenre{},
 		&UserCharacter{},
 		&UserWeapon{},
