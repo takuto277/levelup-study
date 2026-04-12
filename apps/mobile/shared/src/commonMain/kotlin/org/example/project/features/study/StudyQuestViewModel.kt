@@ -29,10 +29,14 @@ class StudyQuestViewModel(
                 val lead = party.mainCharacter
                     ?: party.slots.minByOrNull { it.slotPosition }?.userCharacter
                 if (lead != null) {
+                    val maxHp = lead.combatHp.coerceIn(50, 500_000)
                     _uiState.update {
                         it.copy(
                             partyLeadName = lead.character?.name ?: "冒険者",
-                            partyLeadImageUrl = lead.character?.imageUrl ?: ""
+                            partyLeadImageUrl = lead.character?.imageUrl ?: "",
+                            partyLeadUserCharacterId = lead.id,
+                            playerMaxHp = maxHp,
+                            playerHp = maxHp
                         )
                     }
                 }
@@ -307,7 +311,8 @@ class StudyQuestViewModel(
                         startedAt = sessionStart,
                         endedAt = endedAt,
                         durationSeconds = studyElapsed.toInt(),
-                        isCompleted = studyElapsed >= targetStudySec
+                        isCompleted = studyElapsed >= targetStudySec,
+                        userCharacterId = snapshot.partyLeadUserCharacterId.takeIf { it.isNotBlank() }
                     )
                     _uiState.update {
                         it.copy(
@@ -359,7 +364,16 @@ class StudyQuestViewModel(
         _uiState.update {
             StudyQuestUiState(
                 status = StudySessionStatus.READY,
-                displayTime = formatTime(it.targetStudyMinutes.toLong() * 60)
+                displayTime = formatTime(it.targetStudyMinutes.toLong() * 60),
+                targetStudyMinutes = it.targetStudyMinutes,
+                targetBreakMinutes = it.targetBreakMinutes,
+                genreId = it.genreId,
+                dungeonName = it.dungeonName,
+                partyLeadName = it.partyLeadName,
+                partyLeadImageUrl = it.partyLeadImageUrl,
+                partyLeadUserCharacterId = it.partyLeadUserCharacterId,
+                playerMaxHp = it.playerMaxHp,
+                playerHp = it.playerMaxHp
             )
         }
     }

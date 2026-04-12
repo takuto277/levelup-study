@@ -18,18 +18,19 @@ import (
 //   2. study_sessions INSERT
 //   3. 報酬計算 → study_rewards INSERT
 //   4. users 通貨加算
-//   5. パーティキャラの XP 加算
+//   5. 冒険キャラ（リクエストの user_character_id またはパーティ先頭）へ経験値付与・レベルアップ
 //   6. ダンジョンステージ進行
 //   7. トランザクション COMMIT
 // ============================================================
 
 // CompleteStudyRequest — クライアントから送られる勉強完了リクエスト
 type CompleteStudyRequest struct {
-	StartedAt       time.Time `json:"started_at"`
-	EndedAt         time.Time `json:"ended_at"`
-	DurationSeconds int       `json:"duration_seconds"`
-	Category        *string   `json:"category"`
-	IsCompleted     bool      `json:"is_completed"`
+	StartedAt         time.Time  `json:"started_at"`
+	EndedAt           time.Time  `json:"ended_at"`
+	DurationSeconds   int        `json:"duration_seconds"`
+	Category          *string    `json:"category"`
+	IsCompleted       bool       `json:"is_completed"`
+	UserCharacterID   *uuid.UUID `json:"user_character_id,omitempty"` // 冒険に出した所持キャラ（省略時はパーティ先頭スロット）
 }
 
 // CompleteStudyResponse — 勉強完了レスポンス
@@ -103,10 +104,10 @@ func (s *StudyService) CompleteStudy(userID uuid.UUID, req CompleteStudyRequest)
 			return fmt.Errorf("通貨加算に失敗: %w", err)
 		}
 
-		// --- 5. パーティキャラの XP 加算 ---
+		// --- 5. 冒険に出したキャラへ経験値付与（レベルアップ・必要XPはレベルごとに +100 ずつ増加） ---
 		if totalXP > 0 {
-			if err := s.addXPToParty(tx, userID, totalXP); err != nil {
-				return fmt.Errorf("XP加算に失敗: %w", err)
+			if err := s.grantStudyExperienceToAdventurer(tx, userID, req.UserCharacterID, totalXP); err != nil {
+				return fmt.Errorf("経験値付与に失敗: %w", err)
 			}
 		}
 
@@ -216,36 +217,47 @@ func (s *StudyService) ListSessions(userID uuid.UUID, limit, offset int) ([]mode
 	return s.studyRepo.ListSessionsByUser(userID, limit, offset)
 }
 
-// addXPToParty — パーティメンバー全員に経験値を分配し、レベルアップ処理も行う
-func (s *StudyService) addXPToParty(tx *gorm.DB, userID uuid.UUID, totalXP int) error {
-	slots, err := s.partyRepo.GetByUser(userID)
-	if err != nil || len(slots) == 0 {
+// xpRequiredForNextLevel — 現在レベル L から L+1 に上げるのに必要な経験値。
+// L1→2: 300, L10→11: 300+9*100=1200, L11→12: 1300 … レベルが1上がるごとに必要量が +100 される。
+func xpRequiredForNextLevel(currentLevel int) int {
+	if currentLevel < 1 {
+		currentLevel = 1
+	}
+	return 300 + (currentLevel-1)*100
+}
+
+// grantStudyExperienceToAdventurer — 指定キャラ（本人所有のものに限る）へ全XPを付与。未指定ならパーティ先頭。
+func (s *StudyService) grantStudyExperienceToAdventurer(tx *gorm.DB, userID uuid.UUID, explicit *uuid.UUID, totalXP int) error {
+	if totalXP <= 0 {
 		return nil
 	}
-
-	xpPerChar := totalXP / len(slots)
-	if xpPerChar <= 0 {
-		return nil
-	}
-
-	const xpPerLevel = 100
-
-	for _, slot := range slots {
-		if err := s.charRepo.AddXP(tx, slot.UserCharacterID, xpPerChar); err != nil {
-			return err
-		}
-		var uc model.UserCharacter
-		if err := tx.First(&uc, "id = ?", slot.UserCharacterID).Error; err != nil {
-			continue
-		}
-		newLevel := uc.Level + uc.CurrentXP/xpPerLevel
-		remainXP := uc.CurrentXP % xpPerLevel
-		if newLevel > uc.Level {
-			if err := tx.Model(&model.UserCharacter{}).Where("id = ?", uc.ID).
-				Updates(map[string]interface{}{"level": newLevel, "current_xp": remainXP}).Error; err != nil {
-				return err
-			}
+	var targetID uuid.UUID
+	if explicit != nil && *explicit != uuid.Nil {
+		if _, err := s.charRepo.GetByIDForUserTx(tx, *explicit, userID); err == nil {
+			targetID = *explicit
 		}
 	}
-	return nil
+	if targetID == uuid.Nil {
+		slots, err := s.partyRepo.GetByUserTx(tx, userID)
+		if err != nil || len(slots) == 0 {
+			return nil
+		}
+		targetID = slots[0].UserCharacterID
+	}
+	return applyStudyExperience(tx, s.charRepo, targetID, totalXP)
+}
+
+// applyStudyExperience — current_xp を「次レベルまでの進捗」として加算し、必要量を満たすたびにレベルアップ（上限なし）
+func applyStudyExperience(tx *gorm.DB, charRepo *repository.CharacterRepository, userCharID uuid.UUID, grant int) error {
+	var uc model.UserCharacter
+	if err := tx.First(&uc, "id = ?", userCharID).Error; err != nil {
+		return err
+	}
+	xp := uc.CurrentXP + grant
+	lvl := uc.Level
+	for xp >= xpRequiredForNextLevel(lvl) {
+		xp -= xpRequiredForNextLevel(lvl)
+		lvl++
+	}
+	return charRepo.UpdateLevelAndXP(tx, userCharID, lvl, xp)
 }

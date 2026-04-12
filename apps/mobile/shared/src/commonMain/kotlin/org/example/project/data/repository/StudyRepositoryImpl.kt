@@ -20,7 +20,8 @@ class StudyRepositoryImpl(
         startedAt: String,
         endedAt: String,
         durationSeconds: Int,
-        isCompleted: Boolean
+        isCompleted: Boolean,
+        userCharacterId: String?
     ): StudyCompleteResult {
         val userId = UserSessionStore.requireUserId()
         val request = StudyCompleteRequest(
@@ -28,7 +29,8 @@ class StudyRepositoryImpl(
             startedAt = startedAt,
             endedAt = endedAt,
             durationSeconds = durationSeconds,
-            isCompleted = isCompleted
+            isCompleted = isCompleted,
+            userCharacterId = userCharacterId
         )
         val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
         userRepository.updateCachedUser(result.updatedUser)

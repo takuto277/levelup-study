@@ -15,7 +15,8 @@ interface StudyRepository {
         startedAt: String,
         endedAt: String,
         durationSeconds: Int,
-        isCompleted: Boolean
+        isCompleted: Boolean,
+        userCharacterId: String? = null
     ): StudyCompleteResult
 
     /** セッション履歴を取得 */

@@ -38,6 +38,16 @@ func (r *CharacterRepository) GetByID(id uuid.UUID) (*model.UserCharacter, error
 	return &uc, nil
 }
 
+// GetByIDForUserTx — トランザクション内で user_id を検証して所持キャラを取得する
+func (r *CharacterRepository) GetByIDForUserTx(tx *gorm.DB, id uuid.UUID, userID uuid.UUID) (*model.UserCharacter, error) {
+	var uc model.UserCharacter
+	err := tx.First(&uc, "id = ? AND user_id = ?", id, userID).Error
+	if err != nil {
+		return nil, err
+	}
+	return &uc, nil
+}
+
 // ListByUser — ユーザーの所持キャラ一覧を取得する
 func (r *CharacterRepository) ListByUser(userID uuid.UUID) ([]model.UserCharacter, error) {
 	var list []model.UserCharacter
@@ -61,6 +71,16 @@ func (r *CharacterRepository) LevelUp(tx *gorm.DB, id uuid.UUID, newLevel int) e
 	return tx.Model(&model.UserCharacter{}).
 		Where("id = ?", id).
 		Update("level", newLevel).Error
+}
+
+// UpdateLevelAndXP — レベルと進捗XPをまとめて更新する（勉強報酬の一括反映用）
+func (r *CharacterRepository) UpdateLevelAndXP(tx *gorm.DB, id uuid.UUID, level int, currentXP int) error {
+	return tx.Model(&model.UserCharacter{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"level":       level,
+			"current_xp":  currentXP,
+		}).Error
 }
 
 // EquipWeapon — 武器を装備する（null で装備解除）
@@ -143,8 +163,13 @@ func (r *PartyRepository) Upsert(slot *model.UserPartySlot) error {
 
 // GetByUser — ユーザーのパーティ編成を取得する（スロット順）
 func (r *PartyRepository) GetByUser(userID uuid.UUID) ([]model.UserPartySlot, error) {
+	return r.GetByUserTx(r.db, userID)
+}
+
+// GetByUserTx — トランザクション上でパーティ編成を取得する（スロット昇順）
+func (r *PartyRepository) GetByUserTx(tx *gorm.DB, userID uuid.UUID) ([]model.UserPartySlot, error) {
 	var slots []model.UserPartySlot
-	err := r.db.
+	err := tx.
 		Preload("UserCharacter").
 		Preload("UserCharacter.Character").
 		Where("user_id = ?", userID).

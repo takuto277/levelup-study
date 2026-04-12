@@ -344,9 +344,9 @@ private fun MainCharacterSection(
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatItem("❤️", "HP", "${master.baseHp + mainChar.level * 20}", HpRed)
-                StatItem("⚔️", "ATK", "${master.baseAtk + mainChar.level * 8}", AtkOrange)
-                StatItem("🛡️", "DEF", "${master.baseDef + mainChar.level * 5}", DefBlue)
+                StatItem("❤️", "HP", "${mainChar.combatHp}", HpRed)
+                StatItem("⚔️", "ATK", "${mainChar.combatAtk}", AtkOrange)
+                StatItem("🛡️", "DEF", "${mainChar.combatDef}", DefBlue)
             }
         }
     }
@@ -657,9 +657,9 @@ private fun CharacterGridCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    MiniStat("❤️", "${master.baseHp + character.level * 20}")
-                    MiniStat("⚔️", "${master.baseAtk + character.level * 8}")
-                    MiniStat("🛡️", "${master.baseDef + character.level * 5}")
+                    MiniStat("❤️", "${character.combatHp}")
+                    MiniStat("⚔️", "${character.combatAtk}")
+                    MiniStat("🛡️", "${character.combatDef}")
                 }
             }
         }
@@ -770,9 +770,9 @@ private fun CharacterDetailSheet(
                         Text("ステータス", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        val hp = master.baseHp + character.level * 20
-                        val atk = master.baseAtk + character.level * 8
-                        val def = master.baseDef + character.level * 5
+                        val hp = character.combatHp
+                        val atk = character.combatAtk
+                        val def = character.combatDef
                         val totalPower = hp + atk * 2 + def
 
                         StatBar("❤️ HP", hp, 2000, HpRed)

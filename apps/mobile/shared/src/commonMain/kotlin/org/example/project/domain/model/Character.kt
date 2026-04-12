@@ -45,4 +45,14 @@ data class UserCharacter(
     val breakthroughAtkMultiplier: Float get() = 1f + breakthroughLevel * (if (breakthroughLevel <= 1) 0.03f else 0.04f)
     /** 完凸かどうか */
     val isFullBreakthrough: Boolean get() = breakthroughLevel >= 6
+
+    private val levelIndex: Int get() = (level - 1).coerceAtLeast(0)
+
+    /** 表示・戦闘用: マスタ基準 + レベル上昇（1レベごと HP+100, ATK/DEF+10）。Lv1 はマスタのみ。 */
+    val combatHp: Int
+        get() = (((character?.baseHp ?: 0) + levelIndex * 100) * breakthroughHpMultiplier).toInt()
+    val combatAtk: Int
+        get() = (((character?.baseAtk ?: 0) + levelIndex * 10) * breakthroughAtkMultiplier).toInt()
+    val combatDef: Int
+        get() = (character?.baseDef ?: 0) + levelIndex * 10
 }

@@ -51,7 +51,9 @@ data class StudyCompleteRequest(
     @SerialName("started_at") val startedAt: String,
     @SerialName("ended_at") val endedAt: String,
     @SerialName("duration_seconds") val durationSeconds: Int,
-    @SerialName("is_completed") val isCompleted: Boolean
+    @SerialName("is_completed") val isCompleted: Boolean,
+    /** 冒険に出した所持キャラID（省略時はサーバーでパーティ先頭） */
+    @SerialName("user_character_id") val userCharacterId: String? = null
 )
 
 // ── Mapper ──────────────────────────────────────

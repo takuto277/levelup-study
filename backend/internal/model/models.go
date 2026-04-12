@@ -198,7 +198,7 @@ type UserCharacter struct {
 	UserID           uuid.UUID  `gorm:"type:uuid;not null;index"                       json:"user_id"`
 	CharacterID      uuid.UUID  `gorm:"type:uuid;not null"                             json:"character_id"` // → m_characters
 	Level            int        `gorm:"not null;default:1"                              json:"level"`
-	CurrentXP        int        `gorm:"not null;default:0"                              json:"current_xp"`       // 累積経験値
+	CurrentXP        int        `gorm:"not null;default:0"                              json:"current_xp"`       // 次レベルまでの進捗XP（レベル帯ごとに必要量が増える）
 	EquippedWeaponID *uuid.UUID `gorm:"type:uuid"                                     json:"equipped_weapon_id"` // → user_weapons（null = なし）
 	ObtainedAt       time.Time  `gorm:"not null"                                       json:"obtained_at"`
 

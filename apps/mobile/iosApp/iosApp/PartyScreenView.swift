@@ -19,6 +19,25 @@ private let textSub = Color(hex: 0x94A3B8)
 private func rarityColor(_ r: Int) -> Color {
     switch r { case 5: return Color(hex: 0xFFD700); case 4: return Color(hex: 0xA78BFA); case 3: return Color(hex: 0x60A5FA); default: return Color(hex: 0x94A3B8) }
 }
+
+/// Kotlin `UserCharacter.combatHp` / `combatAtk` / `combatDef` と同じ式（Lv1 はマスタ基準、以降 HP+100 / ATK・DEF+10）
+private func breakthroughHpMult(_ bt: Int32) -> Double { 1.0 + Double(bt) * 0.05 }
+private func breakthroughAtkMult(_ bt: Int32) -> Double {
+    let b = Int(bt)
+    let inc = b <= 1 ? 0.03 : 0.04
+    return 1.0 + Double(b) * inc
+}
+private func combatHp(_ c: UserCharacter, _ m: MasterCharacter) -> Int {
+    let bonus = Swift.max(0, Int(c.level) - 1) * 100
+    return Int(Double(Int(m.baseHp) + bonus) * breakthroughHpMult(c.breakthroughLevel))
+}
+private func combatAtk(_ c: UserCharacter, _ m: MasterCharacter) -> Int {
+    let bonus = Swift.max(0, Int(c.level) - 1) * 10
+    return Int(Double(Int(m.baseAtk) + bonus) * breakthroughAtkMult(c.breakthroughLevel))
+}
+private func combatDef(_ c: UserCharacter, _ m: MasterCharacter) -> Int {
+    Int(m.baseDef) + Swift.max(0, Int(c.level) - 1) * 10
+}
 /// 編成画面ではとりあえずユーザー（冒険者）スプライトを表示
 @ViewBuilder
 private func partyPlayerAvatar(size: CGFloat) -> some View {
@@ -118,11 +137,11 @@ struct PartyScreenView: View {
             }
             HStack {
                 Spacer()
-                stat("❤️", "HP", "\(m.baseHp + mc.level * 20)", Color(hex: 0xEF4444))
+                stat("❤️", "HP", "\(combatHp(mc, m))", Color(hex: 0xEF4444))
                 Spacer()
-                stat("⚔️", "ATK", "\(m.baseAtk + mc.level * 8)", Color(hex: 0xF59E0B))
+                stat("⚔️", "ATK", "\(combatAtk(mc, m))", Color(hex: 0xF59E0B))
                 Spacer()
-                stat("🛡️", "DEF", "\(m.baseDef + mc.level * 5)", accentBlue)
+                stat("🛡️", "DEF", "\(combatDef(mc, m))", accentBlue)
                 Spacer()
             }.padding(.vertical, 12)
         }
@@ -178,9 +197,9 @@ struct PartyScreenView: View {
     // MARK: - Detail
     private func detailOverlay(_ c: UserCharacter) -> some View {
         let m = c.character!
-        let hp = Int(m.baseHp) + Int(c.level) * 20
-        let atk = Int(m.baseAtk) + Int(c.level) * 8
-        let def = Int(m.baseDef) + Int(c.level) * 5
+        let hp = combatHp(c, m)
+        let atk = combatAtk(c, m)
+        let def = combatDef(c, m)
         return ZStack(alignment: .bottom) {
             Color.black.opacity(0.5).ignoresSafeArea().onTapGesture { holder.viewModel.onIntent(intent: PartyIntentDismissCharacterDetail()) }
             VStack(spacing: 0) {

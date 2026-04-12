@@ -507,6 +507,7 @@ struct StudyQuestScreenView: View {
             serverSynced: nil,
             partyLeadName: "冒険者",
             partyLeadImageUrl: "",
+            partyLeadUserCharacterId: "",
             dungeonName: dungeonName,
             currentFloor: 1,
             totalFloors: 10,

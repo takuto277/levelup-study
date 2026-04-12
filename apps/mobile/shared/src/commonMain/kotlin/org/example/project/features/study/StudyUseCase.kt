@@ -19,14 +19,16 @@ class StudyUseCase(
         startedAt: String,
         endedAt: String,
         durationSeconds: Int,
-        isCompleted: Boolean
+        isCompleted: Boolean,
+        userCharacterId: String? = null
     ): StudyCompleteResult {
         return studyRepository.completeSession(
             category = category,
             startedAt = startedAt,
             endedAt = endedAt,
             durationSeconds = durationSeconds,
-            isCompleted = isCompleted
+            isCompleted = isCompleted,
+            userCharacterId = userCharacterId
         )
     }
 

@@ -38,6 +38,8 @@ data class StudyQuestUiState(
     val serverSynced: Boolean? = null,
     val partyLeadName: String = "冒険者",
     val partyLeadImageUrl: String = "",
+    /** 勉強完了APIに渡す所持キャラID（パーティ先頭・メイン） */
+    val partyLeadUserCharacterId: String = "",
     val dungeonName: String? = null,
     // 階層システム
     val currentFloor: Int = 1,
