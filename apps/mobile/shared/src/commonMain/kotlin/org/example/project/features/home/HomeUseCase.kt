@@ -9,6 +9,7 @@ import org.example.project.domain.repository.DungeonRepository
 import org.example.project.domain.repository.GenreRepository
 import org.example.project.domain.repository.PartyRepository
 import org.example.project.domain.repository.UserRepository
+import org.example.project.features.quest.QuestUseCase
 
 class HomeUseCase(
     private val userRepository: UserRepository,
@@ -50,10 +51,14 @@ class HomeUseCase(
                 val dungeons = dungeonRepository.getDungeons()
                 val d = dungeons.find { it.id == dungeonId }
                 // 背景は同梱の bg_dungeon_* のみ（サーバー image_url は表示に使わない）
-                Pair(d?.name, null)
+                val name = d?.name ?: QuestUseCase.bundledDisplayNameForDungeonId(dungeonId)
+                Pair(name, null)
             } else Pair(null, null)
         } catch (_: Exception) {
-            Pair(null, null)
+            val dungeonId = user.selectedDungeonId
+            if (dungeonId != null) {
+                Pair(QuestUseCase.bundledDisplayNameForDungeonId(dungeonId), null)
+            } else Pair(null, null)
         }
 
         return HomeData(

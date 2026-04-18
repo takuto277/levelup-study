@@ -123,8 +123,8 @@ fun HomeTabContent(
         HomeHeader(homeState = homeState)
 
         HomeAdventureContextRow(
-            dungeonName = homeState.selectedDungeonName,
-            isTrainingStudySession = homeState.isTrainingStudySession,
+            dungeonDisplayName = homeState.adventureDungeonDisplayName,
+            dungeonChipHint = homeState.adventureDungeonChipHint,
             selectedGenreSlug = selectedGenreSlug,
             genreTriples = genreTriples,
             onGenreChange = onGenreChange,

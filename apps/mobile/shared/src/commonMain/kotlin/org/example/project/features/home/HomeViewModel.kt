@@ -13,6 +13,7 @@ import org.example.project.core.storage.KeyValueStore
 import org.example.project.domain.local.LocalDungeonIds
 import org.example.project.domain.repository.StudyRepository
 import org.example.project.domain.repository.UserRepository
+import org.example.project.features.quest.QuestUseCase
 
 class HomeViewModel(
     private val homeUseCase: HomeUseCase,
@@ -91,12 +92,21 @@ class HomeViewModel(
             val (mergedId, mergedName, mergedImg) = if (usePersistedTraining) {
                 Triple(LocalDungeonIds.TRAINING_GROUND, LocalDungeonIds.TRAINING_GROUND_NAME, null)
             } else {
-                Triple(
-                    data.user.selectedDungeonId ?: prev.selectedDungeonId,
-                    data.selectedDungeonName ?: prev.selectedDungeonName,
-                    // ホームデータ側の方針（同梱背景）に合わせ、前回のリモート URL は引き継がない
-                    data.selectedDungeonImageUrl
-                )
+                val mid = data.user.selectedDungeonId ?: prev.selectedDungeonId
+                val mname = data.selectedDungeonName ?: prev.selectedDungeonName
+                if (mid == null) {
+                    // 初回など未選択のときは同梱の訓練場を既定にし、再読込後も維持する
+                    kv.putString(KEY_PERSISTED_LOCAL_DUNGEON_ID, LocalDungeonIds.TRAINING_GROUND)
+                    Triple(LocalDungeonIds.TRAINING_GROUND, LocalDungeonIds.TRAINING_GROUND_NAME, null)
+                } else {
+                    val resolvedName = mname ?: QuestUseCase.bundledDisplayNameForDungeonId(mid)
+                    Triple(
+                        mid,
+                        resolvedName,
+                        // ホームデータ側の方針（同梱背景）に合わせ、前回のリモート URL は引き継がない
+                        data.selectedDungeonImageUrl
+                    )
+                }
             }
             prev.copy(
                 totalStudySeconds = data.user.totalStudySeconds,

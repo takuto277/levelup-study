@@ -26,9 +26,10 @@ import androidx.compose.ui.unit.sp
 /** ダンジョン名・ジャンル選択を横一列で表示（勉強時間はヘッダーの累計勉強で表示）。 */
 @Composable
 internal fun HomeAdventureContextRow(
-    dungeonName: String?,
-    /** 樽打ち訓練の勉強シーン（オフライン or 訓練場ダンジョン選択） */
-    isTrainingStudySession: Boolean = false,
+    /** 解決済みのダンジョン表示名（[HomeUiState.adventureDungeonDisplayName]） */
+    dungeonDisplayName: String,
+    /** オフライン時など、[HomeUiState.adventureDungeonChipHint] */
+    dungeonChipHint: String? = null,
     selectedGenreSlug: String,
     genreTriples: List<Triple<String, String, String>>,
     onGenreChange: (String) -> Unit,
@@ -43,8 +44,9 @@ internal fun HomeAdventureContextRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         ContextStatChip(
-            label = if (isTrainingStudySession) "モード" else "ダンジョン",
-            value = if (isTrainingStudySession) "訓練場" else (dungeonName ?: "—"),
+            label = "ダンジョン",
+            value = dungeonDisplayName,
+            hint = dungeonChipHint,
             modifier = Modifier.defaultMinSize(minWidth = 96.dp)
         )
         GenrePickerChip(
@@ -76,6 +78,7 @@ internal fun HomeAdventureContextRow(
 private fun ContextStatChip(
     label: String,
     value: String,
+    hint: String? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -93,6 +96,15 @@ private fun ContextStatChip(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+        if (!hint.isNullOrBlank()) {
+            Text(
+                hint,
+                fontSize = 8.sp,
+                color = HomeTheme.TextSecondary.copy(alpha = 0.92f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

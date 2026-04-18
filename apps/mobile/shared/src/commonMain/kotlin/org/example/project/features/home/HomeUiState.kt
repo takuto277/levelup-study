@@ -3,6 +3,7 @@ package org.example.project.features.home
 import org.example.project.domain.local.LocalDungeonIds
 import org.example.project.domain.model.MasterStudyGenre
 import org.example.project.domain.model.UserCharacter
+import org.example.project.features.quest.QuestUseCase
 
 data class HomeUiState(
     val totalStudySeconds: Long = 0,
@@ -34,4 +35,29 @@ data class HomeUiState(
      */
     val isTrainingStudySession: Boolean
         get() = isOfflineTraining || LocalDungeonIds.isTrainingGround(selectedDungeonId)
+
+    /**
+     * ホームの「ダンジョン」チップ用の表示名。
+     * サーバー名が無いときは前回キャッシュや同梱マスタで補完し、舞台コンテキストを失わない。
+     */
+    val adventureDungeonDisplayName: String
+        get() {
+            val explicit = selectedDungeonName?.trim()?.takeIf { it.isNotEmpty() }
+            if (explicit != null) return explicit
+            val id = selectedDungeonId ?: return "—"
+            return QuestUseCase.bundledDisplayNameForDungeonId(id) ?: "—"
+        }
+
+    /**
+     * オフライン時に、名前とは別に「いまの勉強が訓練扱い」などを一言で示す。
+     */
+    val adventureDungeonChipHint: String?
+        get() {
+            if (!isOfflineTraining) return null
+            return if (!LocalDungeonIds.isTrainingGround(selectedDungeonId)) {
+                "いまは訓練で進行"
+            } else {
+                "オフライン"
+            }
+        }
 }

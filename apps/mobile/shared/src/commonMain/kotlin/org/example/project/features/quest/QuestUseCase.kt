@@ -48,6 +48,10 @@ class QuestUseCase(
     }
 
     companion object {
+        /** ネットワークなし時など、同梱マスタだけで表示名を補う（サーバー専用 ID は null） */
+        fun bundledDisplayNameForDungeonId(id: String): String? =
+            getDefaultDungeons().firstOrNull { it.id == id }?.name
+
         fun getDefaultDungeons(): List<Dungeon> = listOf(
             Dungeon(
                 id = "forest_of_beginnings", name = "はじまりの森",

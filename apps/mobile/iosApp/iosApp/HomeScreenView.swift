@@ -108,7 +108,7 @@ struct HomeScreenView: View {
             StudyQuestScreenView(
                 initialStudyMinutes: studyMinutes,
                 genreId: selectedGenreSlug,
-                dungeonName: homeState?.selectedDungeonName,
+                dungeonName: homeState?.adventureDungeonDisplayName,
                 dungeonImageUrl: (homeState?.isTrainingStudySession == true) ? nil : homeState?.selectedDungeonImageUrl,
                 isTrainingGround: homeState?.isTrainingStudySession == true
             )
@@ -147,8 +147,9 @@ struct HomeScreenView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 contextStatChip(
-                    title: (homeState?.isTrainingStudySession == true) ? "モード" : "ダンジョン",
-                    value: (homeState?.isTrainingStudySession == true) ? "訓練場" : (homeState?.selectedDungeonName ?? "—")
+                    title: "ダンジョン",
+                    value: homeState?.adventureDungeonDisplayName ?? "—",
+                    hint: homeState?.adventureDungeonChipHint
                 )
                 genreMenuChip
                 Button(action: { showAddGenreSheet = true }) {
@@ -166,10 +167,13 @@ struct HomeScreenView: View {
         }
     }
 
-    private func contextStatChip(title: String, value: String) -> some View {
+    private func contextStatChip(title: String, value: String, hint: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.system(size: 9)).foregroundColor(textSub).lineLimit(1)
             Text(value).font(.system(size: 11, weight: .bold)).foregroundColor(textW).lineLimit(1)
+            if let h = hint, !h.isEmpty {
+                Text(h).font(.system(size: 8)).foregroundColor(textSub.opacity(0.92)).lineLimit(1)
+            }
         }
         .frame(minWidth: title == "ダンジョン" ? 96 : (title == "回想" ? 56 : 64), alignment: .leading)
         .padding(.horizontal, 10).padding(.vertical, 8)
