@@ -101,6 +101,7 @@ fun GachaScreenView() {
 
     Box(
         modifier = Modifier
+            .fillMaxWidth()
             .fillMaxSize()
             .clip(RectangleShape)
             .background(Brush.linearGradient(listOf(BgDark1, BgDark2, BgDark3)))
@@ -110,15 +111,23 @@ fun GachaScreenView() {
 
         Crossfade(
             targetState = uiState.phase,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxSize(),
             animationSpec = tween(400),
             label = "phase"
         ) { phase ->
-            when (phase) {
-                GachaPhase.BANNER_SELECT -> BannerSelectPhase(viewModel, uiState)
-                GachaPhase.CONFIRM -> ConfirmPhase(viewModel, uiState)
-                GachaPhase.PULLING -> PullAnimationPhase(uiState.highestRarity)
-                GachaPhase.RESULT -> ResultPhase(viewModel, uiState)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxSize()
+            ) {
+                when (phase) {
+                    GachaPhase.BANNER_SELECT -> BannerSelectPhase(viewModel, uiState)
+                    GachaPhase.CONFIRM -> ConfirmPhase(viewModel, uiState)
+                    GachaPhase.PULLING -> PullAnimationPhase(uiState.highestRarity)
+                    GachaPhase.RESULT -> ResultPhase(viewModel, uiState)
+                }
             }
         }
 
@@ -163,93 +172,20 @@ private fun BackgroundParticles() {
     }
 }
 
-// ══════════════════════════════════════════════════════════════
-// ピックアップ立ち絵（上半身が画面に収まるよう上寄せクロップ）
-// ══════════════════════════════════════════════════════════════
-
 @Composable
-private fun GachaFeaturedHeroPanel(
-    featured: GachaBannerFeatured?,
-    bannerType: BannerType,
-    modifier: Modifier = Modifier,
-    /** 一覧カードはカード角に合わせて全面クリップ */
-    contentClip: Shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-) {
-    val accent = bannerColors(bannerType).first()
-    val url = featured?.imageUrl?.takeIf { it.isNotBlank() }
-    val ctx = LocalContext.current
-    val localIdleRes = remember(ctx) {
-        ctx.resources.getIdentifier("sprite_player_idle_1", "drawable", ctx.packageName)
-    }
-    val vignette = Modifier
-        .fillMaxSize()
-        .background(
-            Brush.verticalGradient(
-                listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))
-            )
-        )
-
-    Box(modifier = modifier.clip(contentClip)) {
-        when {
-            url != null -> {
-                AsyncImage(
-                    model = ImageRequest.Builder(ctx).data(url).crossfade(320).build(),
-                    contentDescription = featured?.itemName?.ifBlank { "ピックアップ" } ?: "ピックアップ",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopCenter
-                )
-                Box(vignette)
-            }
-            localIdleRes != 0 -> {
-                Image(
-                    painter = painterResource(localIdleRes),
-                    contentDescription = featured?.itemName?.ifBlank { "プレイヤー" } ?: "プレイヤー",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopCenter
-                )
-                Box(vignette)
-            }
-            else -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(accent.copy(alpha = 0.5f), Color.Transparent)
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        bannerIcon(bannerType),
-                        contentDescription = null,
-                        modifier = Modifier.size(96.dp),
-                        tint = Color.White.copy(alpha = 0.22f)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GachaStonesBottomBar(stones: Int) {
+private fun GachaStonesBottomBar() {
     Surface(color = Color.Black.copy(alpha = 0.5f), shadowElevation = 12.dp) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
                 Text("知識の結晶", fontSize = 11.sp, color = Color.White.copy(alpha = 0.55f))
                 Text("消費して召喚", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.85f))
             }
-            StoneCountBadge(stones)
         }
     }
 }
@@ -260,47 +196,65 @@ private fun GachaStonesBottomBar(stones: Int) {
 
 @Composable
 private fun BannerSelectPhase(viewModel: GachaViewModel, uiState: GachaUiState) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxSize()
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .statusBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("召 喚", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color.White)
                 Text("バナーを選んで詳細へ", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f))
             }
+            StoneCountBadge(uiState.currentStones)
         }
 
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .weight(1f, fill = true)
         ) {
-            uiState.banners.forEachIndexed { index, banner ->
-                var visible by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) { delay(index * 120L); visible = true }
-                AnimatedVisibility(
-                    modifier = Modifier.fillMaxWidth(),
-                    visible = visible,
-                    enter = fadeIn(tween(400)) + slideInVertically(tween(500)) { it / 2 }
-                ) {
-                    BannerCard(banner) { viewModel.onIntent(GachaIntent.SelectBanner(banner.id)) }
+            val bannerW = (maxWidth - 40.dp).coerceAtLeast(0.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                uiState.banners.forEachIndexed { index, banner ->
+                    var visible by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) { delay(index * 120L); visible = true }
+                    AnimatedVisibility(
+                        modifier = Modifier.width(bannerW),
+                        visible = visible,
+                        enter = fadeIn(tween(400)) + slideInVertically(tween(500)) { it / 2 }
+                    ) {
+                        BannerCard(banner, Modifier.width(bannerW)) {
+                            viewModel.onIntent(GachaIntent.SelectBanner(banner.id))
+                        }
+                    }
                 }
+                Spacer(modifier = Modifier.height(12.dp))
             }
-            Spacer(modifier = Modifier.height(12.dp))
         }
 
-        GachaStonesBottomBar(uiState.currentStones)
+        GachaStonesBottomBar()
     }
 }
 
 @Composable
-private fun BannerCard(banner: GachaBanner, onClick: () -> Unit) {
+private fun BannerCard(
+    banner: GachaBanner,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    onClick: () -> Unit,
+) {
     val hero = banner.primaryFeaturedForHero()
     val accent = bannerColors(banner.bannerType)
     val shimmer = rememberInfiniteTransition(label = "shimmer")
@@ -311,18 +265,52 @@ private fun BannerCard(banner: GachaBanner, onClick: () -> Unit) {
     val periodLine = remember(banner.startAt, banner.endAt) {
         gachaBannerPeriodLabel(banner.startAt, banner.endAt)
     }
+    val ctx = LocalContext.current
+    val bgGachaRes = remember(ctx) {
+        ctx.resources.getIdentifier("bg_gacha_banner", "drawable", ctx.packageName)
+    }
+    val idleRes = remember(ctx) {
+        ctx.resources.getIdentifier("sprite_player_idle_1", "drawable", ctx.packageName)
+    }
 
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .height(312.dp)
             .clip(RoundedCornerShape(24.dp))
             .clickable(onClick = onClick)
     ) {
+        if (bgGachaRes != 0) {
+            Image(
+                painter = painterResource(bgGachaRes),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Brush.linearGradient(accent))
+            )
+        }
+
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .background(Brush.linearGradient(accent))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            accent.first().copy(alpha = 0.4f),
+                            accent.last().copy(alpha = 0.22f)
+                        )
+                    )
+                )
+        )
+
+        Box(
+            modifier = Modifier
+                .matchParentSize()
                 .drawBehind {
                     clipRect(0f, 0f, size.width, size.height) {
                         drawRect(
@@ -335,12 +323,75 @@ private fun BannerCard(banner: GachaBanner, onClick: () -> Unit) {
                     }
                 }
         )
-        GachaFeaturedHeroPanel(
-            featured = hero,
-            bannerType = banner.bannerType,
-            modifier = Modifier.fillMaxSize(),
-            contentClip = RectangleShape
-        )
+
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val heroBase = minOf(maxWidth, maxHeight) / 2
+            val heroW = minOf(maxWidth * 0.48f, heroBase * 1.15f)
+            val heroH = minOf(maxHeight * 0.62f, heroBase * 1.28f)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 10.dp, end = 10.dp),
+                contentAlignment = Alignment.TopEnd
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(heroW)
+                        .height(heroH)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.Black.copy(alpha = 0.22f))
+                ) {
+                    val url = hero?.imageUrl?.takeIf { it.isNotBlank() }
+                    val isWeaponPick = hero?.itemType == GachaResultType.WEAPON
+                    when {
+                        url != null -> {
+                            AsyncImage(
+                                model = ImageRequest.Builder(ctx).data(url).crossfade(320).build(),
+                                contentDescription = hero?.itemName?.ifBlank { "ピックアップ" } ?: "ピックアップ",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
+                                alignment = Alignment.TopCenter
+                            )
+                        }
+                        isWeaponPick -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Shield,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(heroH * 0.5f),
+                                    tint = Color.White.copy(alpha = 0.9f)
+                                )
+                            }
+                        }
+                        idleRes != 0 -> {
+                            Image(
+                                painter = painterResource(idleRes),
+                                contentDescription = hero?.itemName?.ifBlank { "プレイヤー" } ?: "プレイヤー",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit,
+                                alignment = Alignment.Center
+                            )
+                        }
+                        else -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    bannerIcon(banner.bannerType),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(heroH * 0.45f),
+                                    tint = Color.White.copy(alpha = 0.35f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         Box(
             modifier = Modifier
@@ -358,7 +409,7 @@ private fun BannerCard(banner: GachaBanner, onClick: () -> Unit) {
 
         Box(
             modifier = Modifier
-                .align(Alignment.TopEnd)
+                .align(Alignment.TopStart)
                 .padding(14.dp)
                 .size(36.dp)
                 .background(Color.White.copy(alpha = 0.08f), CircleShape)

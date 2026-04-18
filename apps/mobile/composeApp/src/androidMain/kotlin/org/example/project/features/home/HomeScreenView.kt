@@ -46,7 +46,7 @@ fun HomeScreenView() {
         )
     } else {
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = HomeTheme.BgColor,
             bottomBar = {
                 BottomNavigationBar(
                     selectedTab = selectedTab,

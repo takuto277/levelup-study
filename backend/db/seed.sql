@@ -58,8 +58,9 @@ INSERT INTO m_study_genres (id, slug, label, emoji, color_hex, sort_order, is_de
 -- ────────────────────────────────────────────────
 
 -- ★5（5体）
+-- ガチャピックアップ等で image_url は開発中は空にし、クライアントは同梱 bg_gacha_banner + スプライト／アイコンで表示
 INSERT INTO m_characters (id, name, rarity, base_hp, base_atk, base_def, image_url, is_active, created_at) VALUES
-  ('a0000000-0000-0000-0000-000000000001', '光の勇者アリア',       5, 1500, 420, 300, 'https://placehold.co/200x200/FFD700/000?text=Aria',     true, NOW()),
+  ('a0000000-0000-0000-0000-000000000001', '光の勇者アリア',       5, 1500, 420, 300, '',     true, NOW()),
   ('a0000000-0000-0000-0000-000000000002', '闇の魔王ゼファー',     5, 1800, 480, 250, 'https://placehold.co/200x200/4B0082/FFF?text=Zephyr',   true, NOW()),
   ('a0000000-0000-0000-0000-000000000003', '聖女セラフィーナ',     5, 1200, 200, 380, 'https://placehold.co/200x200/FFB6C1/000?text=Seraphina', true, NOW()),
   ('a0000000-0000-0000-0000-000000000004', '竜騎士ドラク',         5, 2000, 400, 350, 'https://placehold.co/200x200/DC143C/FFF?text=Draco',     true, NOW()),
@@ -103,7 +104,7 @@ INSERT INTO m_characters (id, name, rarity, base_hp, base_atk, base_def, image_u
 
 -- ★5（3本）
 INSERT INTO m_weapons (id, name, rarity, base_atk, image_url, is_active, created_at) VALUES
-  ('b0000000-0000-0000-0000-000000000001', '聖剣エクスカリバー',  5, 150, 'https://placehold.co/200x200/FFD700/000?text=Excalibur',   true, NOW()),
+  ('b0000000-0000-0000-0000-000000000001', '聖剣エクスカリバー',  5, 150, '',   true, NOW()),
   ('b0000000-0000-0000-0000-000000000002', '闇の大鎌デスサイズ',  5, 165, 'https://placehold.co/200x200/4B0082/FFF?text=Deathscythe', true, NOW()),
   ('b0000000-0000-0000-0000-000000000003', '癒しの聖杖',          5, 80,  'https://placehold.co/200x200/FFB6C1/000?text=HolyStaff',  true, NOW());
 

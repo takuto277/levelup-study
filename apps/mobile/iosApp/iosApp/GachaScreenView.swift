@@ -24,6 +24,9 @@ private enum UIBannerType: String {
 /// メインタブの BottomNavigation と重ならないよう確保（pt）
 private let gachaMainTabBottomReserve: CGFloat = 88
 
+/// 開発用: サーバー `image_url` 空時も使う同梱ガチャバナー背景
+private let gachaBannerBackgroundAsset = "bg_gacha_banner"
+
 private struct BannerDisplay: Identifiable {
     let id: String
     let name: String
@@ -253,6 +256,8 @@ struct GachaScreenView: View {
             case .result:       ResultView(store: store)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // ここで .ignoresSafeArea + .clipped すると確認画面のヘッダーがノッチ下に潜り見切れる
     }
 }
 
@@ -281,6 +286,9 @@ private struct BackgroundParticles: View {
                     )
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+        .allowsHitTesting(false)
         .onAppear { animate = true }
     }
 }
@@ -293,64 +301,75 @@ private struct BannerSelectView: View {
     @ObservedObject var store: GachaStore
     @State private var appeared = false
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("召 喚")
-                        .font(.system(size: 28, weight: .black))
-                        .foregroundColor(.white)
-                    Text("バナーを選んで詳細へ")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-                }
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 12)
+    /// 画面左右に各 20 の余白（バナー背景＝カード幅）
+    private func bannerWidth(containerWidth: CGFloat) -> CGFloat {
+        max(0, containerWidth - 40)
+    }
 
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 16) {
-                    ForEach(Array(store.banners.enumerated()), id: \.element.id) { index, banner in
-                        BannerCard(banner: banner) {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            store.selectBanner(banner)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .offset(y: appeared ? 0 : 60)
-                        .opacity(appeared ? 1 : 0)
-                        .animation(
-                            .spring(response: 0.6, dampingFraction: 0.8).delay(Double(index) * 0.12),
-                            value: appeared
-                        )
+    var body: some View {
+        GeometryReader { geo in
+            let w = bannerWidth(containerWidth: geo.size.width)
+            VStack(spacing: 0) {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("召 喚")
+                            .font(.system(size: 28, weight: .black))
+                            .foregroundColor(.white)
+                        Text("バナーを選んで詳細へ")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.6))
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    StoneCountBadge(stones: store.currentStones)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, geo.safeAreaInsets.top + 10)
+                .padding(.bottom, 12)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        ForEach(Array(store.banners.enumerated()), id: \.element.id) { index, banner in
+                            HStack {
+                                Spacer(minLength: 0)
+                                BannerCard(banner: banner) {
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    store.selectBanner(banner)
+                                }
+                                .frame(width: w)
+                                Spacer(minLength: 0)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .offset(y: appeared ? 0 : 60)
+                            .opacity(appeared ? 1 : 0)
+                            .animation(
+                                .spring(response: 0.6, dampingFraction: 0.8).delay(Double(index) * 0.12),
+                                value: appeared
+                            )
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .top)
+                    .padding(.bottom, 12)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 12)
-            }
 
-            GachaStonesBottomBar(stones: store.currentStones)
+                GachaStonesBottomBar()
+            }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear { appeared = true }
     }
 }
 
 private struct GachaStonesBottomBar: View {
-    let stones: Int
-
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text("知識の結晶").font(.system(size: 11)).foregroundColor(.white.opacity(0.55))
                 Text("消費して召喚").font(.system(size: 13, weight: .semibold)).foregroundColor(.white.opacity(0.85))
             }
-            Spacer()
-            StoneCountBadge(stones: stones)
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
         .padding(.top, 14)
         .padding(.bottom, 14 + gachaMainTabBottomReserve)
@@ -365,106 +384,117 @@ private struct BannerCard: View {
 
     var body: some View {
         Button(action: onTap) {
-            ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(LinearGradient(
-                        colors: banner.type.colors,
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    ))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 312)
+            GeometryReader { geo in
+                let w = geo.size.width
+                let h = geo.size.height
+                /// 背景（カード）の短辺の 1/2 をピックアップ表示の基準サイズにする
+                let heroBase = min(w, h) * 0.5
+                let heroW = min(w * 0.48, heroBase * 1.15)
+                let heroH = min(h * 0.62, heroBase * 1.28)
 
-                Group {
-                    if let s = banner.pickupImageUrl, let u = URL(string: s) {
-                        AsyncImage(url: u) { phase in
-                            switch phase {
-                            case .success(let img):
-                                img
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(height: 312)
-                                    .frame(maxWidth: .infinity)
-                                    .clipped()
-                            default:
-                                LinearGradient(colors: banner.type.colors, startPoint: .top, endPoint: .bottom)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 312)
-                            }
-                        }
-                    } else {
-                        Image("sprite_player_idle_1")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(height: 312)
-                            .frame(maxWidth: .infinity)
+                ZStack(alignment: .bottomLeading) {
+                    Image(gachaBannerBackgroundAsset)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: w, height: h)
+                        .clipped()
+
+                    LinearGradient(
+                        colors: [
+                            banner.type.colors.first!.opacity(0.4),
+                            banner.type.colors.last!.opacity(0.22)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .frame(width: w, height: h)
+                    .allowsHitTesting(false)
+
+                    HStack(alignment: .center) {
+                        Spacer(minLength: 0)
+                        bannerPickupLayer(maxSide: heroBase)
+                            .frame(width: heroW, height: heroH)
                             .clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .shadow(color: .black.opacity(0.32), radius: 8, y: 4)
                     }
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 312)
-                .clipped()
+                    .frame(width: w, height: h)
+                    .padding(.trailing, 10)
+                    .padding(.top, 10)
 
-                LinearGradient(
-                    colors: [.clear, .clear, .black.opacity(0.82)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(maxWidth: .infinity)
-                .frame(height: 312)
-                .allowsHitTesting(false)
+                    LinearGradient(
+                        colors: [.clear, .clear, .black.opacity(0.82)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(width: w, height: h)
+                    .allowsHitTesting(false)
 
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [.clear, .white.opacity(0.16), .clear],
-                            startPoint: .leading,
-                            endPoint: .trailing
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [.clear, .white.opacity(0.16), .clear],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
                         )
-                    )
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 312)
-                    .offset(x: shimmerOffset)
-                    .mask(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 312)
-                    )
+                        .frame(width: w, height: h)
+                        .offset(x: shimmerOffset)
+                        .clipped()
+                        .mask(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .frame(width: w, height: h)
+                        )
 
-                Text("✦")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white.opacity(0.55))
-                    .frame(width: 36, height: 36)
-                    .background(Circle().fill(.white.opacity(0.08)))
-                    .overlay(Circle().stroke(.white.opacity(0.12), lineWidth: 1))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding(14)
+                    Text("✦")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white.opacity(0.55))
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(.white.opacity(0.08)))
+                        .overlay(Circle().stroke(.white.opacity(0.12), lineWidth: 1))
+                        .frame(width: w, height: h, alignment: .topLeading)
+                        .padding(14)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(banner.name)
-                        .font(.system(size: 23, weight: .black))
-                        .foregroundColor(.white)
-                        .lineLimit(2)
-                        .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(banner.name)
+                            .font(.system(size: 23, weight: .black))
+                            .foregroundColor(.white)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .minimumScaleFactor(0.85)
+                            .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
 
-                    Text(banner.periodLine)
-                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.78))
-                        .lineLimit(2)
+                        Text(banner.periodLine)
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.78))
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .minimumScaleFactor(0.8)
 
-                    HStack(spacing: 6) {
-                        Text("タップして召喚へ")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.white.opacity(0.45))
-                            .tracking(0.6)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.white.opacity(0.4))
+                        HStack(spacing: 6) {
+                            Text("タップして召喚へ")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.white.opacity(0.45))
+                                .tracking(0.6)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.white.opacity(0.4))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 4)
                     }
-                    .padding(.top, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(18)
                 }
-                .padding(18)
+                .frame(width: w, height: h)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
             .frame(maxWidth: .infinity)
+            .frame(height: 312)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .shadow(color: banner.type.colors.first!.opacity(0.42), radius: 18, y: 10)
         }
@@ -474,6 +504,44 @@ private struct BannerCard: View {
             withAnimation(.linear(duration: 2.5).repeatForever(autoreverses: false)) {
                 shimmerOffset = 400
             }
+        }
+    }
+
+    @ViewBuilder
+    private func bannerPickupLayer(maxSide: CGFloat) -> some View {
+        if let s = banner.pickupImageUrl?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty, let u = URL(string: s) {
+            AsyncImage(url: u) { phase in
+                switch phase {
+                case .success(let img):
+                    img
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                default:
+                    bannerPickupPlaceholder(maxSide: maxSide)
+                }
+            }
+        } else {
+            bannerPickupPlaceholder(maxSide: maxSide)
+        }
+    }
+
+    @ViewBuilder
+    private func bannerPickupPlaceholder(maxSide: CGFloat) -> some View {
+        switch banner.type {
+        case .weapon:
+            ZStack {
+                Color.black.opacity(0.28)
+                Image(systemName: "shield.fill")
+                    .font(.system(size: max(24, maxSide * 0.38), weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+            }
+        case .character, .mixed:
+            Image("sprite_player_idle_1")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: maxSide * 1.2, maxHeight: maxSide * 1.2)
         }
     }
 }
@@ -487,72 +555,79 @@ private struct ConfirmView: View {
     @State private var appeared = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center) {
-                Button(action: { store.backToBannerSelect() }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "chevron.left")
-                        Text("召喚確認")
-                    }
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white.opacity(0.7))
-                }
-                Spacer(minLength: 8)
-                StoneCountBadge(stones: store.currentStones)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 8)
-
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 20) {
-                    if let banner = store.selectedBanner {
-                        VStack(spacing: 4) {
-                            Text(banner.name)
-                                .font(.system(size: 26, weight: .black))
-                                .foregroundColor(.white)
-                                .multilineTextAlignment(.center)
-                            Text("知識の結晶を消費して召喚します")
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.6))
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                HStack(alignment: .center) {
+                    Button(action: { store.backToBannerSelect() }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                            Text("召喚確認")
                         }
-                        .opacity(appeared ? 1 : 0)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.92))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    Spacer(minLength: 8)
+                    StoneCountBadge(stones: store.currentStones)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, geo.safeAreaInsets.top + 10)
+                .padding(.bottom, 8)
 
-                        SummoningOrb(bannerType: banner.type, pickupImageUrl: banner.pickupImageUrl)
-                            .frame(height: 220)
-                            .scaleEffect(appeared ? 1 : 0.92)
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        if let banner = store.selectedBanner {
+                            VStack(spacing: 4) {
+                                Text(banner.name)
+                                    .font(.system(size: 26, weight: .black))
+                                    .foregroundColor(.white)
+                                    .multilineTextAlignment(.center)
+                                Text("知識の結晶を消費して召喚します")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.6))
+                            }
                             .opacity(appeared ? 1 : 0)
 
-                        HStack(spacing: 10) {
-                            GlowPullButton(
-                                label: "単発召喚", cost: GachaStore.singleCost,
-                                enabled: store.canPullSingle, colors: banner.type.colors,
-                                compactHorizontal: true
-                            ) {
-                                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                                store.pullSingle()
-                            }
-                            .frame(maxWidth: .infinity)
+                            SummoningOrb(bannerType: banner.type, pickupImageUrl: banner.pickupImageUrl)
+                                .frame(height: 220)
+                                .scaleEffect(appeared ? 1 : 0.92)
+                                .opacity(appeared ? 1 : 0)
 
-                            GlowPullButton(
-                                label: "10連召喚", cost: GachaStore.multiCost,
-                                enabled: store.canPullMulti, colors: banner.type.colors,
-                                isPrimary: true,
-                                compactHorizontal: true
-                            ) {
-                                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                                store.pullMulti()
+                            HStack(spacing: 10) {
+                                GlowPullButton(
+                                    label: "単発召喚", cost: GachaStore.singleCost,
+                                    enabled: store.canPullSingle, colors: banner.type.colors,
+                                    compactHorizontal: true
+                                ) {
+                                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                                    store.pullSingle()
+                                }
+                                .frame(maxWidth: .infinity)
+
+                                GlowPullButton(
+                                    label: "10連召喚", cost: GachaStore.multiCost,
+                                    enabled: store.canPullMulti, colors: banner.type.colors,
+                                    isPrimary: true,
+                                    compactHorizontal: true
+                                ) {
+                                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                                    store.pullMulti()
+                                }
+                                .frame(maxWidth: .infinity)
                             }
-                            .frame(maxWidth: .infinity)
+                            .opacity(appeared ? 1 : 0)
+
+                            RateInfoCard().opacity(appeared ? 1 : 0)
                         }
-                        .opacity(appeared ? 1 : 0)
-
-                        RateInfoCard().opacity(appeared ? 1 : 0)
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, 32 + gachaMainTabBottomReserve)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 32 + gachaMainTabBottomReserve)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
         }
         .onAppear { withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { appeared = true } }
         .onDisappear { appeared = false }

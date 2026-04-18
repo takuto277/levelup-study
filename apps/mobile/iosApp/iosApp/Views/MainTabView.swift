@@ -17,6 +17,9 @@ struct MainTabView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
+            Color(red: 0.04, green: 0.05, blue: 0.12)
+                .ignoresSafeArea()
+
             Group {
                 switch selectedTab {
                 case .quest: QuestScreenView()
