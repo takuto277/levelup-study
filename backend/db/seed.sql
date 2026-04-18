@@ -5,7 +5,9 @@
 --   make seed   (backend/ ディレクトリで実行)
 --   または直接: docker exec -i levelup-study-db psql -U postgres -d levelup_study < db/seed.sql
 --
--- 前提: テーブルは GORM AutoMigrate で作成済み
+-- 前提:
+--   1) make migrate-up で golang-migrate の baseline を適用済み（schema_migrations）
+--   2) API 起動で GORM AutoMigrate によりテーブルが存在すること
 -- ============================================================
 
 BEGIN;

@@ -40,7 +40,23 @@ make db-up
 
 これで `localhost:5432` に PostgreSQL が起動する。
 
-### 3. サーバーを起動
+### 3. データベースマイグレーション（golang-migrate）
+
+スキーマの**増分変更**は `db/migrations/` の SQL で管理する（例: 新テーブル「スキル」、カラム追加）。
+
+| コマンド | 説明 |
+|---------|------|
+| `make migrate-up` | 未適用の `.up.sql` を適用（Docker の `migrate/migrate` イメージを使用） |
+| `make migrate-down` | 1 段階ロールバック（`.down.sql`） |
+| `make migrate-version` | 現在のバージョンを表示 |
+| `make migrate-create NAME=add_user_skills` | 次の連番で空の `.up.sql` / `.down.sql` を生成 |
+
+初回の **baseline**（`000001_baseline`）はスキーマを作らず、`schema_migrations` のみ用意する。テーブル作成は引き続き **`make run` 時の GORM AutoMigrate** が担当する。
+
+- DB を空にしてやり直す: `make db-fresh`（`db-reset` → `migrate-up` → 一時 `run` で AutoMigrate → `seed`）
+- 接続先を変える場合: 環境変数 `MIGRATE_DATABASE_URL`（`postgres://...` 形式）を設定
+
+### 4. サーバーを起動
 
 ```bash
 make run
@@ -49,7 +65,7 @@ make run
 
 `http://localhost:8080` でアクセス可能。初回起動時に GORM がテーブルを自動作成する。
 
-### 4. テスト
+### 5. テスト
 
 ```bash
 make test
