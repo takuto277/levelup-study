@@ -28,10 +28,13 @@ fun initKoin() {
 }
 
 /**
- * 開発用: シードデータのテストユーザーでセッションを設定する
- * seed.sql の user1 UUID をセットし、API 接続テストを可能にする
+ * 開発用: シードのテストユーザー ID をセッションに入れる（Go の DEV_MODE=true 向け）。
+ *
+ * @param useSeedUser `true` のときだけ、db/seed.sql の user1 UUID を未ログイン時にセットする。
+ *   本番 API（JWT + OwnerGuard）や Supabase ログインだけを使う場合は `false` にする。
  */
-fun setDevSession() {
+fun setDevSession(useSeedUser: Boolean = true) {
+    if (!useSeedUser) return
     if (!UserSessionStore.hasSession()) {
         UserSessionStore.setSession(userId = "00000000-0000-0000-0000-000000000001")
     }

@@ -1,5 +1,6 @@
 package org.example.project
 
+import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,7 +18,8 @@ class MainActivity : ComponentActivity() {
 
         initKeyValueStore(this)
         initKoin()
-        setDevSession()
+        val useSeedUser = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        setDevSession(useSeedUser = useSeedUser)
 
         setContent {
             App()
