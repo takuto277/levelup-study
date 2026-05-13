@@ -9,6 +9,22 @@ import org.example.project.core.storage.KeyValueStore
  * expect/actual の KeyValueStore を使用して永続化する。
  */
 object UserSessionStore {
+
+    /** db/seed.sql の user1 と同じ ID（DEV_MODE + シード開発用） */
+    const val DEV_SEED_USER_ID: String = "00000000-0000-0000-0000-000000000001"
+
+    private var forceDevSeedUserId: Boolean = false
+
+    /**
+     * true のとき、[userId] / [requireUserId] は常に [DEV_SEED_USER_ID] を返す。
+     * createUser が別 UUID を保存しても API パスはシードユーザーに揃う（setDevSession(..., forceSeedUserId=true) からオン）。
+     */
+    fun setForceDevSeedUserId(enabled: Boolean) {
+        forceDevSeedUserId = enabled
+    }
+
+    fun isForceDevSeedUserId(): Boolean = forceDevSeedUserId
+
     private val store = KeyValueStore()
 
     private const val KEY_USER_ID = "user_id"
@@ -16,7 +32,7 @@ object UserSessionStore {
 
     /** 現在ログイン中のユーザー ID */
     var userId: String?
-        get() = store.getString(KEY_USER_ID)
+        get() = if (forceDevSeedUserId) DEV_SEED_USER_ID else store.getString(KEY_USER_ID)
         private set(value) {
             if (value != null) store.putString(KEY_USER_ID, value)
             else store.remove(KEY_USER_ID)
@@ -32,12 +48,20 @@ object UserSessionStore {
 
     /** ユーザーセッションを設定 */
     fun setSession(userId: String, token: String? = null) {
+        if (forceDevSeedUserId && userId != DEV_SEED_USER_ID) {
+            println(
+                "[LevelUpStudy] dev seed mode: API 用 userId は $DEV_SEED_USER_ID に固定。createUser の $userId は保存しません。",
+            )
+            if (token != null) this.authToken = token
+            return
+        }
         this.userId = userId
         this.authToken = token
     }
 
     /** セッションをクリア（ログアウト時） */
     fun clear() {
+        forceDevSeedUserId = false
         userId = null
         authToken = null
     }

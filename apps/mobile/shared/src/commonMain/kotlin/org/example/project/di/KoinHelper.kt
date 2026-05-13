@@ -40,8 +40,12 @@ fun initKoin() {
  * **DATABASE_URL**: `make seed-remote` と `make run` は同じ `.env` の接続先を見ること。片方だけ別 DB にすると 404／空データになる。
  */
 fun setDevSession(useSeedUser: Boolean = true, forceSeedUserId: Boolean = false) {
-    if (!useSeedUser) return
-    val seedId = "00000000-0000-0000-0000-000000000001"
+    if (!useSeedUser) {
+        UserSessionStore.setForceDevSeedUserId(false)
+        return
+    }
+    val seedId = UserSessionStore.DEV_SEED_USER_ID
+    UserSessionStore.setForceDevSeedUserId(forceSeedUserId)
     when {
         forceSeedUserId -> UserSessionStore.setSession(userId = seedId)
         !UserSessionStore.hasSession() -> UserSessionStore.setSession(userId = seedId)
