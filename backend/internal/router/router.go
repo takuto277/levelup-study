@@ -18,6 +18,7 @@ type SecurityConfig struct {
 	APIKey         string   // クライアント識別用 API Key
 	AllowedOrigins []string // CORS 許可オリジン
 	DevMode        bool     // true: JWT/APIKey 検証をスキップ（ローカル開発用）
+	DebugAPILog    bool     // true: 🌱 付き API デバッグログ（全ルート + /api/v1 内の認証失敗）
 }
 
 // ============================================================
@@ -79,6 +80,10 @@ func NewRouter(
 	r.Use(chimw.Recoverer)
 	r.Use(mw.CORSConfig(sec.AllowedOrigins)) // CORS
 	r.Use(mw.RateLimiter(100, 200))          // グローバル: 100 rps / burst 200
+	if sec.DebugAPILog {
+		// /api/v1 だけでなく 404 や GET / も含め、届いたリクエストはすべてここで 🌱 1 行出る
+		r.Use(mw.DebugAPILog)
+	}
 
 	// --- ヘルスチェック（認証不要） ---
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +92,7 @@ func NewRouter(
 
 	// --- API v1 ---
 	r.Route("/api/v1", func(r chi.Router) {
+
 		// API Key を全 API に適用（dev mode ではスキップ）
 		if !sec.DevMode {
 			r.Use(mw.APIKeyAuth(sec.APIKey))

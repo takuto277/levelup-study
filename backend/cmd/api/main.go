@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/takuto277/levelup-study/backend/internal/database"
 	"github.com/takuto277/levelup-study/backend/internal/handler"
+	mw "github.com/takuto277/levelup-study/backend/internal/middleware"
 	"github.com/takuto277/levelup-study/backend/internal/repository"
 	"github.com/takuto277/levelup-study/backend/internal/router"
 	"github.com/takuto277/levelup-study/backend/internal/service"
@@ -19,6 +20,7 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("ℹ️  .env ファイルが見つかりません（本番環境では環境変数を直接設定してください）")
 	}
+	mw.InitDebugAPILogOutput()
 
 	// --- 開発モード判定 ---
 	devMode := os.Getenv("DEV_MODE") == "true"
@@ -38,6 +40,14 @@ func main() {
 	allowedOrigins := []string{}
 	if origins := os.Getenv("ALLOWED_ORIGINS"); origins != "" {
 		allowedOrigins = strings.Split(origins, ",")
+	}
+
+	debugAPILog := mw.DebugAPILogEnabled()
+	if debugAPILog {
+		log.Println("🌱 DEBUG_API_LOG: 各リクエスト終了時に 🌱 1 行を stderr に出します（GET / や 404 も含む）。オフは DEBUG_API_LOG=false。ファイルは DEBUG_API_LOG_FILE")
+		if mw.DebugAPILogVerboseEnabled() {
+			log.Println("🌱 DEBUG_API_LOG_VERBOSE: 各リクエストの続けて req/resp 要約行を出します（機密に注意。オフは DEBUG_API_LOG_VERBOSE=false）")
+		}
 	}
 
 	// --- データベース接続 ---
@@ -78,6 +88,7 @@ func main() {
 		APIKey:         apiKey,
 		AllowedOrigins: allowedOrigins,
 		DevMode:        devMode,
+		DebugAPILog:    debugAPILog,
 	}
 
 	// --- ルーター構築 ---

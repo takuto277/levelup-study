@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
         initKeyValueStore(this)
         initKoin()
         val useSeedUser = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        setDevSession(useSeedUser = useSeedUser)
+        setDevSession(useSeedUser = useSeedUser, forceSeedUserId = useSeedUser)
 
         setContent {
             App()

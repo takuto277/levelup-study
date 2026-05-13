@@ -23,12 +23,18 @@ func APIKeyAuth(apiKey string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			provided := r.Header.Get("X-API-Key")
 			if provided == "" {
+				if DebugAPILogEnabled() {
+					APIDebugPrintf("[API] auth X-API-Key missing %s %s", r.Method, r.URL.Path)
+				}
 				http.Error(w, `{"error":"X-API-Key ヘッダーが必要です"}`, http.StatusForbidden)
 				return
 			}
 
 			// タイミング攻撃対策: constant-time compare
 			if subtle.ConstantTimeCompare([]byte(provided), []byte(apiKey)) != 1 {
+				if DebugAPILogEnabled() {
+					APIDebugPrintf("[API] auth X-API-Key invalid %s %s", r.Method, r.URL.Path)
+				}
 				http.Error(w, `{"error":"無効な API Key です"}`, http.StatusForbidden)
 				return
 			}

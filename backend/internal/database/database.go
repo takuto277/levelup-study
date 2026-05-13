@@ -46,7 +46,8 @@ func Connect() (*gorm.DB, error) {
 
 func AutoMigrate(db *gorm.DB) error {
 	log.Println("🔄 テーブルのマイグレーションを実行中...")
-	if err := db.AutoMigrate(model.AllModels()...); err != nil {
+	// AutoMigrate 中のメタデータ問い合わせが遅いと GORM の SLOW SQL が大量に出るため、このセッションだけログを抑える。
+	if err := db.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Silent)}).AutoMigrate(model.AllModels()...); err != nil {
 		return fmt.Errorf("マイグレーション失敗: %w", err)
 	}
 	log.Println("✅ マイグレーション完了")

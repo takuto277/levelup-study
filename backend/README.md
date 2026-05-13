@@ -65,6 +65,10 @@ make run
 
 `http://localhost:8080` でアクセス可能。初回起動時に GORM がテーブルを自動作成する。
 
+**API デバッグログ（調査用）**: 既定はオン。`DEBUG_API_LOG=false`（または `0` / `off` / `no`）でオフ。`🌱 [API] ...` 形式で **すべてのパス**（`GET /` や 404 含む）の成功・失敗と、`/api/v1` 内の認証エラーを **標準エラー（stderr）** に出す。**`make run` を実行しているターミナルにそのまま流れる**ので、別ターミナルで grep する必要はない（絞り込みだけ別ターミナルでも可）。まず同じマシンで `curl -sS http://127.0.0.1:8080/` を叩き 🌱 が増えるか確認するとよい。iOS シミュレータは Mac 上の `localhost` に届くが、**実機は `localhost` では Mac の API に届かない**（`ApiRoutes.BASE_URL` を Mac の LAN IP に変える）。実機から LAN の IP で叩いている場合は、その PC で API を動かしているターミナルを見る。
+
+**リクエスト／レスポンスを AI に渡したいとき**: `.env` に `DEBUG_API_LOG_VERBOSE=true` を足すと、各リクエストの直後に `🌱 [API] dump ... req=... resp=... ua=...` の続き行が出る（本文は長さ上限あり、Bearer 等はマスク）。あわせて `DEBUG_API_LOG_FILE=./tmp/api-debug.log` にすると、そのファイルをそのままチャットに貼れる。grep する場合は `2>&1 | grep 🌱` のように stderr を合わせる。本番では `DEBUG_API_LOG=false` と `DEBUG_API_LOG_VERBOSE=false` を推奨。
+
 ### 5. テスト
 
 ```bash
@@ -116,6 +120,33 @@ Supabase は PostgreSQL + 認証 + リアルタイム等を提供する BaaS。
    make run
    ```
    初回起動時に GORM が Supabase の PostgreSQL にテーブルを自動作成する。
+
+6. **開発用シードを Supabase に入れる（任意）**
+
+   `make seed` はローカル Docker 専用のため、Supabase へは **`make seed-remote`** を使う（`.env` の `DATABASE_URL` が接続先）。事前に上記 `make run` でテーブル作成済みであること。
+
+   **注意**: `seed.sql` が作るのは **`public.users` の固定 UUID**（先頭ユーザーは `00000000-0000-0000-0000-000000000001`）。**Supabase Auth のユーザー ID（`auth.users`）とは無関係**です。モバイル DEBUG ではこの固定 ID をセッションに載せる想定です。**`make seed-remote` を流した DBと、`make run` が読む `DATABASE_URL` は必ず同一**にしてください（ローカル Docker にだけシードして API だけ Supabase を見る、などにすると編成・記録が空になります）。
+
+   `psql` が **15 未満**の場合は `--ipv4` を付けずに実行します（その場合、Docker on Mac で IPv6の `Network unreachable` になることがあります。`brew upgrade libpq` か Supabase の **Session pooler** の URI を試してください）。
+
+   Docker 経由では公式 **`postgres:16`** イメージの `psql` を使い、**対応していれば** `--ipv4` を付けます。
+
+   ```bash
+   make seed-remote
+   ```
+
+   **ホストに `psql` を入れたい場合（推奨・Apple Silicon 例）**
+
+   ```bash
+   brew install libpq
+   brew link --force libpq
+   ```
+
+   `link` が嫌な場合は、`export PATH="$(brew --prefix libpq)/bin:$PATH"` を `~/.zshrc` に手で追記してください。
+
+   反映後、ターミナルで `which psql` がパスを返せば OK です。
+
+   まだ繋がらない場合は、Supabase の **Session pooler（6543）** の接続文字列に差し替えてください。
 
 ---
 

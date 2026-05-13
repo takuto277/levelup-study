@@ -38,12 +38,18 @@ func JWTAuth(jwtSecret string) func(http.Handler) http.Handler {
 			// --- Authorization ヘッダー取得 ---
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
+				if DebugAPILogEnabled() {
+					APIDebugPrintf("[API] auth Authorization missing %s %s", r.Method, r.URL.Path)
+				}
 				http.Error(w, `{"error":"Authorization ヘッダーが必要です"}`, http.StatusUnauthorized)
 				return
 			}
 
 			parts := strings.SplitN(authHeader, " ", 2)
 			if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+				if DebugAPILogEnabled() {
+					APIDebugPrintf("[API] auth Bearer format invalid %s %s", r.Method, r.URL.Path)
+				}
 				http.Error(w, `{"error":"Bearer トークン形式で指定してください"}`, http.StatusUnauthorized)
 				return
 			}
@@ -57,6 +63,9 @@ func JWTAuth(jwtSecret string) func(http.Handler) http.Handler {
 				return []byte(jwtSecret), nil
 			})
 			if err != nil || !token.Valid {
+				if DebugAPILogEnabled() {
+					APIDebugPrintf("[API] auth JWT invalid or parse error %s %s: %v", r.Method, r.URL.Path, err)
+				}
 				http.Error(w, `{"error":"無効なトークンです"}`, http.StatusUnauthorized)
 				return
 			}
@@ -64,11 +73,17 @@ func JWTAuth(jwtSecret string) func(http.Handler) http.Handler {
 			// --- sub クレームを取得 ---
 			claims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {
+				if DebugAPILogEnabled() {
+					APIDebugPrintf("[API] auth JWT claims type %s %s", r.Method, r.URL.Path)
+				}
 				http.Error(w, `{"error":"トークンクレームの解析に失敗しました"}`, http.StatusUnauthorized)
 				return
 			}
 			sub, err := claims.GetSubject()
 			if err != nil || sub == "" {
+				if DebugAPILogEnabled() {
+					APIDebugPrintf("[API] auth JWT sub missing %s %s", r.Method, r.URL.Path)
+				}
 				http.Error(w, `{"error":"トークンに sub クレームがありません"}`, http.StatusUnauthorized)
 				return
 			}

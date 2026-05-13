@@ -30,14 +30,26 @@ fun initKoin() {
 /**
  * 開発用: シードのテストユーザー ID をセッションに入れる（Go の DEV_MODE=true 向け）。
  *
- * @param useSeedUser `true` のときだけ、db/seed.sql の user1 UUID を未ログイン時にセットする。
- *   本番 API（JWT + OwnerGuard）や Supabase ログインだけを使う場合は `false` にする。
+ * @param useSeedUser `true` のときだけ [seedId] をセッションに使う。
+ * @param forceSeedUserId `true` のときは毎回 [seedId] を上書き（KeyValueStore に古い UUID が残っていても seed と揃う）。
+ *   `false` のときは **未ログイン時のみ** [seedId] をセットする（createUser 検証などでは `false` を推奨）。
+ *
+ * **Supabase について**: `make seed-remote` が入れるのは **public.users** の固定 UUID であり、
+ * Supabase Auth（auth.users）のログイン UUID とは別。アプリのこの ID と DB の seed が一致していればよい。
+ *
+ * **DATABASE_URL**: `make seed-remote` と `make run` は同じ `.env` の接続先を見ること。片方だけ別 DB にすると 404／空データになる。
  */
-fun setDevSession(useSeedUser: Boolean = true) {
+fun setDevSession(useSeedUser: Boolean = true, forceSeedUserId: Boolean = false) {
     if (!useSeedUser) return
-    if (!UserSessionStore.hasSession()) {
-        UserSessionStore.setSession(userId = "00000000-0000-0000-0000-000000000001")
+    val seedId = "00000000-0000-0000-0000-000000000001"
+    when {
+        forceSeedUserId -> UserSessionStore.setSession(userId = seedId)
+        !UserSessionStore.hasSession() -> UserSessionStore.setSession(userId = seedId)
     }
+    println(
+        "[LevelUpStudy] DevSession userId=${UserSessionStore.userId} (seed user1 = $seedId). " +
+            "API の DATABASE_URL は seed / seed-remote を流した DB と同じであること。",
+    )
 }
 
 /**

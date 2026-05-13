@@ -2,12 +2,15 @@
 -- LevelUp Study — 開発用シードデータ
 --
 -- 使い方:
---   make seed   (backend/ ディレクトリで実行)
+--   make seed   (backend/ で実行) → ローカル Docker の Postgres のみ
+--   make seed-remote → .env の DATABASE_URL（Supabase 等）へ。要 psql
 --   または直接: docker exec -i levelup-study-db psql -U postgres -d levelup_study < db/seed.sql
 --
 -- 前提:
 --   1) make migrate-up で golang-migrate の baseline を適用済み（schema_migrations）
 --   2) API 起動で GORM AutoMigrate によりテーブルが存在すること
+--   3) users の UUID は固定（user1 = 00000000-...-001）。Supabase Auth の auth.users とは別テーブル・別 ID。
+--      モバイル DEBUG のシードセッションはこの user1 と揃える。
 -- ============================================================
 
 BEGIN;

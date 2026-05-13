@@ -12,7 +12,7 @@ MIGRATE_IMAGE ?= migrate/migrate:v4.18.2
 # Docker からホストの Postgres へ（Linux は host-gateway で host.docker.internal を解決）
 MIGRATE_DATABASE_URL ?= postgres://postgres:postgres@host.docker.internal:5432/levelup_study?sslmode=disable
 
-.PHONY: help setup run test build lint db-up db-down db-reset env migrate-up migrate-down migrate-create migrate-version seed db-fresh
+.PHONY: help setup run test build lint db-up db-down db-reset env migrate-up migrate-down migrate-create migrate-version seed seed-remote db-fresh
 
 # --- ヘルプ ---
 help: ## このヘルプを表示
@@ -78,10 +78,34 @@ migrate-create: ## 新規 SQL マイグレーションを生成（例: make migr
 		create -ext sql -dir /migrations -seq $(NAME)
 	@echo "✅ db/migrations/ にファイルを生成しました"
 
-seed: ## シードデータを投入（マスタ + テストユーザー）
-	@echo "🌱 シードデータを投入中..."
+seed: ## シードをローカル Docker Postgres（levelup-study-db）へ投入。Supabase へは make seed-remote
+	@echo "🌱 シードデータを投入中（ローカル Docker）..."
 	docker exec -i levelup-study-db psql -U postgres -d levelup_study < db/seed.sql
 	@echo "✅ シードデータの投入が完了しました"
+
+# .env の DATABASE_URL 先へ db/seed.sql を流す（Supabase 等）。
+# 前提: テーブルが既にあること（少なくとも一度 make run で AutoMigrate 済み）。
+# 優先: ホストの psql（brew install libpq）。無ければ Docker の postgres:16 で実行。
+# --ipv4 は psql 15+ のみ対応。古いクライアントでは付けずに実行（IPv6 で失敗する場合は brew upgrade libpq か Session pooler URI を試す）。
+seed-remote: ## シードを .env の DATABASE_URL 先へ投入（Supabase 用）
+	@test -n "$(DATABASE_URL)" || (echo '✖ DATABASE_URL が空です。.env を確認してください。' && exit 1)
+	@echo "🌱 シードを DATABASE_URL の接続先へ投入中..."
+	@echo "   → この後の make run も同じ backend/.env の DATABASE_URL で。別DBにシードすると API とアプリの user id が噛み合わない。"
+	@if command -v psql >/dev/null 2>&1; then \
+		if psql --help 2>&1 | grep -q -- '--ipv4'; then \
+			psql --ipv4 "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -f db/seed.sql; \
+		else \
+			psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -f db/seed.sql; \
+		fi; \
+	else \
+		echo "(psql が無いため Docker postgres:16 で実行します)"; \
+		docker run --rm -i \
+			-e DATABASE_URL="$(DATABASE_URL)" \
+			-v "$(CURDIR)/db/seed.sql:/seed.sql:ro" \
+			postgres:16 \
+			sh -c 'if psql --help 2>&1 | grep -q -- --ipv4; then psql --ipv4 "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /seed.sql; else psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /seed.sql; fi'; \
+	fi
+	@echo "✅ リモート DB へのシードが完了しました"
 
 db-fresh: db-reset ## DB完全リセット → migrate up → AutoMigrate → seed
 	@echo "⏳ PostgreSQL 起動待ち..."

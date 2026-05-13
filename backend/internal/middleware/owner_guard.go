@@ -22,6 +22,9 @@ func OwnerGuard(next http.Handler) http.Handler {
 		// JWT ミドルウェアで格納された認証済みユーザー ID
 		tokenUID, ok := UserIDFromContext(r.Context())
 		if !ok || tokenUID == "" {
+			if DebugAPILogEnabled() {
+				APIDebugPrintf("[API] auth owner guard no user in context %s %s", r.Method, r.URL.Path)
+			}
 			http.Error(w, `{"error":"認証情報が取得できません"}`, http.StatusUnauthorized)
 			return
 		}
@@ -36,6 +39,9 @@ func OwnerGuard(next http.Handler) http.Handler {
 
 		// 一致チェック
 		if tokenUID != pathUID {
+			if DebugAPILogEnabled() {
+				APIDebugPrintf("[API] auth owner mismatch token=%s path=%s %s %s", tokenUID, pathUID, r.Method, r.URL.Path)
+			}
 			http.Error(w, `{"error":"他のユーザーのリソースにはアクセスできません"}`, http.StatusForbidden)
 			return
 		}

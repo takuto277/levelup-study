@@ -67,11 +67,18 @@ func (r *UserRepository) AddStudySeconds(id uuid.UUID, seconds int) error {
 
 // IncrementCurrencies — 石・ゴールド・勉強秒数を一括で加算する（トランザクション内で使う）
 func (r *UserRepository) IncrementCurrencies(tx *gorm.DB, id uuid.UUID, stones, gold, studySeconds int) error {
-	return tx.Model(&model.User{}).
+	res := tx.Model(&model.User{}).
 		Where("id = ?", id).
 		Updates(map[string]interface{}{
 			"stones":              gorm.Expr("stones + ?", stones),
 			"gold":                gorm.Expr("gold + ?", gold),
 			"total_study_seconds": gorm.Expr("total_study_seconds + ?", studySeconds),
-		}).Error
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
