@@ -32,6 +32,8 @@ type SecurityConfig struct {
 //   PUT    /api/v1/users/{userID}                     ユーザー更新
 //   DELETE /api/v1/users/{userID}                     ユーザー削除
 //
+//   POST   /api/v1/debug/users/{userID}/currencies      DEV_MODE のみ: 石・ゴールド増減
+//
 // [勉強]
 //   POST   /api/v1/users/{userID}/study/complete      勉強完了（報酬確定）
 //
@@ -105,6 +107,10 @@ func NewRouter(
 		r.Group(func(r chi.Router) {
 			if !sec.DevMode {
 				r.Use(mw.JWTAuth(sec.JWTSecret))
+			}
+
+			if sec.DevMode {
+				r.Post("/debug/users/{userID}/currencies", userH.DebugPatchCurrencies)
 			}
 
 			r.Route("/users/{userID}", func(r chi.Router) {

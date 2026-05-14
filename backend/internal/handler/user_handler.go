@@ -125,3 +125,31 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusOK, map[string]string{"message": "ユーザーを削除しました"})
 }
+
+// DebugPatchCurrencies — POST /api/v1/debug/users/{userID}/currencies（DEV_MODE のみルート登録）
+// 石・ゴールドを増減する。本番では無効。
+func (h *UserHandler) DebugPatchCurrencies(w http.ResponseWriter, r *http.Request) {
+	id, err := parseUUID(chi.URLParam(r, "userID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なユーザーIDです")
+		return
+	}
+	var req struct {
+		StonesDelta int `json:"stones_delta"`
+		GoldDelta   int `json:"gold_delta"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "リクエストの形式が不正です")
+		return
+	}
+	if req.StonesDelta == 0 && req.GoldDelta == 0 {
+		respondError(w, http.StatusBadRequest, "stones_delta または gold_delta を指定してください")
+		return
+	}
+	user, err := h.repo.ApplyCurrencyDelta(id, req.StonesDelta, req.GoldDelta)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "ユーザーが見つかりません")
+		return
+	}
+	respondJSON(w, http.StatusOK, user)
+}

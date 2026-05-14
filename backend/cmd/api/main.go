@@ -26,6 +26,7 @@ func main() {
 	devMode := os.Getenv("DEV_MODE") == "true"
 	if devMode {
 		log.Println("⚠️  DEV_MODE が有効です — JWT / API Key 認証をスキップします")
+		log.Println("🛠 DEBUG: POST /api/v1/debug/users/{userID}/currencies（stones_delta / gold_delta）が利用可能です")
 	}
 
 	// --- 環境変数からセキュリティ設定を読み込む ---

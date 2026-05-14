@@ -33,6 +33,13 @@ data class UpdateUserRequest(
     @SerialName("selected_dungeon_id") val selectedDungeonId: String? = null
 )
 
+/** DEV_MODE API: POST /api/v1/debug/users/{id}/currencies */
+@Serializable
+data class DebugCurrencyPatchRequest(
+    @SerialName("stones_delta") val stonesDelta: Int = 0,
+    @SerialName("gold_delta") val goldDelta: Int = 0,
+)
+
 // ── Mapper ──────────────────────────────────────
 
 fun UserResponse.toDomain(): User = User(

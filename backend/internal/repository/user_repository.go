@@ -58,6 +58,29 @@ func (r *UserRepository) AddGold(id uuid.UUID, amount int) error {
 		Update("gold", gorm.Expr("gold + ?", amount)).Error
 }
 
+// ApplyCurrencyDelta — DEV_MODE 専用: 石・ゴールドを増減（0 未満には丸める）
+func (r *UserRepository) ApplyCurrencyDelta(id uuid.UUID, stonesDelta, goldDelta int) (*model.User, error) {
+	var u model.User
+	if err := r.db.Where("id = ?", id).First(&u).Error; err != nil {
+		return nil, err
+	}
+	stones := u.Stones + stonesDelta
+	if stones < 0 {
+		stones = 0
+	}
+	gold := u.Gold + goldDelta
+	if gold < 0 {
+		gold = 0
+	}
+	if err := r.db.Model(&model.User{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"stones": stones,
+		"gold":   gold,
+	}).Error; err != nil {
+		return nil, err
+	}
+	return r.GetByID(id)
+}
+
 // AddStudySeconds — 累計勉強秒数を加算する
 func (r *UserRepository) AddStudySeconds(id uuid.UUID, seconds int) error {
 	return r.db.Model(&model.User{}).

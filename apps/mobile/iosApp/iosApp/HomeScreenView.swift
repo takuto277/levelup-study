@@ -64,6 +64,7 @@ struct HomeScreenView: View {
     @State private var showAddGenreSheet = false
     @State private var newGenreLabel = ""
     @State private var genrePendingDelete: MasterStudyGenre? = nil
+    @State private var showSettings = false
 
     private let homeViewModel = KoinHelperKt.getHomeViewModel()
     @State private var homeState: HomeUiState?
@@ -132,6 +133,20 @@ struct HomeScreenView: View {
         } message: {
             if let g = genrePendingDelete {
                 Text("\"\(g.label)\" を削除しますか？\n記録の勉強時間は「削除済み課題」として残ります。")
+            }
+        }
+        .sheet(isPresented: $showSettings, onDismiss: {
+            homeViewModel.onIntent(intent: HomeIntentRefresh())
+        }) {
+            SettingsScreenView(
+                onDismiss: { showSettings = false },
+                onClosedRefreshHome: { homeViewModel.onIntent(intent: HomeIntentRefresh()) }
+            )
+        }
+        .onChange(of: showSettings) { _, open in
+            if open {
+                // onAppear はシート内で複数回走ることがあり、refresh が連打されるのを避ける
+                KoinHelperKt.getSettingsViewModel().refreshFromPlatform()
             }
         }
         .onReceive(messageTimer) { _ in withAnimation(.easeInOut(duration: 0.3)) { messageIndex = (messageIndex + 1) % messages.count } }
@@ -220,7 +235,7 @@ struct HomeScreenView: View {
             .padding(.horizontal, 12).padding(.vertical, 8)
             .background(bgCard).cornerRadius(14)
 
-            Spacer()
+            Spacer(minLength: 8)
 
             HStack(spacing: 6) {
                 Text("💎").font(.system(size: 16))
@@ -231,6 +246,17 @@ struct HomeScreenView: View {
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
             .background(bgCard).cornerRadius(14)
+
+            Button(action: { showSettings = true }) {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(accentCyan)
+                    .frame(width: 40, height: 40)
+                    .background(bgCard)
+                    .cornerRadius(12)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(accentCyan.opacity(0.45), lineWidth: 1))
+            }
+            .accessibilityLabel("設定")
         }
         .padding(16)
     }

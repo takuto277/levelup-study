@@ -37,6 +37,7 @@ import org.example.project.features.party.PartyUseCase
 import org.example.project.features.party.PartyViewModel
 import org.example.project.features.quest.QuestUseCase
 import org.example.project.features.quest.QuestViewModel
+import org.example.project.features.settings.SettingsViewModel
 import org.example.project.features.study.StudyQuestViewModel
 import org.example.project.features.study.StudyUseCase
 import org.example.project.features.study.StudyViewModel
@@ -88,4 +89,6 @@ val sharedModule = module {
     factory { RecordViewModel(get(), get()) }
     factoryOf(::StudyViewModel)
     factoryOf(::StudyQuestViewModel)
+    /** SwiftUI が再合成するたびに新インスタンス＋init Refresh になるのを避けるため single */
+    single { SettingsViewModel(get(), get()) }
 }

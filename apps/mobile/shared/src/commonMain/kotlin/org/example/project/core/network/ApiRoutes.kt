@@ -28,6 +28,9 @@ object ApiRoutes {
     /** GET/PUT/DELETE: ユーザー取得・更新・削除 */
     fun user(userId: String) = "/api/v1/users/$userId"
 
+    /** POST: DEV_MODE のみ — 石・ゴールド増減 */
+    fun debugPatchCurrencies(userId: String) = "/api/v1/debug/users/$userId/currencies"
+
     // ── Study ───────────────────────────────────
     /** POST: 勉強セッション完了 & 報酬確定 */
     fun studyComplete(userId: String) = "/api/v1/users/$userId/study/complete"

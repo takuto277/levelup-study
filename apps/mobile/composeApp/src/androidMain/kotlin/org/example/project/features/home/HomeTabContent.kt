@@ -10,6 +10,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
@@ -40,6 +43,7 @@ fun HomeTabContent(
     selectedGenreSlug: String,
     onGenreChange: (String) -> Unit,
     onStartStudy: () -> Unit,
+    onOpenSettings: () -> Unit,
     homeState: HomeUiState,
     homeViewModel: org.example.project.features.home.HomeViewModel
 ) {
@@ -120,7 +124,7 @@ fun HomeTabContent(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        HomeHeader(homeState = homeState)
+        HomeHeader(homeState = homeState, onOpenSettings = onOpenSettings)
 
         HomeAdventureContextRow(
             dungeonDisplayName = homeState.adventureDungeonDisplayName,
@@ -161,16 +165,25 @@ fun HomeTabContent(
 }
 
 @Composable
-private fun HomeHeader(homeState: HomeUiState) {
+private fun HomeHeader(homeState: HomeUiState, onOpenSettings: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(horizontal = 8.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        HeaderCapsule(emoji = "📖", caption = "累計勉強", value = homeState.formattedStudyTime)
-        HeaderCapsule(emoji = "💎", caption = "知識の結晶", value = "${homeState.stones}")
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            HeaderCapsule(emoji = "📖", caption = "累計勉強", value = homeState.formattedStudyTime)
+            HeaderCapsule(emoji = "💎", caption = "知識の結晶", value = "${homeState.stones}")
+        }
+        IconButton(onClick = onOpenSettings) {
+            Icon(
+                imageVector = Icons.Filled.Settings,
+                contentDescription = "設定",
+                tint = HomeTheme.AccentIndigo,
+            )
+        }
     }
 }
 

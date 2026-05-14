@@ -9,6 +9,7 @@ import io.ktor.client.request.setBody
 import org.example.project.core.network.ApiRoutes
 import org.example.project.core.network.NetworkResult
 import org.example.project.data.remote.dto.CreateUserRequest
+import org.example.project.data.remote.dto.DebugCurrencyPatchRequest
 import org.example.project.data.remote.dto.UpdateUserRequest
 import org.example.project.data.remote.dto.UserResponse
 
@@ -44,5 +45,19 @@ class UserGateway(private val client: HttpClient) {
         NetworkResult.Success(response)
     }.getOrElse { e ->
         NetworkResult.Error(message = e.message ?: "ユーザー情報の更新に失敗しました")
+    }
+
+    /** POST /api/v1/debug/users/{userId}/currencies — DEV_MODE のみ */
+    suspend fun debugPatchCurrencies(
+        userId: String,
+        stonesDelta: Int,
+        goldDelta: Int,
+    ): NetworkResult<UserResponse> = runCatching {
+        val response: UserResponse = client.post(ApiRoutes.debugPatchCurrencies(userId)) {
+            setBody(DebugCurrencyPatchRequest(stonesDelta = stonesDelta, goldDelta = goldDelta))
+        }.body()
+        NetworkResult.Success(response)
+    }.getOrElse { e ->
+        NetworkResult.Error(message = e.message ?: "デバッグ通貨 API に失敗しました")
     }
 }

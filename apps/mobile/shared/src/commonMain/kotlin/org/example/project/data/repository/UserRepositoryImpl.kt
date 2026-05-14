@@ -15,6 +15,15 @@ class UserRepositoryImpl(
     private val gateway: UserGateway
 ) : UserRepository {
 
+    companion object {
+        /**
+         * true: [syncFromServer] のたびに GET /users 相当の呼び出し元を Xcode / Logcat に出す（調査用）。
+         * 原因が分かったら false に戻すこと。
+         */
+        private const val DEBUG_LOG_SYNC_FROM_SERVER = false
+        private const val DEBUG_STACK_FRAMES = 18
+    }
+
     /** メモリキャッシュ（起動中の一時保持） */
     private var cachedUser: User? = null
 
@@ -74,6 +83,9 @@ class UserRepositoryImpl(
     }
 
     override suspend fun syncFromServer(): User {
+        if (DEBUG_LOG_SYNC_FROM_SERVER) {
+            debugLogSyncFromServer("syncFromServer: GET user (explicit or via getCurrentUser)")
+        }
         val userId = UserSessionStore.requireUserId()
         val response = gateway.getUser(userId).getOrThrow()
         val user = response.toDomain()
@@ -85,5 +97,17 @@ class UserRepositoryImpl(
     override fun updateCachedUser(user: User) {
         cachedUser = user
         persistUserOffline(user)
+    }
+
+    private fun debugLogSyncFromServer(hint: String) {
+        val stack = runCatching {
+            Exception()
+                .stackTraceToString()
+                .lineSequence()
+                .drop(1)
+                .take(DEBUG_STACK_FRAMES)
+                .joinToString("\n    ")
+        }.getOrElse { e -> "(stack: ${e.message})" }
+        println("🌱 [UserRepo] $hint\n    $stack")
     }
 }

@@ -8,12 +8,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import org.example.project.core.storage.KeyValueStore
+import org.example.project.features.settings.SettingsScreenDialog
 import org.example.project.features.study.StudyQuestScreenView
 
 @Composable
 fun HomeScreenView() {
     var selectedTab by remember { mutableStateOf(2) }
     var showStudySheet by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     val kvStore = remember { KeyValueStore() }
     var studyMinutes by remember {
         mutableStateOf(
@@ -69,11 +71,21 @@ fun HomeScreenView() {
                         selectedGenreSlug = selectedGenreSlug,
                         onGenreChange = { selectedGenreSlug = it },
                         onStartStudy = { showStudySheet = true },
+                        onOpenSettings = { showSettings = true },
                         homeState = homeState,
                         homeViewModel = homeViewModel
                     )
                     3 -> org.example.project.features.gacha.GachaScreenView()
                     4 -> org.example.project.features.record.RecordScreenView()
+                }
+                if (showSettings) {
+                    SettingsScreenDialog(
+                        onDismiss = {
+                            showSettings = false
+                            homeViewModel.onIntent(HomeIntent.Refresh)
+                        },
+                        homeViewModel = homeViewModel,
+                    )
                 }
             }
         }
