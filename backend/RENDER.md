@@ -32,6 +32,14 @@ GitHub Actions の **`backend-ci.yml` はテストのみ**（デプロイは Ren
 
 `PORT` は Render が注入する。API は `os.Getenv("PORT")` を読む実装になっている。
 
+## Render で `network is unreachable`（IPv6）になるとき
+
+ログに **`dial tcp [2406:...]:5432`** のように **IPv6** が出て失敗する場合、**直結ホスト `db.xxx.supabase.co:5432`** が Render から届いていないことがあります。
+
+**対処**: Supabase ダッシュボード → **Project Settings → Database** → **Connection string** のうち、**Connection pooling**（**Session** または **Transaction**）の URI をコピーし、Render の **`DATABASE_URL`** をそれに置き換える。ホストは多くの場合 **`*.pooler.supabase.com`**、ポートは **`6543`** です（[Supabase: Connect to your database](https://supabase.com/docs/guides/database/connecting-to-postgres)）。
+
+ローカルの `psql` で IPv6 問題が出たときと同じ考え方で、`backend/README.md` の Session pooler の記述も参照してください。
+
 ## モノレポ
 
 `rootDir: backend` により、[Root Directory](https://render.com/docs/monorepo-support#setting-a-root-directory) が `backend` になり、`dockerfilePath` / `dockerContext` は **そのディレクトリ基準**の `./Dockerfile` と `.` です。
