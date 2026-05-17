@@ -8,7 +8,7 @@
 #
 # 例:
 #   export GH_TOKEN=ghp_xxxx
-#   ./scripts/create-issue.sh --title "バグ: 〜" --body "詳細…"
+#   ./scripts/create-issue.sh --title "バグ: 〜" --body 'Markdown に `code` があるときはシングルクォートで囲む（zsh は "..." 内の ` をコマンド置換する）'
 #   ./scripts/create-issue.sh --title "タスク" --body-file ./issue-body.md --label bug --label mobile
 set -euo pipefail
 
