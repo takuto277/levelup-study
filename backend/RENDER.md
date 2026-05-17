@@ -1,0 +1,48 @@
+# Render デプロイ（LevelUp Study API）
+
+[Render](https://render.com/) の **無料 Web Service**（スリープあり）で Go API を動かす手順です。リポジトリルートの **`render.yaml`**（[Blueprint](https://render.com/docs/infrastructure-as-code)）でサービス定義しています。
+
+## 自動デプロイ
+
+GitHub リポジトリを接続すると、**`main` に push したあと**（かつ `buildFilter` の `backend/**` に該当する変更のとき）、Render がビルド・デプロイします。  
+GitHub Actions の **`backend-ci.yml` はテストのみ**（デプロイは Render 側）。
+
+## 初回セットアップ
+
+1. [Render Dashboard](https://dashboard.render.com/) → **New** → **Blueprint** を選ぶ。  
+2. **この GitHub リポジトリ**（`levelup-study`）を接続し、**`render.yaml` を検出**させる。  
+3. ウィザードで **`DATABASE_URL` / `JWT_SECRET` / `API_KEY`** の値を入力する（`sync: false` のためダッシュボードで聞かれる）。  
+4. デプロイ完了後、**`https://levelup-study-api.onrender.com`** のような URL が表示される（名前は `render.yaml` の `name` に依存）。
+
+手動で Web Service だけ作る場合は、[Docker on Render](https://render.com/docs/docker) に従い、**Root Directory = `backend`**、**Dockerfile = そのディレクトリの `Dockerfile`** に合わせる。
+
+## 無料枠の注意（スリープ）
+
+無料 Web Service は **一定時間アクセスがないとスピンダウン**し、次のリクエストで **冷めた起動（コールドスタート）** が起きます。個人開発・少人数なら許容しやすい挙動です。
+
+## 環境変数
+
+| 変数 | 説明 |
+|------|------|
+| `DATABASE_URL` | Supabase 等の PostgreSQL URI |
+| `JWT_SECRET` | Supabase JWT Secret |
+| `API_KEY` | モバイルの `X-API-Key` |
+| `DEV_MODE` | 本番では `false`（Blueprint で固定） |
+| `DEBUG_API_LOG` | 本番では `false`（Blueprint で固定） |
+
+`PORT` は Render が注入する。API は `os.Getenv("PORT")` を読む実装になっている。
+
+## モノレポ
+
+`rootDir: backend` により、[Root Directory](https://render.com/docs/monorepo-support#setting-a-root-directory) が `backend` になり、`dockerfilePath` / `dockerContext` は **そのディレクトリ基準**の `./Dockerfile` と `.` です。
+
+## モバイル
+
+デプロイ後の **HTTPS のオリジン**を `ApiRoutes.BASE_URL` 等に設定する。
+
+## 関連ファイル
+
+| パス | 内容 |
+|------|------|
+| `/render.yaml`（リポジトリルート） | Blueprint 定義 |
+| `backend/Dockerfile` | コンテナイメージ |

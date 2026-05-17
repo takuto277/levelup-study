@@ -1,0 +1,37 @@
+# backend 変更時のテストのみ（デプロイは Railway の GitHub 連携に任せる）
+name: Backend — CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "render.yaml"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "render.yaml"
+      - ".github/workflows/backend-ci.yml"
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Go test
+        run: CGO_ENABLED=1 go test ./... -count=1
+
+      - name: go vet
+        run: go vet ./...

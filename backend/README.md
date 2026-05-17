@@ -150,6 +150,14 @@ Supabase は PostgreSQL + 認証 + リアルタイム等を提供する BaaS。
 
 ---
 
+## ☁️ Render（本番 API・自動デプロイ）
+
+**Blueprint（リポジトリ直下の `render.yaml`）** と GitHub 連携で、**`main` の `backend/**` 変更**を push すると Render がビルド・デプロイします（無料枠は **スリープあり**）。GitHub Actions の `backend-ci.yml` は **テストのみ**。
+
+手順は **`RENDER.md`** を参照。
+
+---
+
 ## 📁 ディレクトリ構成
 
 ```
@@ -166,6 +174,10 @@ backend/
 │   └── testutil/             # テストヘルパー
 ├── .env.example              # 環境変数テンプレート
 ├── docker-compose.yml        # ローカル PostgreSQL
+├── Dockerfile                # 本番用 API イメージ（Render 等）
+├── RENDER.md                 # Render（Blueprint）手順
+├── RAILWAY.md                # （旧）Railway → RENDER.md へ
+├── FLY.md                    # （旧）Fly → RENDER.md へ
 ├── Makefile                  # 開発コマンド集
 └── go.mod
 ```

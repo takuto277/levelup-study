@@ -1,0 +1,27 @@
+# Render Blueprint — https://render.com/docs/infrastructure-as-code
+# ダッシュボード: New → Blueprint → このリポジトリを選択するとウィザードが動く
+services:
+  - type: web
+    name: levelup-study-api
+    runtime: docker
+    rootDir: backend
+    branch: main
+    region: singapore
+    plan: free
+    healthCheckPath: /
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: API_KEY
+        sync: false
+      - key: DEV_MODE
+        value: "false"
+      - key: DEBUG_API_LOG
+        value: "false"
