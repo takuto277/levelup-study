@@ -176,8 +176,6 @@ backend/
 ├── docker-compose.yml        # ローカル PostgreSQL
 ├── Dockerfile                # 本番用 API イメージ（Render 等）
 ├── RENDER.md                 # Render（Blueprint）手順
-├── RAILWAY.md                # （旧）Railway → RENDER.md へ
-├── FLY.md                    # （旧）Fly → RENDER.md へ
 ├── Makefile                  # 開発コマンド集
 └── go.mod
 ```
