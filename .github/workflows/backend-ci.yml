@@ -1,6 +1,10 @@
 # backend 変更時のテストのみ（デプロイは Railway の GitHub 連携に任せる）
 name: Backend — CI
 
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]

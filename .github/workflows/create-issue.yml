@@ -1,0 +1,55 @@
+# Actions タブから手動実行してイシューを起票する
+name: Create issue (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: Issue title
+        required: true
+        type: string
+      body:
+        description: Issue body (Markdown, optional)
+        required: false
+        type: string
+        default: ""
+      labels:
+        description: Comma-separated labels (optional)
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  issues: write
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write body file
+        env:
+          BODY: ${{ inputs.body }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BODY:-}" ]; then
+            echo "_Created via workflow_dispatch._" > issue-body.md
+          else
+            printf '%s' "$BODY" > issue-body.md
+          fi
+
+      - name: Create issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ inputs.title }}
+          LABELS: ${{ inputs.labels }}
+        run: |
+          set -euo pipefail
+          cmd=(gh issue create --repo "${{ github.repository }}" --title "$TITLE" --body-file issue-body.md)
+          if [ -n "${LABELS:-}" ]; then
+            IFS=',' read -ra ls <<< "$LABELS"
+            for raw in "${ls[@]}"; do
+              label="$(echo "$raw" | xargs)"
+              [ -n "$label" ] && cmd+=(--label "$label")
+            done
+          fi
+          "${cmd[@]}"

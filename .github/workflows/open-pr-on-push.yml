@@ -1,0 +1,46 @@
+# main 以外への push で、まだ PR が無ければドラフト PR を自動作成する
+name: Auto open draft PR
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - master
+      - "dependabot/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  open-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create draft PR if none exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          count="$(gh pr list --repo "${{ github.repository }}" --head "$BRANCH_NAME" --state open --json number --jq 'length')"
+          if [ "$count" != "0" ]; then
+            echo "Open PR already exists for head=$BRANCH_NAME — skipping."
+            exit 0
+          fi
+          title="[auto] ${BRANCH_NAME//\//_}"
+          printf '%s\n' \
+            "このドラフト PR は \`$BRANCH_NAME\` への push から [Actions run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) で自動作成されました。" \
+            "" \
+            "- タイトル・説明を編集してから Ready for review にしてください。" \
+            "- イシューがある場合は本文に \`Fixes #番号\` を追記してください。" \
+            > /tmp/pr-body.md
+          gh pr create --repo "${{ github.repository }}" \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --draft \
+            --title "$title" \
+            --body-file /tmp/pr-body.md
