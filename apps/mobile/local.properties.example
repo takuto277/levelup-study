@@ -6,3 +6,13 @@ sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
 
 # Optional: same JDK as Android Studio (avoids "wrong Java" Gradle issues)
 # org.gradle.java.home=/Applications/Android Studio.app/Contents/jbr/Contents/Home
+
+# HTTP クライアントが付与する X-API-Key（`shared` の generateLevelupClientApiKey が読む）。
+# 値は backend/.env および Render の `API_KEY` と同じ文字列にすること。
+# 推奨キー名: api.key（互換のため `API_KEY` でも可）。値の先頭末尾の空白と外側の " 引用符はビルド時に除去される。
+# 環境変数 `LEVELUP_API_KEY` が設定されていると local.properties より優先される（古い値が残っていると不一致の原因）。
+# api.key=your-secret-here
+
+# 任意: 本番 API で DEBUG + シード userId を試すときの Bearer（Supabase ログインが無い場合のフォールバック）。
+# 値は `cd backend && make mint-dev-jwt`（.env の JWT_SECRET を使用）で生成し、1 行をそのまま貼る。Bearer プレフィックスは不要。
+# dev.jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...

@@ -12,7 +12,7 @@ MIGRATE_IMAGE ?= migrate/migrate:v4.18.2
 # Docker からホストの Postgres へ（Linux は host-gateway で host.docker.internal を解決）
 MIGRATE_DATABASE_URL ?= postgres://postgres:postgres@host.docker.internal:5432/levelup_study?sslmode=disable
 
-.PHONY: help setup run test build lint db-up db-down db-reset env migrate-up migrate-down migrate-create migrate-version seed seed-remote db-fresh
+.PHONY: help setup run test build lint db-up db-down db-reset env migrate-up migrate-down migrate-create migrate-version seed seed-remote db-fresh mint-dev-jwt
 
 # --- ヘルプ ---
 help: ## このヘルプを表示
@@ -117,6 +117,9 @@ db-fresh: db-reset ## DB完全リセット → migrate up → AutoMigrate → se
 	@echo "✅ DB完全リフレッシュ完了（migrate + AutoMigrate + seed）"
 
 # --- アプリケーション ---
+mint-dev-jwt: ## seed の userId 向け HS256 JWT を 1 行で出力（apps/mobile/local.properties の dev.jwt に貼る）
+	go run ./cmd/mintdevjwt
+
 run: ## サーバーを起動（ホットリロードなし）
 	go run ./cmd/api
 

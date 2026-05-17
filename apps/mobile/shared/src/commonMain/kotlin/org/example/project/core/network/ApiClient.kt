@@ -3,12 +3,14 @@ package org.example.project.core.network
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.request.header
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import org.example.project.core.session.UserSessionStore
 
 /**
  * Ktor HttpClient ファクトリ
@@ -48,6 +50,12 @@ object ApiClient {
             defaultRequest {
                 url(baseUrl)
                 contentType(ContentType.Application.Json)
+                if (GENERATED_CLIENT_API_KEY.isNotEmpty()) {
+                    header("X-API-Key", GENERATED_CLIENT_API_KEY)
+                }
+                val bearer = UserSessionStore.authToken?.takeIf { it.isNotBlank() }
+                    ?: GENERATED_DEV_JWT.takeIf { it.isNotBlank() }
+                bearer?.let { header("Authorization", "Bearer $it") }
             }
         }
     }

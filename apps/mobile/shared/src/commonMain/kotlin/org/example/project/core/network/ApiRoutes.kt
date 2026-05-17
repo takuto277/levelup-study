@@ -17,7 +17,8 @@ object ApiRoutes {
      * ベースURL
      * - **本番（Render）**: ダッシュボードに表示される `https://....onrender.com`（末尾スラッシュなし）
      * - **ローカル**: `http://127.0.0.1:8080`（`make run` 中のみ）。実機は Mac の LAN IP
-     * TODO: BuildConfig / xcconfig などビルド種別で切り替え
+     * 本番 API は `DEV_MODE=false` のとき `X-API-Key` 必須。キーは `apps/mobile/local.properties` の `api.key`
+     *（または環境変数 `LEVELUP_API_KEY`）を `backend` の `API_KEY` と揃えること（Gradle が `ApiClient` 用ソースを生成）。
      */
     const val BASE_URL = "https://levelup-study-api.onrender.com"
 
