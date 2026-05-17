@@ -1,4 +1,4 @@
-# backend 変更時のテストのみ（デプロイは Railway の GitHub 連携に任せる）
+# backend 変更時のテストのみ（本番デプロイは Render の GitHub 連携）
 name: Backend — CI
 
 concurrency:
