@@ -31,8 +31,25 @@ npx rulesync generate
 
 イシューは [テンプレート](.github/ISSUE_TEMPLATE/) から作成できます。PR には [テンプレート](.github/pull_request_template.md) が挿入されます。
 
+### GitHub CLI（`gh`）とトークンでイシューを作る
+
+非対話環境（Cursor のエージェントや CI 相当のシェル）では、**[GitHub CLI](https://cli.github.com/)** と **Personal Access Token** を使うと `gh issue create` が使えます。
+
+1. **インストール**（例: macOS）: `brew install gh`
+2. **トークン**: GitHub → Settings → Developer settings → **Fine-grained PAT**（当該リポジトリで *Issues: Read and write*）または **Classic PAT**（`repo`）を作成する。
+3. **環境変数**: `GH_TOKEN` または `GITHUB_TOKEN` にトークンを入れる（どちらも `gh` が参照する。コミット・シェル履歴に残さないこと）。
+4. **実行**:
+
+```bash
+export GH_TOKEN=（あなたの PAT）
+./scripts/create-issue.sh --title "chore: 例" --body "本文" --label enhancement
+```
+
+スクリプトは [scripts/create-issue.sh](scripts/create-issue.sh)。リポジトリルートで `git remote` が解決できる前提です。
+
 ### ディレクトリ構成
 - `.rulesync/`: AI 設定のソースファイル
 - `.cursor/rules/`: Cursor 用の自動生成ルール (編集禁止)
 - `CLAUDE.md`: Claude Code 用の自動生成ガイド (編集禁止)
 - `docs/`: プロジェクトの設計・計画ドキュメント
+- `scripts/`: 開発用スクリプト（例: `create-issue.sh`）
