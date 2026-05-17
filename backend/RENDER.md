@@ -46,7 +46,7 @@ GitHub Actions の **`backend-ci.yml` はテストのみ**（デプロイは Ren
 
 ## モバイル
 
-デプロイ後の **HTTPS のオリジン**を `ApiRoutes.BASE_URL` 等に設定する。
+デプロイ後の **HTTPS のオリジン**（例: `https://levelup-study-api.onrender.com`）を、モバイルの **`ApiRoutes.BASE_URL`**（`apps/mobile/shared/.../ApiRoutes.kt`）に合わせる。Render のサービス名を変えた場合はダッシュボードの URL に合わせて修正する。
 
 ## 関連ファイル
 

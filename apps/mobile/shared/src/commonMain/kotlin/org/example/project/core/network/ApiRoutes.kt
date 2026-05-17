@@ -15,11 +15,11 @@ object ApiRoutes {
 
     /**
      * ベースURL
-     * - iOS シミュレータ: `localhost` / `127.0.0.1` でホスト Mac の `make run` に届く
-     * - iOS 実機: `localhost` は端末自身を指すため届かない。Mac の LAN IP（例 `http://192.168.0.12:8080`）に変更すること
-     * TODO: BuildConfig または環境変数から読み込むように変更
+     * - **本番（Render）**: ダッシュボードに表示される `https://....onrender.com`（末尾スラッシュなし）
+     * - **ローカル**: `http://127.0.0.1:8080`（`make run` 中のみ）。実機は Mac の LAN IP
+     * TODO: BuildConfig / xcconfig などビルド種別で切り替え
      */
-    const val BASE_URL = "http://localhost:8080"
+    const val BASE_URL = "https://levelup-study-api.onrender.com"
 
     // ── User ────────────────────────────────────
     /** POST: ユーザー作成 */
