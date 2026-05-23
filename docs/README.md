@@ -22,7 +22,12 @@
 - ファイルの例: `StudyTimer_Requirement.md`, `GachaSystem_Design.md` など
 - **用途**: `planning/` の中で「よし、これを作ろう」と決まった機能について、どのようなUIで、どんなAPIを叩くのかを `templates` に従って詳細に書き出します。AI（私）に実装を依頼する際、ここにある設計書を指定して「この通りに作って」と指示すると精度が飛躍的に上がります。
 
-### 4. `architecture/` (全体アーキテクチャ・基盤設計)
+### 5. `assets/` (ゲームアセット入稿)
+画像アセットの入稿フロー。
+- **`01_Asset_Ingestion_Workflow.md`**: バトル同梱 PNG（`apps/mobile/assets/`）
+- **`02_Supabase_Master_Images.md`**: マスタ画像（Supabase Storage + DB、モバイル再リリース不要）
+
+### 6. `architecture/` (全体アーキテクチャ・基盤設計)
 アプリ全体の構造や、プラットフォームの枠組みなど「全体基盤」に関わる設計領域です。
 - **`01_Overview.md`**: 現在採用しているKMPやGoのモノレポ構成の全体像が書かれています。
 - **用途**: 新しく参画したメンバーやAIが、プロジェクトの「マクロな構造」を理解するために最初に読むドキュメントです。

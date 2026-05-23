@@ -1,0 +1,2 @@
+# PNG / WebP を entity ごとに配置（ファイル名 = {uuid}.png）
+# 例: source/characters/a0000000-0000-0000-0000-000000000001.png

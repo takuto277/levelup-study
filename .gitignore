@@ -97,3 +97,8 @@ yarn-error.log
 .env
 .env.*
 !.env.example
+
+# Python tooling venvs
+scripts/assets/.venv/
+scripts/master-images/.venv/
+scripts/master-images/**/__pycache__/

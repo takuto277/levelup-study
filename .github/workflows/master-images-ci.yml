@@ -1,0 +1,34 @@
+name: Master images validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/assets/master/**"
+      - "scripts/master-images/**"
+      - ".github/workflows/master-images-ci.yml"
+  pull_request:
+    paths:
+      - "backend/assets/master/**"
+      - "scripts/master-images/**"
+      - ".github/workflows/master-images-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r scripts/master-images/requirements.txt
+
+      - name: Validate master image manifest
+        run: python3 scripts/master-images/validate.py
