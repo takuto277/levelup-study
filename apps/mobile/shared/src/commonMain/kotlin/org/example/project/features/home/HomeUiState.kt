@@ -19,7 +19,9 @@ data class HomeUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     /** ネット未接続時はダンジョンの代わりに訓練場モードで勉強する */
-    val isOfflineTraining: Boolean = false
+    val isOfflineTraining: Boolean = false,
+    /** キャラタップ時のセリフ（未設定時は UI 側の自動ローテーション） */
+    val characterSpeechLine: String? = null
 ) {
     val formattedStudyTime: String
         get() {

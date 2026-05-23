@@ -272,7 +272,7 @@ struct HomeScreenView: View {
                 VStack(spacing: 0) {
                     HStack(spacing: 6) {
                         Text("💬").font(.system(size: 12))
-                        Text("「\(messages[messageIndex])」").font(.system(size: 13, weight: .bold)).foregroundColor(textW)
+                        Text("「\(homeState?.characterSpeechLine ?? messages[messageIndex])」").font(.system(size: 13, weight: .bold)).foregroundColor(textW)
                     }
                     .padding(.horizontal, 16).padding(.vertical, 10)
                     .background(bgCard).cornerRadius(18)
@@ -294,6 +294,9 @@ struct HomeScreenView: View {
                     .offset(y: isBouncing ? -10 : 0)
                     .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: isBouncing)
                     .onAppear { isBouncing = true }
+                    .onTapGesture {
+                        homeViewModel.onIntent(intent: HomeIntentTapMainCharacter())
+                    }
 
                 Spacer().frame(height: 4)
                 HStack(spacing: 6) {

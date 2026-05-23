@@ -41,7 +41,9 @@ type SecurityConfig struct {
 //   GET    /api/v1/users/{userID}/characters           所持キャラ一覧
 //   GET    /api/v1/users/{userID}/characters/{id}      所持キャラ詳細
 //   PUT    /api/v1/users/{userID}/characters/{id}/equip 武器装備
+//   POST   /api/v1/users/{userID}/characters/{id}/level-up キャラ LvUP
 //   GET    /api/v1/users/{userID}/weapons              所持武器一覧
+//   POST   /api/v1/users/{userID}/weapons/{id}/level-up 武器 LvUP
 //
 // [パーティ]
 //   GET    /api/v1/users/{userID}/party                パーティ取得
@@ -62,8 +64,8 @@ type SecurityConfig struct {
 //   GET    /api/v1/master/dungeons/{dungeonID}         ダンジョン詳細
 //   GET    /api/v1/master/gacha/banners                開催中バナー
 //   GET    /api/v1/master/genres                       勉強ジャンルマスタ
-//   POST   /api/v1/master/genres                       ジャンル追加
-//   DELETE /api/v1/master/genres/{genreID}             ジャンル論理削除（アクティブ1件のとき不可）
+//   POST   /api/v1/master/genres                       ジャンル追加（JWT 必須）
+//   DELETE /api/v1/master/genres/{genreID}             ジャンル論理削除（JWT 必須）
 // ============================================================
 
 func NewRouter(
@@ -134,11 +136,15 @@ func NewRouter(
 					r.Route("/{characterID}", func(r chi.Router) {
 						r.Get("/", gameH.GetCharacter)
 						r.Put("/equip", gameH.EquipWeapon)
+						r.Post("/level-up", gameH.LevelUpCharacter)
 					})
 				})
 
 				// 所持武器
-				r.Get("/weapons", gameH.ListWeapons)
+				r.Route("/weapons", func(r chi.Router) {
+					r.Get("/", gameH.ListWeapons)
+					r.Post("/{weaponID}/level-up", gameH.LevelUpWeapon)
+				})
 
 				// パーティ編成
 				r.Route("/party", func(r chi.Router) {
@@ -166,8 +172,15 @@ func NewRouter(
 			r.Get("/dungeons/{dungeonID}", masterH.GetDungeon)
 			r.Get("/gacha/banners", masterH.ListActiveBanners)
 			r.Get("/genres", masterH.ListStudyGenres)
-			r.Post("/genres", masterH.CreateStudyGenre)
-			r.Delete("/genres/{genreID}", masterH.DeleteStudyGenre)
+		})
+
+		// マスタ書き込み（JWT 必須 — API Key のみでは変更不可）
+		r.Group(func(r chi.Router) {
+			if !sec.DevMode {
+				r.Use(mw.JWTAuth(sec.JWTSecret))
+			}
+			r.Post("/master/genres", masterH.CreateStudyGenre)
+			r.Delete("/master/genres/{genreID}", masterH.DeleteStudyGenre)
 		})
 	})
 

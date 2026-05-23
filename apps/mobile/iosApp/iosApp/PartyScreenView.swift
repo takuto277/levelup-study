@@ -110,6 +110,8 @@ struct PartyScreenView: View {
 
                     if let main = uiState.party?.mainCharacter { mainCard(main) }
 
+                    partySlotSection
+
                     Text("所持キャラクター").font(.system(size: 14, weight: .bold)).foregroundColor(accentCyan).padding(.horizontal, 20)
                     charGrid
                     Spacer().frame(height: 120)
@@ -117,6 +119,9 @@ struct PartyScreenView: View {
             }
 
             if showPicker { pickerOverlay }
+            if let slot = uiState.selectedSlot {
+                slotSelectionBanner(slot: slot.intValue)
+            }
             if uiState.isLoading { Color.black.opacity(0.3).ignoresSafeArea(); ProgressView().scaleEffect(1.5).progressViewStyle(CircularProgressViewStyle(tint: .white)) }
         }
         .fullScreenCover(isPresented: Binding(
@@ -130,6 +135,12 @@ struct PartyScreenView: View {
                     onDismiss: { holder.viewModel.onIntent(intent: PartyIntentDismissCharacterDetail()) },
                     onEquip: { weaponId in
                         holder.viewModel.onIntent(intent: PartyIntentEquipWeapon(userCharacterId: sel.id, userWeaponId: weaponId))
+                    },
+                    onLevelUpCharacter: {
+                        holder.viewModel.onIntent(intent: PartyIntentLevelUpCharacter(userCharacterId: sel.id))
+                    },
+                    onLevelUpWeapon: { weaponId in
+                        holder.viewModel.onIntent(intent: PartyIntentLevelUpWeapon(userWeaponId: weaponId))
                     }
                 )
                 .id("\(sel.id)-\(sel.equippedWeaponId ?? "none")")
@@ -181,13 +192,84 @@ struct PartyScreenView: View {
         VStack(spacing: 2) { HStack(spacing: 3) { Text(e).font(.system(size: 14)); Text(v).font(.system(size: 16, weight: .bold)).foregroundColor(c) }; Text(l).font(.system(size: 10)).foregroundColor(textSub) }
     }
 
+    private func levelUpGoldCost(_ level: Int32) -> Int {
+        Swift.max(1, Int(level)) * 50
+    }
+
+    // MARK: - Party Slots
+    private var partySlotSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("パーティ編成").font(.system(size: 15, weight: .bold)).foregroundColor(textW).padding(.horizontal, 16)
+            HStack(spacing: 10) {
+                ForEach(1...4, id: \.self) { slot in
+                    let partySlot = uiState.party?.slots.first { $0.slotPosition == slot }
+                    let isSelected = uiState.selectedSlot?.int32Value == Int32(slot)
+                    Button(action: { holder.viewModel.onIntent(intent: PartyIntentSelectSlot(slotPosition: Int32(slot))) }) {
+                        VStack(spacing: 4) {
+                            if let uc = partySlot?.userCharacter, let m = uc.character {
+                                partyPlayerAvatar(size: 34)
+                                Text(m.name).font(.system(size: 9, weight: .bold)).foregroundColor(textW).lineLimit(1)
+                                Text("Lv.\(uc.level)").font(.system(size: 9)).foregroundColor(rarityColor(Int(m.rarity)))
+                            } else {
+                                Image(systemName: "plus").font(.system(size: 18)).foregroundColor(textSub)
+                                Text("空き").font(.system(size: 9)).foregroundColor(textSub)
+                            }
+                            Text("Slot \(slot)").font(.system(size: 8, weight: isSelected ? .bold : .regular)).foregroundColor(isSelected ? accentBlue : textSub)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(isSelected ? accentBlue.opacity(0.15) : bgCard)
+                        .cornerRadius(14)
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(isSelected ? accentBlue : Color.clear, lineWidth: 2))
+                    }
+                    .buttonStyle(.plain)
+                    .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in
+                        if partySlot != nil {
+                            holder.viewModel.onIntent(intent: PartyIntentRemoveFromSlot(slotPosition: Int32(slot)))
+                        }
+                    })
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private func slotSelectionBanner(slot: Int) -> some View {
+        VStack {
+            HStack {
+                Text("スロット\(slot)に配置するキャラを選んでください")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                Spacer()
+                Button("キャンセル") {
+                    holder.viewModel.onIntent(intent: PartyIntentSelectSlot(slotPosition: Int32(slot)))
+                }
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(.white.opacity(0.85))
+            }
+            .padding(.horizontal, 16).padding(.vertical, 10)
+            .background(accentBlue)
+            .cornerRadius(12)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            Spacer()
+        }
+    }
+
     // MARK: - Grid
     private var charGrid: some View {
         let cols = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
         return LazyVGrid(columns: cols, spacing: 10) {
             ForEach(uiState.ownedCharacters, id: \.id) { c in
                 let m = c.character!
-                Button(action: { holder.viewModel.onIntent(intent: PartyIntentSelectCharacter(userCharacterId: c.id)) }) {
+                Button(action: {
+                    if let slot = uiState.selectedSlot {
+                        holder.viewModel.onIntent(intent: PartyIntentAssignCharacter(slotPosition: slot, userCharacterId: c.id))
+                        holder.viewModel.onIntent(intent: PartyIntentSelectSlot(slotPosition: slot))
+                    } else {
+                        holder.viewModel.onIntent(intent: PartyIntentSelectCharacter(userCharacterId: c.id))
+                    }
+                }) {
                     VStack(spacing: 0) {
                         VStack(spacing: 4) { partyPlayerAvatar(size: 44); HStack(spacing: 1) { ForEach(0..<Int(m.rarity), id: \.self) { _ in Text("⭐").font(.system(size: 7)) } } }
                             .frame(maxWidth: .infinity).padding(.vertical, 10).background(rarityColor(Int(m.rarity)).opacity(0.1))
@@ -229,6 +311,8 @@ private struct CharacterDetailFullScreen: View {
     let weapons: [UserWeapon]
     let onDismiss: () -> Void
     let onEquip: (String?) -> Void
+    let onLevelUpCharacter: () -> Void
+    let onLevelUpWeapon: (String) -> Void
 
     @State private var showWeaponPicker = false
 
@@ -296,6 +380,27 @@ private struct CharacterDetailFullScreen: View {
                     }
                 }.padding(14).background(bgSurface).cornerRadius(14).padding(.horizontal, 16)
                 weaponSection(weapon: weapon)
+                Button(action: onLevelUpCharacter) {
+                    Text("LvUP（\(Swift.max(1, Int(character.level)) * 50) G）")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(accentIndigo)
+                        .cornerRadius(14)
+                }
+                .padding(.horizontal, 16)
+                if let w = weapon {
+                    Button(action: { onLevelUpWeapon(w.id) }) {
+                        Text("武器 LvUP（\(Swift.max(1, Int(w.level)) * 50) G）")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(Color(hex: 0xF59E0B))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 11)
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: 0xF59E0B).opacity(0.5), lineWidth: 1))
+                    }
+                    .padding(.horizontal, 16)
+                }
                 Spacer().frame(height: 40)
             }.padding(.top, 8)
         }
