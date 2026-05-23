@@ -1,4 +1,4 @@
-# main 以外への push で、まだ PR が無ければ PR を自動作成する
+# main 以外への push で PR を自動作成（既存 PR はテンプレートを同期）
 name: Auto open PR
 
 on:
@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create PR if none exists
+      - name: Create or sync PR
         uses: actions/github-script@v7
         with:
           github-token: ${{ github.token }}
@@ -31,18 +31,6 @@ jobs:
             const repo = context.repo.repo;
             const base = context.payload.repository.default_branch || 'main';
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
-
-            const { data: existing } = await github.rest.pulls.list({
-              owner,
-              repo,
-              head: `${owner}:${branch}`,
-              state: 'open',
-              per_page: 10,
-            });
-            if (existing.length > 0) {
-              core.info(`Open PR already exists: #${existing[0].number}`);
-              return;
-            }
 
             const branchSlug = branch.includes('/')
               ? branch.split('/').slice(1).join('-')
@@ -82,7 +70,7 @@ jobs:
               '- [ ] **レビュー依頼** — 内容を確認し、レビュアーを指定',
               '- [ ] **（該当時）手元確認** — シミュレータ / API / スクリプトの動作確認',
             );
-            if (fs.existsSync(`docs/tasks/issue-body-${branchSlug}.md`)) {
+            if (fs.existsSync(issueBodyPath)) {
               checklist.push('- [ ] **Issue 本文** — `docs/tasks/issue-body-' + branchSlug + '.md` と実装が一致しているか');
             }
 
@@ -97,7 +85,7 @@ jobs:
 
             const title = issueNum
               ? `feat: ${branchSlug.replace(/-/g, ' ')} (#${issueNum})`
-              : `[auto] ${branch.replace(/\//g, '_')}`;
+              : `feat: ${branchSlug.replace(/-/g, ' ')}`;
 
             const body = [
               `<!-- 自動 PR: \`${branch}\` ([Actions run](${runUrl})) -->`,
@@ -105,7 +93,39 @@ jobs:
               template,
             ].join('\n');
 
+            const needsSync = (pr) => {
+              if (pr.title.startsWith('[auto]')) return true;
+              if (!pr.body || !pr.body.includes('ユーザーがやるべきこと')) return true;
+              if (issueNum && !pr.body.includes(`Fixes #${issueNum}`)) return true;
+              return false;
+            };
+
+            const { data: existing } = await github.rest.pulls.list({
+              owner,
+              repo,
+              head: `${owner}:${branch}`,
+              state: 'open',
+              per_page: 10,
+            });
+
             try {
+              if (existing.length > 0) {
+                const pr = existing[0];
+                if (!needsSync(pr)) {
+                  core.info(`Open PR #${pr.number} is already up to date`);
+                  return;
+                }
+                await github.rest.pulls.update({
+                  owner,
+                  repo,
+                  pull_number: pr.number,
+                  title,
+                  body,
+                });
+                core.info(`Updated PR #${pr.number}: ${pr.html_url}`);
+                return;
+              }
+
               const { data: pr } = await github.rest.pulls.create({
                 owner,
                 repo,
@@ -118,5 +138,5 @@ jobs:
               core.info(`Created PR #${pr.number}: ${pr.html_url}`);
             } catch (err) {
               const detail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
-              core.setFailed(`pulls.create failed: ${detail}`);
+              core.setFailed(`pulls API failed: ${detail}`);
             }
