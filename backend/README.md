@@ -148,6 +148,18 @@ Supabase は PostgreSQL + 認証 + リアルタイム等を提供する BaaS。
 
    まだ繋がらない場合は、Supabase の **Session pooler（6543）** の接続文字列に差し替えてください。
 
+### マスタ画像（Supabase Storage）
+
+立ち絵・武器・ダンジョンバナー等は **Storage + `image_url` 更新** でアプリ再リリースなしに差し替え可能。
+
+```bash
+make master-images-validate
+make master-images-upload DRY_RUN=1
+make master-images-upload
+```
+
+手順: **`docs/assets/02_Supabase_Master_Images.md`** / `backend/assets/master/`
+
 ---
 
 ## ☁️ Render（本番 API・自動デプロイ）

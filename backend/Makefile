@@ -12,7 +12,7 @@ MIGRATE_IMAGE ?= migrate/migrate:v4.18.2
 # Docker からホストの Postgres へ（Linux は host-gateway で host.docker.internal を解決）
 MIGRATE_DATABASE_URL ?= postgres://postgres:postgres@host.docker.internal:5432/levelup_study?sslmode=disable
 
-.PHONY: help setup run test build lint db-up db-down db-reset env migrate-up migrate-down migrate-create migrate-version seed seed-remote db-fresh mint-dev-jwt
+.PHONY: help setup run test build lint db-up db-down db-reset env migrate-up migrate-down migrate-create migrate-version seed seed-remote db-fresh mint-dev-jwt master-images-validate master-images-upload
 
 # --- ヘルプ ---
 help: ## このヘルプを表示
@@ -132,6 +132,13 @@ test: ## 全テストを実行（SQLite in-memory）
 
 test-short: ## テストを簡易実行
 	CGO_ENABLED=1 go test ./... -count=1
+
+# --- Supabase マスタ画像 ---
+master-images-validate: ## manifest / source の整合性を検証
+	@../scripts/master-images/run.sh ../scripts/master-images/validate.py
+
+master-images-upload: ## Supabase Storage へ upload + image_url 更新（DRY_RUN=1 で確認）
+	@../scripts/master-images/run.sh ../scripts/master-images/upload.py
 
 # --- コード品質 ---
 lint: ## go vet を実行

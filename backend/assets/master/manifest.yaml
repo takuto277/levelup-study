@@ -1,0 +1,36 @@
+version: 1
+
+# Supabase Storage 上のオブジェクトキー: master/{entity}/{id}.{ext}
+# 公開 URL: {SUPABASE_URL}/storage/v1/object/public/{bucket}/master/...
+
+bucket: game-assets
+
+entities:
+  characters:
+    table: m_characters
+    id_column: id
+    url_column: image_url
+    recommended_px: "512x512"
+  weapons:
+    table: m_weapons
+    id_column: id
+    url_column: image_url
+    recommended_px: "256x256"
+  dungeons:
+    table: m_dungeons
+    id_column: id
+    url_column: image_url
+    recommended_px: "800x400"
+  monsters:
+    table: m_monsters
+    id_column: id
+    url_column: image_url
+    recommended_px: "256x256"
+
+# source/ 配下の PNG/WebP。file は backend/assets/master/ からの相対パス
+assets:
+  # 例（PNG を置いたらコメント解除）:
+  # - entity: characters
+  #   id: a0000000-0000-0000-0000-000000000001
+  #   file: source/characters/a0000000-0000-0000-0000-000000000001.png
+  #   note: 光の勇者アリア
