@@ -1,5 +1,9 @@
 # バトルスプライト画像 配置ガイド
 
+> **入稿フロー（推奨）**: PNG の正本は `apps/mobile/assets/source/` です。  
+> 手順は [`assets/README.md`](assets/README.md) と [`docs/assets/01_Asset_Ingestion_Workflow.md`](../../docs/assets/01_Asset_Ingestion_Workflow.md) を参照してください。  
+> 以下は命名規則・配置先のリファレンスです。
+
 冒険画面のキャラクター・敵・背景の画像を差し替える手順です。
 
 ## 仕組み
