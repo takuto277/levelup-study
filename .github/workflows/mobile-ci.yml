@@ -35,11 +35,14 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
-      - name: local.properties (sdk.dir)
+      - name: local.properties (sdk.dir + api.key)
         run: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          {
+            echo "sdk.dir=${ANDROID_HOME}"
+            echo "api.key=ci-placeholder-not-for-production"
+          } > local.properties
 
       - name: Gradle compile (:shared Android)
         env:
           GRADLE_OPTS: -Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.configuration-cache=false
-        run: chmod +x gradlew && ./gradlew :shared:compileDebugKotlinAndroid --no-daemon --stacktrace
+        run: chmod +x gradlew && ./gradlew :shared:compileDebugKotlinAndroid --no-daemon --no-configuration-cache --stacktrace

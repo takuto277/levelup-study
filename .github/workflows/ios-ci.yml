@@ -49,13 +49,15 @@ jobs:
       - name: local.properties (CI placeholder)
         working-directory: apps/mobile
         run: |
-          printf '%s\n' 'api.key=ci-placeholder-not-for-production' > local.properties
+          {
+            echo "api.key=ci-placeholder-not-for-production"
+          } > local.properties
 
       - name: Build KMP Shared (iOS Simulator)
         working-directory: apps/mobile
         env:
           GRADLE_OPTS: -Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.configuration-cache=false
-        run: chmod +x gradlew && ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
+        run: chmod +x gradlew && ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon --no-configuration-cache --stacktrace
 
       - name: Xcode build
         working-directory: apps/mobile/iosApp
