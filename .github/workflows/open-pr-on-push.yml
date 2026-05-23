@@ -61,11 +61,17 @@ jobs:
             echo "- [ ] CI green"
           } > /tmp/pr-body.md
 
-          gh pr create --repo "$REPO" \
+          if ! gh pr create --repo "$REPO" \
             --base main \
             --head "$BRANCH_NAME" \
             --draft \
             --title "$title" \
-            --body-file /tmp/pr-body.md
-
-          echo "Draft PR created for $BRANCH_NAME"
+            --body-file /tmp/pr-body.md 2>/tmp/gh-pr.err; then
+            echo "::error::gh pr create failed:"
+            cat /tmp/gh-pr.err
+            echo ""
+            echo "確認: Settings → Actions → General で"
+            echo "  1) Workflow permissions = Read and write"
+            echo "  2) Allow GitHub Actions to create and approve pull requests = ON"
+            exit 1
+          fi
