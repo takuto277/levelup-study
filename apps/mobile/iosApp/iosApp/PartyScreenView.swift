@@ -78,6 +78,10 @@ private func weaponEmoji(_ weapon: UserWeapon) -> String {
     return "🗡️"
 }
 
+private func kotlinSlotPosition(_ slot: KotlinInt) -> Int32 {
+    Int32(truncatingIfNeeded: slot.intValue)
+}
+
 struct PartyScreenView: View {
     @StateObject private var holder = ViewModelHolder()
     @State private var uiState: PartyUiState
@@ -264,8 +268,9 @@ struct PartyScreenView: View {
                 let m = c.character!
                 Button(action: {
                     if let slot = uiState.selectedSlot {
-                        holder.viewModel.onIntent(intent: PartyIntentAssignCharacter(slotPosition: slot, userCharacterId: c.id))
-                        holder.viewModel.onIntent(intent: PartyIntentSelectSlot(slotPosition: slot))
+                        let slotPos = kotlinSlotPosition(slot)
+                        holder.viewModel.onIntent(intent: PartyIntentAssignCharacter(slotPosition: slotPos, userCharacterId: c.id))
+                        holder.viewModel.onIntent(intent: PartyIntentSelectSlot(slotPosition: slotPos))
                     } else {
                         holder.viewModel.onIntent(intent: PartyIntentSelectCharacter(userCharacterId: c.id))
                     }

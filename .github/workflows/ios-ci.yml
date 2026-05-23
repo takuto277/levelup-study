@@ -69,5 +69,12 @@ jobs:
           LEVELUP_API_KEY: ci-placeholder-not-for-production
         run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
 
-      # フル xcodebuild は Xcode Run Script / フレームワーク埋め込みの都合で CI 調整中。
-      # SwiftLint + KMP iOS リンクで Swift 品質と iOS ターゲット编译を PR 時に検証する。
+      - name: Xcode build (Simulator — Swift 型チェック)
+        run: |
+          xcodebuild \
+            -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            build \
+            CODE_SIGNING_ALLOWED=NO
