@@ -1,0 +1,39 @@
+name: Asset ingestion
+description: 敵・キャラ・背景などゲーム画像の入稿・追加
+title: "[assets] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        バトル同梱アセットは `apps/mobile/assets/source/` 経由で入稿します。
+        手順: [Asset Ingestion Workflow](docs/assets/01_Asset_Ingestion_Workflow.md)
+  - type: dropdown
+    id: asset-type
+    attributes:
+      label: アセット種別
+      options:
+        - 敵スプライト (sprite_enemy_*)
+        - プレイヤースプライト (sprite_player_*)
+        - ダンジョン背景 (bg_dungeon_*)
+        - 小物 (prop_*)
+        - マスタ画像 (CDN / image_url)
+        - パイプライン・ツール改善
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 内容
+      description: 追加するアセット名・slug・参照イメージなど
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 入稿チェックリスト
+      options:
+        - label: manifest.yaml を更新する
+        - label: sync / validate を実行する
+        - label: SPRITES_README の命名規則に従う

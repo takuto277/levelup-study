@@ -7,14 +7,18 @@ on:
       - main
       - master
       - "dependabot/**"
+  workflow_dispatch:
 
 permissions:
+  contents: read
   pull-requests: write
 
 jobs:
   open-pr:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Create draft PR if none exists
         uses: actions/github-script@v7
         with:
@@ -23,7 +27,6 @@ jobs:
             const branch = context.ref.replace('refs/heads/', '');
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const base = context.payload.repository.default_branch || 'main';
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
 
             const { data: existing } = await github.rest.pulls.list({
@@ -31,28 +34,53 @@ jobs:
               repo,
               head: `${owner}:${branch}`,
               state: 'open',
-              per_page: 30,
+              per_page: 5,
             });
-
             if (existing.length > 0) {
-              core.info(`Open PR already exists for head=${branch} — skipping.`);
+              core.info(`PR already open: #${existing[0].number}`);
               return;
             }
 
-            const title = `[auto] ${branch.replace(/\//g, '_')}`;
-            const body = [
-              `このドラフト PR は \`${branch}\` への push から [Actions run](${runUrl}) で自動作成されました。`,
-              '',
-              '- タイトル・説明を編集してから Ready for review にしてください。',
-              '- イシューがある場合は本文に `Fixes #番号` を追記してください。',
-            ].join('\n');
+            const branchSlug = branch.includes('/') ? branch.split('/').slice(1).join('-') : branch;
+            let issueNum = null;
+            const fs = require('fs');
+            const issueBodyPath = `docs/tasks/issue-body-${branchSlug}.md`;
+            if (fs.existsSync(issueBodyPath)) {
+              const { data: issues } = await github.rest.issues.listForRepo({
+                owner, repo, state: 'open', per_page: 50,
+              });
+              const hit = issues.find((i) => !i.pull_request && i.title.includes('入稿'));
+              if (hit) issueNum = hit.number;
+            }
 
-            await github.rest.pulls.create({
-              owner,
-              repo,
-              title,
-              head: branch,
-              base,
-              body,
-              draft: true,
-            });
+            const title = issueNum
+              ? `feat: ${branchSlug.replace(/-/g, ' ')} (#${issueNum})`
+              : `[auto] ${branch.replace(/\//g, '_')}`;
+
+            const body = [
+              issueNum ? `Fixes #${issueNum}` : '',
+              '',
+              `Auto-created from \`${branch}\` ([run](${runUrl}))`,
+              '',
+              '## Summary',
+              '- `apps/mobile/assets/` 入稿パイプライン',
+              '',
+              '## Test plan',
+              '- [ ] `./scripts/assets/run.sh scripts/assets/validate_assets.py`',
+            ].filter(Boolean).join('\n');
+
+            try {
+              const { data: pr } = await github.rest.pulls.create({
+                owner,
+                repo,
+                title,
+                head: branch,
+                base: 'main',
+                body,
+                draft: false,
+              });
+              core.info(`Created draft PR #${pr.number}: ${pr.html_url}`);
+            } catch (err) {
+              const detail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+              core.setFailed(`pulls.create failed: ${detail}`);
+            }

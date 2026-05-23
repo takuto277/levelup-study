@@ -1,0 +1,153 @@
+version: 1
+
+# LevelUp Study — ゲームアセット正本マニフェスト
+# 入稿: apps/mobile/assets/source/ に PNG を置き、本ファイルを更新 → sync → validate → PR
+# 詳細: docs/assets/01_Asset_Ingestion_Workflow.md
+
+battle_assets:
+  # --- プレイヤー ---
+  - file: sprite_player_idle_1.png
+    kind: player
+    mode: idle
+    frame: 1
+    required: false
+  - file: sprite_player_walk_1.png
+    kind: player
+    mode: walk
+    frame: 1
+    required: false
+  - file: sprite_player_walk_2.png
+    kind: player
+    mode: walk
+    frame: 2
+    required: false
+  - file: sprite_player_attack_1.png
+    kind: player
+    mode: attack
+    frame: 1
+    required: false
+  - file: sprite_player_prep_1.png
+    kind: player
+    mode: prep
+    frame: 1
+    required: false
+  - file: sprite_player_rest_1.png
+    kind: player
+    mode: rest
+    frame: 1
+    required: true
+
+  # --- 背景（bg_dungeon_{dungeon_key}.png） ---
+  - file: bg_dungeon_training.png
+    kind: background
+    dungeon_key: training
+    required: true
+  - file: bg_dungeon_default.png
+    kind: background
+    dungeon_key: default
+    required: false
+  - file: bg_dungeon_forest.png
+    kind: background
+    dungeon_key: forest
+    required: false
+  - file: bg_dungeon_cave.png
+    kind: background
+    dungeon_key: cave
+    required: false
+  - file: bg_dungeon_tower.png
+    kind: background
+    dungeon_key: tower
+    required: false
+
+  # --- 小物 ---
+  - file: prop_training_barrel.png
+    kind: prop
+    prop_key: training_barrel
+    required: true
+
+  # --- ガチャ ---
+  - file: bg_gacha_banner.png
+    kind: gacha_banner
+    required: true
+
+# 敵スプライト: sprite_enemy_{key}_{frame}.png
+# key はバンドル内のスプライトキー。monster_slug_to_sprite_key で DB slug と対応付け。
+enemy_sprite_keys:
+  - slime
+  - goblin
+  - bat
+  - skeleton
+  - dragon
+  - orc
+  - golem
+  - treant
+  - mimic
+  - phoenix
+  - cerberus
+  - dark_knight
+  - crimson_demon
+  - rust_monster
+  - specter
+  - nightmare
+  - corrupted_paladin
+  - wisp
+  - thunderbird
+  - lich
+  - gargoyle
+  - abyssal_serpent
+  - lizardman
+  - werewolf
+  - stone_sentinel
+
+# backend/db/seed.sql の m_monsters.slug → バンドル sprite key
+monster_slug_to_sprite_key:
+  forest_slime: slime
+  crystal_slime: slime
+  fire_slime: slime
+  rust_monster: slime
+  goblin: goblin
+  bat: bat
+  cave_bat: bat
+  werewolf: werewolf
+  treant: treant
+  golem: golem
+  lava_golem: golem
+  dark_miner: goblin
+  dragon: dragon
+  stone_sentinel: stone_sentinel
+  lizardman: lizardman
+  dark_knight: dark_knight
+  cerberus: cerberus
+  crimson_demon: crimson_demon
+  specter: specter
+  mimic: mimic
+  nightmare: nightmare
+  corrupted_paladin: corrupted_paladin
+  wisp: wisp
+  phoenix: phoenix
+  thunderbird: thunderbird
+  forgotten_tome: lich
+  ink_wraith: specter
+  lich: lich
+  gargoyle: gargoyle
+  abyssal_serpent: abyssal_serpent
+
+# マスタ画像（CDN / image_url）— 同梱バトルスプライトとは別系統
+master_images:
+  character_portrait:
+    table: m_characters
+    column: image_url
+    recommended_px: "512x512"
+    local_dir: master/characters
+    note: "開発中は placehold.co。本番は R2 等に配置し seed/API を更新"
+  weapon_icon:
+    table: m_weapons
+    column: image_url
+    recommended_px: "256x256"
+    local_dir: master/weapons
+  dungeon_banner:
+    table: m_dungeons
+    column: image_url
+    recommended_px: "800x400"
+    local_dir: master/dungeons
+    fallback: "空ならクライアントは bg_dungeon_{dungeon_key} 同梱画像を使用"

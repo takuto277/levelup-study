@@ -1,0 +1,27 @@
+---
+targets: [cursor]
+globs:
+  - apps/mobile/assets/**
+  - "**/EnemySpriteAssets.kt"
+  - scripts/assets/**
+---
+# アセット入稿ルール
+
+## 正本
+
+- **バトル同梱 PNG**: `apps/mobile/assets/source/`
+- **レジストリ**: `apps/mobile/assets/manifest.yaml`
+- **出力先（直接編集禁止）**: Android `drawable/`、iOS `Assets.xcassets/`
+
+## 必須手順
+
+1. PNG を `source/` に配置（命名: `apps/mobile/SPRITES_README.md`）
+2. `manifest.yaml` 更新（敵は `monster_slug_to_sprite_key` も）
+3. `./scripts/assets/run.sh` で generate → sync → validate
+4. PR 前に CI `assets-ci.yml` が通ることを確認
+
+## 機能開発全体
+
+Issue → ブランチ → PR は `feature-delivery` スキルに従う。
+
+詳細: `docs/assets/01_Asset_Ingestion_Workflow.md`

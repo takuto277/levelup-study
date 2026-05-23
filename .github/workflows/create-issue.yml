@@ -18,6 +18,11 @@ on:
         required: false
         type: string
         default: ""
+      body_file_path:
+        description: Repo-relative path to issue body (overrides body input)
+        required: false
+        type: string
+        default: ""
 
 permissions:
   issues: write
@@ -26,12 +31,21 @@ jobs:
   create:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Write body file
         env:
           BODY: ${{ inputs.body }}
+          BODY_FILE_PATH: ${{ inputs.body_file_path }}
         run: |
           set -euo pipefail
-          if [ -z "${BODY:-}" ]; then
+          if [ -n "${BODY_FILE_PATH:-}" ]; then
+            if [ ! -f "$BODY_FILE_PATH" ]; then
+              echo "File not found: $BODY_FILE_PATH" >&2
+              exit 1
+            fi
+            cp "$BODY_FILE_PATH" issue-body.md
+          elif [ -z "${BODY:-}" ]; then
             echo "_Created via workflow_dispatch._" > issue-body.md
           else
             printf '%s' "$BODY" > issue-body.md
