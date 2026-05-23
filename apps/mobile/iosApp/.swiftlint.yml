@@ -1,0 +1,71 @@
+# 既存コードは warning のみ。新規 error は CI 失敗。段階的に disabled_rules を減らす。
+
+included:
+  - iosApp
+
+excluded:
+  - build
+  - DerivedData
+
+reporter: github-actions-logging
+
+line_length:
+  warning: 140
+  error: 280
+
+type_body_length:
+  warning: 400
+  error: 900
+
+file_length:
+  warning: 700
+  error: 1500
+
+function_body_length:
+  warning: 80
+  error: 150
+
+cyclomatic_complexity:
+  warning: 15
+  error: 25
+
+disabled_rules:
+  - todo
+  - trailing_whitespace
+  - statement_position
+  - multiple_closures_with_trailing_closure
+  - force_cast
+  - shorthand_operator
+  - type_name
+
+identifier_name:
+  min_length:
+    warning: 1
+    error: 1
+  max_length:
+    warning: 40
+    error: 60
+  excluded:
+    - id
+    - x
+    - y
+    - i
+    - j
+    - w
+    - h
+    - s
+    - u
+    - v
+    - r
+    - g
+    - b
+    - a
+    - t
+    - n
+    - k
+    - dx
+    - dy
+
+opt_in_rules:
+  - empty_count
+  - explicit_init
