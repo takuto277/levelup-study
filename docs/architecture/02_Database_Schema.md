@@ -207,7 +207,7 @@ m_dungeons ──── m_dungeon_stages
 | 環境 | 保管場所 | 備考 |
 |---|---|---|
 | 開発（ローカル） | placeholder URL (`placehold.co`) | seed.sql に設定済み |
-| ステージング/本番 | Cloudflare R2 / Supabase Storage | 10GB無料枠あり。CDN経由で配信 |
+| ステージング/本番 | Supabase Storage + DB `image_url` | 入稿: `docs/assets/02_Supabase_Master_Images.md` |
 
 画像を用意したら、DBの `image_url` カラムを更新するだけで切り替え可能。
 
