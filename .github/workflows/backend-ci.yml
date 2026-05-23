@@ -1,4 +1,5 @@
 # backend 変更時のテストのみ（本番デプロイは Render の GitHub 連携）
+# CI smoke: chore/ci-smoke-test で PR 時の Actions 動作を確認
 name: Backend — CI
 
 concurrency:

@@ -1,4 +1,5 @@
-# iOS SwiftLint + Simulator ビルド（PR / push 時）
+# iOS SwiftLint + KMP iOS リンク（PR / push 時）
+# CI smoke: chore/ci-smoke-test
 name: iOS — CI
 
 on:

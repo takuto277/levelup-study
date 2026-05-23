@@ -89,10 +89,11 @@ SwiftUIを含むネイティブ層がデータを自前で永続化すること�
 ---
 
 ## 4. バックエンド設計方針 (Backend: Go)
-- バックエンドは **Go** を使用し、モノリシックアーキテクチャから開始してスケール可能に設計します。
-- **フレームワーク:** Gin or Echo もしくは標準の `net/http` とルーティングライブラリ(chi)を検討。
-- **データベース:** PostgreSQL を採用し、マイグレーションツール(golang-migrate or goose)、ORM(GORMやsqlc)を使用。
-- **認証機構:** JWTやFirebase Authenticationを使用して、APIの保護を行います。
+- バックエンドは **Go** + **chi** のモノリシック API。
+- **本番:** Render 上の **Docker** Web Service（[`render.yaml`](../../render.yaml) / [`backend/RENDER.md`](../../backend/RENDER.md)）
+- **ローカル:** `docker compose` で PostgreSQL、`make run` で API（[`backend/README.md`](../../backend/README.md)）
+- **データベース:** PostgreSQL（本番・ステージングは Supabase、ローカルは Docker）
+- **認証:** Supabase Auth（JWT）+ API Key
 
 ---
 
@@ -117,7 +118,7 @@ SwiftUIを含むネイティブ層がデータを自前で永続化すること�
 
 ### 完了済み
 1. ~~KMP プロジェクト初期化~~ — `apps/mobile/shared` + iOS / Android UI
-2. ~~Go バックエンド API 立ち上げ~~ — Render 上で 20+ エンドポイント稼働
+2. ~~Go バックエンド API 立ち上げ~~ — Render（Docker）上で 20+ エンドポイント稼働
 3. ~~クライアントからの疎通~~ — Repository 層で Real API 接続済み
 
 ### 次の優先タスク

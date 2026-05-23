@@ -57,6 +57,10 @@ GitHub Actions の **`backend-ci.yml` はテストのみ**（デプロイは Ren
 | [`docs/architecture/01_Overview.md`](../docs/architecture/01_Overview.md) | モノレポ全体構成（KMP / Go） |
 | [`render.yaml`](../render.yaml) | Render Blueprint 定義 |
 
+## ローカル開発
+
+API のローカル実行は Docker Compose（PostgreSQL）+ `make run`。詳細は [`README.md`](README.md) の「ローカル開発セットアップ」。
+
 ## 関連ファイル
 
 | パス | 内容 |
