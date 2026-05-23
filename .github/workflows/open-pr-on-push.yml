@@ -1,4 +1,5 @@
 # main 以外への push で、まだ PR が無ければドラフト PR を自動作成する
+# ブランチ feat/{slug} かつ docs/tasks/issue-body-{slug}.md がある場合は Issue も自動起票
 name: Auto open draft PR
 
 on:
@@ -9,12 +10,16 @@ on:
       - "dependabot/**"
 
 permissions:
+  contents: read
   pull-requests: write
+  issues: write
 
 jobs:
   open-pr:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Create draft PR if none exists
         uses: actions/github-script@v7
         with:
@@ -25,6 +30,39 @@ jobs:
             const repo = context.repo.repo;
             const base = context.payload.repository.default_branch || 'main';
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const fs = require('fs');
+
+            const branchSlug = branch.includes('/')
+              ? branch.split('/').slice(1).join('-')
+              : branch;
+            const issueBodyPath = `docs/tasks/issue-body-${branchSlug}.md`;
+
+            let issueNumber = null;
+            if (fs.existsSync(issueBodyPath)) {
+              const issueBody = fs.readFileSync(issueBodyPath, 'utf8');
+              const titleMatch = issueBody.match(/^#\s+(.+)/m);
+              const issueTitle = titleMatch
+                ? titleMatch[1].replace(/^Issue:\s*/i, '').trim()
+                : branch.replace(/\//g, ' / ');
+
+              const { data: search } = await github.rest.search.issuesAndPullRequests({
+                q: `repo:${owner}/${repo} is:issue in:title "${issueTitle}"`,
+              });
+              if (search.total_count === 0) {
+                const { data: issue } = await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title: issueTitle.startsWith('feat:') ? issueTitle : `feat: ${issueTitle}`,
+                  body: issueBody,
+                  labels: ['enhancement'],
+                });
+                issueNumber = issue.number;
+                core.info(`Created issue #${issueNumber}`);
+              } else {
+                issueNumber = search.items[0].number;
+                core.info(`Issue already exists: #${issueNumber}`);
+              }
+            }
 
             const { data: existing } = await github.rest.pulls.list({
               owner,
@@ -39,20 +77,33 @@ jobs:
               return;
             }
 
-            const title = `[auto] ${branch.replace(/\//g, '_')}`;
-            const body = [
+            const title = issueNumber
+              ? `feat: ${branchSlug.replace(/-/g, ' ')} (#${issueNumber})`
+              : `[auto] ${branch.replace(/\//g, '_')}`;
+
+            const bodyLines = [
+              issueNumber ? `Fixes #${issueNumber}` : '',
+              '',
               `このドラフト PR は \`${branch}\` への push から [Actions run](${runUrl}) で自動作成されました。`,
               '',
-              '- タイトル・説明を編集してから Ready for review にしてください。',
-              '- イシューがある場合は本文に `Fixes #番号` を追記してください。',
+              '## Test plan',
+              '- [ ] ローカル検証・CI green',
+              '',
+              '- Ready for review 前に Summary を追記してください。',
             ].join('\n');
 
-            await github.rest.pulls.create({
-              owner,
-              repo,
-              title,
-              head: branch,
-              base,
-              body,
-              draft: true,
-            });
+            try {
+              await github.rest.pulls.create({
+                owner,
+                repo,
+                title,
+                head: branch,
+                base,
+                body: bodyLines,
+                draft: true,
+              });
+            } catch (err) {
+              core.error(`pulls.create failed: ${err.message}`);
+              core.error('Settings → Actions → General → Workflow permissions を Read and write にしてください。');
+              throw err;
+            }
