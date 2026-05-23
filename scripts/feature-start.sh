@@ -122,4 +122,4 @@ fi
 echo ""
 echo "Branch: $branch_name"
 [[ -n "$issue_url" ]] && echo "Issue:  $issue_url"
-echo "Next: 実装 → validate → git push -u origin HEAD（Auto open PR が Issue + 説明文付き PR を作成）"
+echo "Next: 実装 → ./scripts/validate-pr.sh → git push -u origin HEAD（Auto open PR または github-pr-create スキルで PR）"

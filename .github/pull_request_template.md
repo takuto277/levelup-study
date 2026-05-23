@@ -1,5 +1,7 @@
 Fixes #<!-- AUTO_FIXES_ISSUE -->
 
+<!-- PR 本文の正: .cursor/skills/github-pr-create/SKILL.md（本テンプレは Auto open PR 用） -->
+
 ## なぜやったのか（背景・目的）
 
 <!-- AUTO_WHY -->
