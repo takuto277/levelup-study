@@ -68,6 +68,7 @@ struct PartyScreenView: View {
     @StateObject private var holder = ViewModelHolder()
     @State private var uiState: PartyUiState
     @State private var showPicker = false
+    @State private var showWeaponPicker = false
 
     init() { let vm = KoinHelperKt.getPartyViewModel(); _uiState = State(initialValue: vm.uiState.value as! PartyUiState) }
 
@@ -104,6 +105,7 @@ struct PartyScreenView: View {
 
             if let sel = uiState.selectedCharacter { detailOverlay(sel) }
             if showPicker { pickerOverlay }
+            if showWeaponPicker, let sel = uiState.selectedCharacter { weaponPickerOverlay(for: sel) }
             if uiState.isLoading { Color.black.opacity(0.3).ignoresSafeArea(); ProgressView().scaleEffect(1.5).progressViewStyle(CircularProgressViewStyle(tint: .white)) }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: uiState.selectedCharacter != nil)
@@ -220,11 +222,85 @@ struct PartyScreenView: View {
                             Divider().background(bgSurface)
                             HStack { Text("💪 総合戦闘力").font(.system(size: 13)).foregroundColor(textSub); Spacer(); Text("\(hp + atk * 2 + def)").font(.system(size: 18, weight: .heavy)).foregroundColor(textW) }
                         }.padding(14).background(bgSurface).cornerRadius(14).padding(.horizontal, 16)
+                        weaponSection(for: c)
                         Spacer().frame(height: 40)
                     }.padding(.top, 8)
                 }
             }
             .frame(maxHeight: UIScreen.main.bounds.height * 0.7).background(bgCard).cornerRadius(26, corners: [.topLeft, .topRight])
+        }
+    }
+
+    private func weaponEmoji(_ weaponId: String?) -> String {
+        switch weaponId {
+        case "wpn_staff": return "🪄"
+        case "wpn_sword": return "⚔️"
+        case "wpn_wand": return "✨"
+        default: return "🗡️"
+        }
+    }
+
+    private func weaponSection(for c: UserCharacter) -> some View {
+        let weapon = uiState.ownedWeapons.first { $0.id == c.equippedWeaponId }
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("装備中の武器").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
+                Spacer()
+                if !uiState.ownedWeapons.isEmpty {
+                    Button("変更") { showWeaponPicker = true }
+                        .font(.system(size: 13, weight: .bold)).foregroundColor(accentBlue)
+                }
+            }
+            if let w = weapon {
+                HStack(spacing: 10) {
+                    Text(weaponEmoji(w.weaponId)).font(.system(size: 24))
+                    VStack(alignment: .leading) {
+                        Text(w.weapon?.name ?? "武器").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
+                        Text("Lv.\(w.level)").font(.system(size: 11)).foregroundColor(textSub)
+                    }
+                }
+            } else {
+                Text("武器未装備").font(.system(size: 13)).foregroundColor(textSub)
+            }
+        }
+        .padding(14).background(Color(hex: 0xFFFBEB)).cornerRadius(14).padding(.horizontal, 16)
+    }
+
+    private func weaponPickerOverlay(for character: UserCharacter) -> some View {
+        ZStack(alignment: .bottom) {
+            Color.black.opacity(0.5).ignoresSafeArea().onTapGesture { showWeaponPicker = false }
+            VStack(spacing: 12) {
+                HStack {
+                    Text("武器を選択").font(.system(size: 16, weight: .heavy)).foregroundColor(textW)
+                    Spacer()
+                    Button("閉じる") { showWeaponPicker = false }.font(.system(size: 13, weight: .bold)).foregroundColor(accentCyan)
+                }
+                Button("装備を外す") {
+                    holder.viewModel.onIntent(intent: PartyIntentEquipWeapon(userCharacterId: character.id, userWeaponId: nil))
+                    showWeaponPicker = false
+                }.foregroundColor(accentBlue)
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                        ForEach(uiState.ownedWeapons, id: \.id) { w in
+                            Button(action: {
+                                holder.viewModel.onIntent(intent: PartyIntentEquipWeapon(userCharacterId: character.id, userWeaponId: w.id))
+                                showWeaponPicker = false
+                            }) {
+                                HStack {
+                                    Text(weaponEmoji(w.weaponId))
+                                    VStack(alignment: .leading) {
+                                        Text(w.weapon?.name ?? "武器").font(.system(size: 12, weight: .bold)).foregroundColor(textW)
+                                        Text("Lv.\(w.level)").font(.system(size: 10)).foregroundColor(textSub)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(10).background(w.id == character.equippedWeaponId ? accentBlue.opacity(0.15) : bgSurface).cornerRadius(12)
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                }.frame(maxHeight: 280)
+            }
+            .padding(18).background(bgCard).cornerRadius(26, corners: [.topLeft, .topRight])
         }
     }
 

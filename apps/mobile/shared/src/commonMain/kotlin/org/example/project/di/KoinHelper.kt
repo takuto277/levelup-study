@@ -1,7 +1,6 @@
 package org.example.project.di
 
 import org.example.project.core.session.UserSessionStore
-import org.example.project.features.analytics.AnalyticsViewModel
 import org.example.project.features.record.RecordViewModel
 import org.example.project.features.settings.SettingsViewModel
 import org.example.project.features.gacha.GachaViewModel
@@ -80,10 +79,6 @@ fun getQuestViewModel(): QuestViewModel {
 }
 
 fun getGachaViewModel(): GachaViewModel {
-    return KoinPlatform.getKoin().get()
-}
-
-fun getAnalyticsViewModel(): AnalyticsViewModel {
     return KoinPlatform.getKoin().get()
 }
 

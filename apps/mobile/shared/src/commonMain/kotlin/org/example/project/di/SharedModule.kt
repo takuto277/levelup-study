@@ -27,8 +27,6 @@ import org.example.project.domain.repository.UserRepository
 import org.example.project.domain.repository.WeaponRepository
 import org.example.project.features.record.RecordUseCase
 import org.example.project.features.record.RecordViewModel
-import org.example.project.features.analytics.AnalyticsUseCase
-import org.example.project.features.analytics.AnalyticsViewModel
 import org.example.project.features.gacha.GachaUseCase
 import org.example.project.features.gacha.GachaViewModel
 import org.example.project.features.home.HomeUseCase
@@ -76,7 +74,6 @@ val sharedModule = module {
     factoryOf(::QuestUseCase)
     factoryOf(::PartyUseCase)
     factoryOf(::GachaUseCase)
-    factoryOf(::AnalyticsUseCase)
     factoryOf(::RecordUseCase)
     factoryOf(::StudyUseCase)
 
@@ -85,7 +82,6 @@ val sharedModule = module {
     factoryOf(::QuestViewModel)
     factoryOf(::PartyViewModel)
     factoryOf(::GachaViewModel)
-    factory { AnalyticsViewModel(get(), get()) }
     factory { RecordViewModel(get(), get()) }
     factoryOf(::StudyViewModel)
     factoryOf(::StudyQuestViewModel)

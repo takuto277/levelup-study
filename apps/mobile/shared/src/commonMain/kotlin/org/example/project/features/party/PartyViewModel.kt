@@ -33,7 +33,7 @@ class PartyViewModel(
             is PartyIntent.RemoveFromSlot -> removeFromSlot(intent.slotPosition)
             is PartyIntent.SelectCharacter -> selectCharacter(intent.userCharacterId)
             is PartyIntent.DismissCharacterDetail -> _uiState.update { it.copy(selectedCharacter = null) }
-            is PartyIntent.EquipWeapon -> { /* TODO */ }
+            is PartyIntent.EquipWeapon -> equipWeapon(intent.userCharacterId, intent.userWeaponId)
             is PartyIntent.LevelUpCharacter -> { /* TODO */ }
             is PartyIntent.LevelUpWeapon -> { /* TODO */ }
         }
@@ -88,5 +88,26 @@ class PartyViewModel(
     private fun selectCharacter(userCharacterId: String) {
         val character = _uiState.value.ownedCharacters.find { it.id == userCharacterId }
         _uiState.update { it.copy(selectedCharacter = character) }
+    }
+
+    private fun equipWeapon(userCharacterId: String, userWeaponId: String?) {
+        viewModelScope.launch {
+            try {
+                partyUseCase.equipWeapon(userCharacterId, userWeaponId)
+                val data = partyUseCase.loadPartyData()
+                _uiState.update {
+                    it.copy(
+                        party = Party(slots = data.party.slots.sortedBy { s -> s.slotPosition }),
+                        ownedCharacters = data.ownedCharacters,
+                        ownedWeapons = data.ownedWeapons,
+                        selectedCharacter = data.ownedCharacters.find { c -> c.id == userCharacterId },
+                        isLoading = false,
+                        error = null
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "武器装備に失敗しました") }
+            }
+        }
     }
 }

@@ -97,6 +97,7 @@ fun PartyScreenView() {
     val uiState by viewModel.uiState.collectAsState()
 
     var showCharacterPicker by remember { mutableStateOf(false) }
+    var showWeaponPicker by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(BgColor, Color(0xFF0F172A))))) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -152,8 +153,25 @@ fun PartyScreenView() {
             CharacterDetailSheet(
                 character = character,
                 weapon = uiState.ownedWeapons.find { it.id == character.equippedWeaponId },
-                onDismiss = { viewModel.onIntent(PartyIntent.DismissCharacterDetail) }
+                weapons = uiState.ownedWeapons,
+                onDismiss = { viewModel.onIntent(PartyIntent.DismissCharacterDetail) },
+                onChangeWeapon = { showWeaponPicker = true }
             )
+        }
+
+        if (showWeaponPicker) {
+            val character = uiState.selectedCharacter
+            if (character != null) {
+                WeaponPickerSheet(
+                    weapons = uiState.ownedWeapons,
+                    equippedWeaponId = character.equippedWeaponId,
+                    onDismiss = { showWeaponPicker = false },
+                    onSelect = { weaponId ->
+                        viewModel.onIntent(PartyIntent.EquipWeapon(character.id, weaponId))
+                        showWeaponPicker = false
+                    }
+                )
+            }
         }
 
         if (showCharacterPicker) {
@@ -679,7 +697,9 @@ private fun MiniStat(emoji: String, value: String) {
 private fun CharacterDetailSheet(
     character: UserCharacter,
     weapon: org.example.project.domain.model.UserWeapon?,
-    onDismiss: () -> Unit
+    weapons: List<org.example.project.domain.model.UserWeapon>,
+    onDismiss: () -> Unit,
+    onChangeWeapon: () -> Unit
 ) {
     val master = character.character ?: return
 
@@ -810,7 +830,18 @@ private fun CharacterDetailSheet(
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("装備中の武器", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("装備中の武器", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            if (weapons.isNotEmpty()) {
+                                TextButton(onClick = onChangeWeapon) {
+                                    Text("変更", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(10.dp))
                         if (weapon != null) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -866,6 +897,67 @@ private fun CharacterDetailSheet(
                 }
 
                 Spacer(modifier = Modifier.height(40.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeaponPickerSheet(
+    weapons: List<org.example.project.domain.model.UserWeapon>,
+    equippedWeaponId: String?,
+    onDismiss: () -> Unit,
+    onSelect: (String?) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.45f))
+            .clickable(onClick = onDismiss)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .background(CardWhite, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .clickable(enabled = false, onClick = {})
+                .padding(20.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("武器を選択", fontSize = 17.sp, fontWeight = FontWeight.Black, color = TextPrimary, modifier = Modifier.weight(1f))
+                Text("閉じる", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AccentBlue, modifier = Modifier.clickable(onClick = onDismiss))
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            TextButton(onClick = { onSelect(null) }, modifier = Modifier.fillMaxWidth()) {
+                Text("装備を外す")
+            }
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.heightIn(max = 320.dp)
+            ) {
+                items(weapons, key = { it.id }) { w ->
+                    val selected = w.id == equippedWeaponId
+                    Surface(
+                        onClick = { onSelect(w.id) },
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (selected) AccentBlue.copy(alpha = 0.15f) else BgColor,
+                        border = if (selected) BorderStroke(2.dp, AccentBlue) else null
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(weaponEmoji(w.weaponId), fontSize = 22.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(w.weapon?.name ?: "武器", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                Text("Lv.${w.level}", fontSize = 11.sp, color = TextSecondary)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

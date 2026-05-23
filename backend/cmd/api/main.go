@@ -80,7 +80,7 @@ func main() {
 	userH := handler.NewUserHandler(userRepo)
 	studyH := handler.NewStudyHandler(studyService)
 	gameH := handler.NewGameHandler(charRepo, weaponRepo, partyRepo, dungeonRepo)
-	gachaH := handler.NewGachaHandler(gachaService)
+	gachaH := handler.NewGachaHandler(gachaService, gachaRepo)
 	masterH := handler.NewMasterHandler(masterRepo)
 
 	// --- セキュリティ設定 ---
