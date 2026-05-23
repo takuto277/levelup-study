@@ -1,5 +1,4 @@
 # main 以外への push で、まだ PR が無ければドラフト PR を自動作成する
-# ブランチ feat/{slug} かつ docs/tasks/issue-body-{slug}.md がある場合は Issue も自動起票
 name: Auto open draft PR
 
 on:
@@ -10,9 +9,9 @@ on:
       - "dependabot/**"
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
-  issues: write
+  issues: read
 
 jobs:
   open-pr:
@@ -21,103 +20,52 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Create draft PR if none exists
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            const branch = context.ref.replace('refs/heads/', '');
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const base = context.payload.repository.default_branch || 'main';
-            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
-            const fs = require('fs');
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
 
-            const branchSlug = branch.includes('/')
-              ? branch.split('/').slice(1).join('-')
-              : branch;
-            const issueBodyPath = `docs/tasks/issue-body-${branchSlug}.md`;
+          count="$(gh pr list --repo "$REPO" --head "$BRANCH_NAME" --state open --json number --jq 'length')"
+          if [ "$count" != "0" ]; then
+            echo "Open PR already exists for head=$BRANCH_NAME — skipping."
+            exit 0
+          fi
 
-            let issueNumber = null;
-            if (fs.existsSync(issueBodyPath)) {
-              const issueBody = fs.readFileSync(issueBodyPath, 'utf8');
-              const titleMatch = issueBody.match(/^#\s+(.+)/m);
-              const rawTitle = titleMatch
-                ? titleMatch[1].replace(/^Issue:\s*/i, '').trim()
-                : branchSlug.replace(/-/g, ' ');
-              const issueTitle = rawTitle.startsWith('feat:') ? rawTitle : `feat: ${rawTitle}`;
+          branch_slug="${BRANCH_NAME#feat/}"
+          issue_body_file="docs/tasks/issue-body-${branch_slug}.md"
+          issue_ref=""
+          if [ -f "$issue_body_file" ]; then
+            issue_num="$(gh issue list --repo "$REPO" --state open --json number,title --jq \
+              ".[] | select(.title | test(\"${branch_slug//-/[- ]}\")) | .number" | head -1 || true)"
+            if [ -n "$issue_num" ]; then
+              issue_ref="Fixes #${issue_num}"
+            fi
+          fi
 
-              try {
-                const { data: issues } = await github.rest.issues.listForRepo({
-                  owner,
-                  repo,
-                  state: 'open',
-                  per_page: 100,
-                });
-                const found = issues.find(
-                  (i) => !i.pull_request && (i.title === issueTitle || i.title.includes(rawTitle)),
-                );
-                if (found) {
-                  issueNumber = found.number;
-                  core.info(`Issue already exists: #${issueNumber}`);
-                } else {
-                  const { data: issue } = await github.rest.issues.create({
-                    owner,
-                    repo,
-                    title: issueTitle,
-                    body: issueBody,
-                    labels: ['enhancement'],
-                  });
-                  issueNumber = issue.number;
-                  core.info(`Created issue #${issueNumber}`);
-                }
-              } catch (err) {
-                core.warning(`Issue step skipped: ${err.message}`);
-              }
-            }
+          title="[auto] ${BRANCH_NAME//\//_}"
+          if [ -n "$issue_ref" ]; then
+            title="feat: ${branch_slug//-/ } (#${issue_num})"
+          fi
 
-            const { data: existing } = await github.rest.pulls.list({
-              owner,
-              repo,
-              head: `${owner}:${branch}`,
-              state: 'open',
-              per_page: 30,
-            });
+          {
+            [ -n "$issue_ref" ] && echo "$issue_ref"
+            echo ""
+            echo "このドラフト PR は \`$BRANCH_NAME\` への push から [Actions run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) で自動作成されました。"
+            echo ""
+            echo "## Summary"
+            echo "- ブランチ \`$BRANCH_NAME\` の変更"
+            echo ""
+            echo "## Test plan"
+            echo "- [ ] CI green"
+          } > /tmp/pr-body.md
 
-            if (existing.length > 0) {
-              core.info(`Open PR already exists for head=${branch} — skipping.`);
-              return;
-            }
+          gh pr create --repo "$REPO" \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --draft \
+            --title "$title" \
+            --body-file /tmp/pr-body.md
 
-            const title = issueNumber
-              ? `feat: ${branchSlug.replace(/-/g, ' ')} (#${issueNumber})`
-              : `[auto] ${branch.replace(/\//g, '_')}`;
-
-            const bodyLines = [
-              issueNumber ? `Fixes #${issueNumber}` : '',
-              '',
-              `このドラフト PR は \`${branch}\` への push から [Actions run](${runUrl}) で自動作成されました。`,
-              '',
-              '## Summary',
-              '- `apps/mobile/assets/` を正本とする入稿パイプライン（manifest / sync / validate / CI）',
-              '- 機能開発 Skill + assets Rule + `scripts/feature-start.sh`',
-              '',
-              '## Test plan',
-              '- [ ] `./scripts/assets/run.sh scripts/assets/validate_assets.py`',
-              '- [ ] CI: Asset pipeline validation / Mobile CI',
-            ].filter((line, i, arr) => !(line === '' && arr[i + 1] === '')).join('\n');
-
-            try {
-              await github.rest.pulls.create({
-                owner,
-                repo,
-                title,
-                head: branch,
-                base,
-                body: bodyLines,
-                draft: true,
-              });
-            } catch (err) {
-              core.error(`pulls.create failed: ${err.message}`);
-              core.error('Settings → Actions → General → Workflow permissions を Read and write にしてください。');
-              throw err;
-            }
+          echo "Draft PR created for $BRANCH_NAME"
