@@ -25,43 +25,26 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+          set -x
 
-          existing="$(gh pr list --repo "$REPO" --head "$BRANCH_NAME" --state open --json number --jq 'length' 2>/dev/null || echo 0)"
-          if [ "$existing" != "0" ]; then
-            echo "Open PR already exists for head=$BRANCH_NAME — skipping."
+          if gh pr view --repo "$REPO" "$BRANCH_NAME" >/dev/null 2>&1; then
+            echo "PR already exists for $BRANCH_NAME"
             exit 0
           fi
-
-          branch_slug="${BRANCH_NAME#feat/}"
-          issue_num=""
-          if [ -f "docs/tasks/issue-body-${branch_slug}.md" ]; then
-            issue_num="$(gh issue list --repo "$REPO" --state open --limit 30 --json number,title --jq \
-              '[.[] | select(.title | test("入稿|ingestion|asset"; "i"))][0].number // empty' 2>/dev/null || true)"
-          fi
-
-          if [ -n "$issue_num" ]; then
-            title="feat: ${branch_slug//-/ } (#${issue_num})"
-          else
-            title="[auto] ${BRANCH_NAME//\//_}"
-          fi
-
-          {
-            [ -n "$issue_num" ] && echo "Fixes #${issue_num}"
-            [ -n "$issue_num" ] && echo ""
-            echo "このドラフト PR は \`$BRANCH_NAME\` への push から [Actions run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) で自動作成されました。"
-            echo ""
-            echo "## Summary"
-            echo "- ブランチ \`$BRANCH_NAME\` の変更"
-            echo ""
-            echo "## Test plan"
-            echo "- [ ] CI green"
-          } > /tmp/pr-body.md
 
           gh pr create --repo "$REPO" \
             --base main \
             --head "$BRANCH_NAME" \
             --draft \
-            --title "$title" \
-            --body-file /tmp/pr-body.md
+            --title "feat: asset ingestion pipeline (#2)" \
+            --body "$(cat <<EOF
+Fixes #2
 
-          echo "Draft PR created."
+## Summary
+- apps/mobile/assets/ を正本とする入稿パイプライン
+
+## Test plan
+- [ ] validate_assets.py
+- [ ] CI green
+EOF
+)"
