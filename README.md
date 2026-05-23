@@ -26,7 +26,7 @@ npx rulesync generate
 |----------|----------|------|
 | [Backend — CI](.github/workflows/backend-ci.yml) | `push`（`main`）/ `pull_request`（`backend/**` など） | `go test` / `go vet` |
 | [Mobile — CI](.github/workflows/mobile-ci.yml) | `push`（`main`）/ `pull_request`（`apps/mobile/**`） | KMP `:shared:compileDebugKotlinAndroid` |
-| [Auto open draft PR](.github/workflows/open-pr-on-push.yml) | `main` 以外への `push` | 同じヘッドのオープン PR が無ければドラフト PR を作成 |
+| [Auto open draft PR](.github/workflows/open-pr-on-push.yml) | `main` 以外への `push` | 同じヘッドのオープン PR が無ければドラフト PR を作成（`issue-body-{slug}.md` があれば Issue も起票） |
 | [Asset pipeline validation](.github/workflows/assets-ci.yml) | `pull_request`（アセット関連パス） | manifest / sync / slug 対応の検証 |
 | [Create issue (manual)](.github/workflows/create-issue.yml) | `workflow_dispatch` | Actions タブから手動でイシュー起票 |
 

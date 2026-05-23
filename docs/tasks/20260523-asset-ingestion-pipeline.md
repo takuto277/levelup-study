@@ -4,7 +4,7 @@
 |------|-----|
 | 作成日 | 2026-05-23 |
 | ステータス | 完了 |
-| Issue | （GitHub Issue 番号を PR で Fixes #n に紐付け） |
+| Issue | https://github.com/takuto277/levelup-study/issues/2 |
 
 ## 概要
 
