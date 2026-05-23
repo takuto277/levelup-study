@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ドラフト PR を作成（gh + GH_TOKEN / GITHUB_TOKEN 必須）
+# 通常 PR を作成（gh + GH_TOKEN / GITHUB_TOKEN 必須）
 #
 # 例:
 #   ./scripts/create-pr.sh --title "feat: 〇〇" --body "Fixes #2"
@@ -45,7 +45,7 @@ done
 
 [[ -n "$title" ]] || usage
 
-cmd=(gh pr create --base "$base" --head "$head" --draft --title "$title")
+cmd=(gh pr create --base "$base" --head "$head" --title "$title")
 if [[ -n "$body_file" ]]; then
   cmd+=(--body-file "$body_file")
 elif [[ -n "$body" ]]; then

@@ -6,26 +6,26 @@ description: >-
 ---
 # Feature Delivery（Issue → PR まで）
 
-ユーザーが毎回口頭でフローを指示しなくてよいよう、以下を **この順序で** 実行する。
-
-## 1. コンテキスト把握
-
-1. `project-context` スキルの要約を確認
-2. 関連する `docs/features/` / `docs/tasks/` / `docs/assets/` を読む
-3. 3 ステップ以上の変更なら `docs/tasks/YYYYMMDD-<slug>.md` 実行計画書を作成
-
-## 2. Issue 起票
+## 2. Issue 起票（AI が実施）
 
 ```bash
-./scripts/create-issue.sh --title "feat: 短いタイトル" --body-file docs/tasks/issue-body-xxx.md
+# 必ず issue-body をリポジトリに置く（push 後 Actions が GitHub Issue を自動起票）
+docs/tasks/issue-body-{slug}.md
 ```
 
-または `./scripts/feature-start.sh` で Issue + ブランチを一括作成。
+`./scripts/feature-start.sh` でも可（ローカル gh + GH_TOKEN がある場合）。
 
-## 3. 実装 → validate → push → ドラフト PR 自動作成
+## 6. PR（AI が実施 — ユーザーに Issue/説明文を書かせない）
 
-詳細は `.cursor/skills/feature-delivery/SKILL.md`（rulesync 生成後は同一内容）。
+1. 実装・validate 完了後 `git push`
+2. **Auto open PR** が Issue 起票 + `Fixes #n` + 説明文 3 セクション + Issue URL を自動生成
+3. **ユーザー向けチェックリスト**は CI / レビュー / 手元確認（Secrets 等）のみ
+4. `issue-body` が無い瑣末な変更は Issue なし PR でよい
+5. ルール: `.cursor/rules/pr-review.mdc`
+6. **マージはユーザー**
 
-## アセット変更時
+## 禁止事項
 
-`docs/assets/01_Asset_Ingestion_Workflow.md` と `assets` ルールに従い sync / validate を実行。
+- ユーザー明示なしの commit / push / merge
+- PR 本文を空のまま残す（push 前に issue-body を整備すること）
+- シークレットのコミット

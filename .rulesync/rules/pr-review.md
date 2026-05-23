@@ -1,0 +1,41 @@
+---
+targets: [cursor]
+globs:
+  - .github/pull_request_template.md
+  - .github/workflows/open-pr*.yml
+  - docs/tasks/issue-body-*.md
+---
+# PR 作成ルール（AI 担当）
+
+## AI（実装者）が PR 作成前に必ず行うこと
+
+1. **`docs/tasks/issue-body-{slug}.md` を用意**（背景・目的・スコープ・受け入れ条件）
+2. **実装後に push** → Auto open PR が以下を **自動で** 行う:
+   - Issue 起票（無ければ作成）+ `Fixes #n`
+   - PR 本文「なぜ / 何が / どうなる」の生成
+   - Issue GitHub URL + issue-body ファイル URL の記載
+3. **`issue-body` が無い小さな変更**は Issue なし PR でよい（Fixes 行も不要）
+
+## ユーザーがやるべきこと（PR 本文のチェックリスト）
+
+- **CI** — Checks タブ green
+- **レビュー依頼**
+- **（該当時）手元確認** — Secrets 設定・デプロイ・実機確認など人間のみ可能な作業
+
+Issue 連携・説明文記入・issue-body 整合確認は **ユーザー TODO に載せない**（AI / Actions 担当）。
+
+## issue-body ファイル形式
+
+```markdown
+# Issue: 短いタイトル
+
+## 背景
+## 目的
+## スコープ（本イシュー）  ← PR「何が」に反映
+## 受け入れ条件            ← PR「どうなる」に反映
+```
+
+## 自動 PR
+
+- `draft: false`
+- 既存 PR も push 時にテンプレ同期（空セクション・旧チェックリストを検知して更新）

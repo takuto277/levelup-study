@@ -122,5 +122,4 @@ fi
 echo ""
 echo "Branch: $branch_name"
 [[ -n "$issue_url" ]] && echo "Issue:  $issue_url"
-echo "Next: 実装 → validate → git push -u origin HEAD（ドラフト PR 自動作成）"
-[[ -n "$issue_num" ]] && echo "PR 本文に Fixes #${issue_num} を記載してください。"
+echo "Next: 実装 → validate → git push -u origin HEAD（Auto open PR が Issue + 説明文付き PR を作成）"

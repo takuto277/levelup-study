@@ -1,0 +1,72 @@
+# iOS SwiftLint + Simulator ビルド（PR / push 時）
+name: iOS — CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/mobile/iosApp/**"
+      - ".github/workflows/ios-ci.yml"
+  pull_request:
+    paths:
+      - "apps/mobile/iosApp/**"
+      - ".github/workflows/ios-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ios-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  swiftlint:
+    name: SwiftLint
+    runs-on: macos-14
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/mobile/iosApp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Lint Swift sources
+        run: swiftlint lint --config .swiftlint.yml --no-cache
+
+  ios-simulator-build:
+    name: Xcode build (Simulator)
+    runs-on: macos-14
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: local.properties (CI placeholder)
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK" || { echo "Android SDK not found" >&2; exit 1; }
+          {
+            echo "sdk.dir=$SDK"
+            echo "api.key=ci-placeholder-not-for-production"
+          } > local.properties
+
+      - name: Build KMP Shared (iOS Simulator)
+        env:
+          GRADLE_OPTS: -Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.configuration-cache=false
+          LEVELUP_API_KEY: ci-placeholder-not-for-production
+        run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
+
+      # フル xcodebuild は Xcode Run Script / フレームワーク埋め込みの都合で CI 調整中。
+      # SwiftLint + KMP iOS リンクで Swift 品質と iOS ターゲット编译を PR 時に検証する。
