@@ -42,3 +42,39 @@
 - [ ] **(STEP 3)** GoにてDB実装・APIエンドポイントの追加 (`docs/templates/API_Design_Template.md`等を活用)
 - [ ] **(STEP 4)** KMP層にて Repository を実装し、APIと通信して ViewModel へ流し込む
 - [ ] テスト動作確認後、Roadmapドキュメントを「実装済み」に更新する
+
+---
+
+## 🖼️ アセット入稿フロー（画像・スプライト）
+
+敵・プレイヤー・ダンジョン背景などの **バトル同梱 PNG** は UI 実装とは独立したパイプラインで管理します。
+
+| ステップ | やること |
+|----------|----------|
+| 1 | Issue 起票（`.github/ISSUE_TEMPLATE/asset-ingestion.yml` または `scripts/create-issue.sh`） |
+| 2 | `feat/{番号}-slug` ブランチ（`scripts/feature-start.sh` 推奨） |
+| 3 | PNG を `apps/mobile/assets/source/` に配置し `manifest.yaml` 更新 |
+| 4 | `./scripts/assets/run.sh scripts/assets/sync_battle_assets.py` 等（詳細は下記） |
+| 5 | push → ドラフト PR 自動作成 → レビュー |
+
+**詳細:** [`docs/assets/01_Asset_Ingestion_Workflow.md`](../assets/01_Asset_Ingestion_Workflow.md)
+
+**AI 向け:** `.cursor/skills/feature-delivery/SKILL.md` + `.cursor/rules/assets.mdc`
+
+---
+
+## 🔁 機能開発フロー（Issue → PR）
+
+毎回「イシュー起票 → ブランチ → 実装 → PR」と指示しなくてよいよう、以下を標準とします。
+
+```bash
+export GH_TOKEN=（PAT）
+./scripts/feature-start.sh \
+  --title "feat: 機能名" \
+  --body-file docs/tasks/issue-body-xxx.md \
+  --branch-slug "feature-slug"
+```
+
+実装後は `git push -u origin HEAD` でドラフト PR が自動作成されます（`.github/workflows/open-pr-on-push.yml`）。
+
+**AI 向け:** `.cursor/skills/feature-delivery/SKILL.md`
