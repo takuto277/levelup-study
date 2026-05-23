@@ -11,7 +11,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  issues: read
 
 jobs:
   open-pr:
@@ -27,31 +26,28 @@ jobs:
         run: |
           set -euo pipefail
 
-          count="$(gh pr list --repo "$REPO" --head "$BRANCH_NAME" --state open --json number --jq 'length')"
-          if [ "$count" != "0" ]; then
+          existing="$(gh pr list --repo "$REPO" --head "$BRANCH_NAME" --state open --json number --jq 'length' 2>/dev/null || echo 0)"
+          if [ "$existing" != "0" ]; then
             echo "Open PR already exists for head=$BRANCH_NAME — skipping."
             exit 0
           fi
 
           branch_slug="${BRANCH_NAME#feat/}"
-          issue_body_file="docs/tasks/issue-body-${branch_slug}.md"
-          issue_ref=""
-          if [ -f "$issue_body_file" ]; then
-            issue_num="$(gh issue list --repo "$REPO" --state open --json number,title --jq \
-              ".[] | select(.title | test(\"${branch_slug//-/[- ]}\")) | .number" | head -1 || true)"
-            if [ -n "$issue_num" ]; then
-              issue_ref="Fixes #${issue_num}"
-            fi
+          issue_num=""
+          if [ -f "docs/tasks/issue-body-${branch_slug}.md" ]; then
+            issue_num="$(gh issue list --repo "$REPO" --state open --limit 30 --json number,title --jq \
+              '[.[] | select(.title | test("入稿|ingestion|asset"; "i"))][0].number // empty' 2>/dev/null || true)"
           fi
 
-          title="[auto] ${BRANCH_NAME//\//_}"
-          if [ -n "$issue_ref" ]; then
+          if [ -n "$issue_num" ]; then
             title="feat: ${branch_slug//-/ } (#${issue_num})"
+          else
+            title="[auto] ${BRANCH_NAME//\//_}"
           fi
 
           {
-            [ -n "$issue_ref" ] && echo "$issue_ref"
-            echo ""
+            [ -n "$issue_num" ] && echo "Fixes #${issue_num}"
+            [ -n "$issue_num" ] && echo ""
             echo "このドラフト PR は \`$BRANCH_NAME\` への push から [Actions run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) で自動作成されました。"
             echo ""
             echo "## Summary"
@@ -61,17 +57,11 @@ jobs:
             echo "- [ ] CI green"
           } > /tmp/pr-body.md
 
-          if ! gh pr create --repo "$REPO" \
+          gh pr create --repo "$REPO" \
             --base main \
             --head "$BRANCH_NAME" \
             --draft \
             --title "$title" \
-            --body-file /tmp/pr-body.md 2>/tmp/gh-pr.err; then
-            echo "::error::gh pr create failed:"
-            cat /tmp/gh-pr.err
-            echo ""
-            echo "確認: Settings → Actions → General で"
-            echo "  1) Workflow permissions = Read and write"
-            echo "  2) Allow GitHub Actions to create and approve pull requests = ON"
-            exit 1
-          fi
+            --body-file /tmp/pr-body.md
+
+          echo "Draft PR created."
