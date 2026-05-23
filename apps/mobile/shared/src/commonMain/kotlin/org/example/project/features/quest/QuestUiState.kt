@@ -32,6 +32,10 @@ data class Dungeon(
     val clearedStages: Int = 0,
     val recommendedMinutes: Int,
     val rewards: DungeonReward,
+    /** 次に挑戦するステージ番号（全クリア時は null） */
+    val nextStageNumber: Int? = null,
+    /** 次ステージの敵サマリー */
+    val nextStageEnemySummary: String? = null,
     val iconEmoji: String,
     /** サーバー `m_dungeons.image_url`（一覧・冒険シーンの背景用） */
     val imageUrl: String = "",

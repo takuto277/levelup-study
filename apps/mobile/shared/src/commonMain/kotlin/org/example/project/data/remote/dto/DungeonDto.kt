@@ -7,6 +7,7 @@ import org.example.project.domain.model.DungeonProgress
 import org.example.project.domain.model.DungeonStage
 import org.example.project.domain.model.DungeonStageEnemy
 import org.example.project.domain.model.MasterDungeon
+import org.example.project.domain.model.StageDrop
 
 // ── Response ────────────────────────────────────
 
@@ -17,7 +18,20 @@ data class MasterDungeonResponse(
     @SerialName("sort_order") val sortOrder: Int,
     @SerialName("unlock_condition") val unlockCondition: String? = null,
     @SerialName("image_url") val imageUrl: String,
-    @SerialName("is_active") val isActive: Boolean
+    @SerialName("is_active") val isActive: Boolean,
+    val stages: List<DungeonStageResponse> = emptyList(),
+)
+
+/** GET /master/dungeons/{id} — ダンジョン詳細（ステージ含む） */
+@Serializable
+data class MasterDungeonDetailResponse(
+    val id: String,
+    val name: String,
+    @SerialName("sort_order") val sortOrder: Int = 0,
+    @SerialName("unlock_condition") val unlockCondition: String? = null,
+    @SerialName("image_url") val imageUrl: String = "",
+    @SerialName("is_active") val isActive: Boolean = true,
+    val stages: List<DungeonStageResponse> = emptyList(),
 )
 
 @Serializable
@@ -53,9 +67,16 @@ data class DungeonStageResponse(
     @SerialName("dungeon_id") val dungeonId: String,
     @SerialName("stage_number") val stageNumber: Int,
     @SerialName("recommended_power") val recommendedPower: Int,
-    @SerialName("enemy_composition") val enemyComposition: String,
-    @SerialName("drop_table") val dropTable: String,
+    @SerialName("enemy_composition") val enemyComposition: String? = null,
+    @SerialName("drop_table") val dropTable: List<StageDropEntryResponse> = emptyList(),
     val enemies: List<DungeonStageEnemyResponse> = emptyList()
+)
+
+@Serializable
+data class StageDropEntryResponse(
+    @SerialName("item_type") val itemType: String,
+    val amount: Int,
+    val rate: Double = 1.0,
 )
 
 @Serializable
@@ -86,7 +107,8 @@ fun MasterDungeonResponse.toDomain(): MasterDungeon = MasterDungeon(
     sortOrder = sortOrder,
     unlockCondition = unlockCondition,
     imageUrl = imageUrl,
-    isActive = isActive
+    isActive = isActive,
+    stages = stages.map { it.toDomain() },
 )
 
 fun DungeonMonsterResponse.toDomain(): DungeonMonster = DungeonMonster(
@@ -106,8 +128,8 @@ fun DungeonStageResponse.toDomain(): DungeonStage = DungeonStage(
     dungeonId = dungeonId,
     stageNumber = stageNumber,
     recommendedPower = recommendedPower,
-    enemyComposition = enemyComposition,
-    dropTable = dropTable,
+    enemyComposition = enemyComposition ?: "[]",
+    drops = dropTable.map { StageDrop(it.itemType, it.amount, it.rate) },
     enemies = enemies.mapNotNull { row ->
         val m = row.monster ?: return@mapNotNull null
         DungeonStageEnemy(
