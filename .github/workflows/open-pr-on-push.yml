@@ -41,26 +41,37 @@ jobs:
             if (fs.existsSync(issueBodyPath)) {
               const issueBody = fs.readFileSync(issueBodyPath, 'utf8');
               const titleMatch = issueBody.match(/^#\s+(.+)/m);
-              const issueTitle = titleMatch
+              const rawTitle = titleMatch
                 ? titleMatch[1].replace(/^Issue:\s*/i, '').trim()
-                : branch.replace(/\//g, ' / ');
+                : branchSlug.replace(/-/g, ' ');
+              const issueTitle = rawTitle.startsWith('feat:') ? rawTitle : `feat: ${rawTitle}`;
 
-              const { data: search } = await github.rest.search.issuesAndPullRequests({
-                q: `repo:${owner}/${repo} is:issue in:title "${issueTitle}"`,
-              });
-              if (search.total_count === 0) {
-                const { data: issue } = await github.rest.issues.create({
+              try {
+                const { data: issues } = await github.rest.issues.listForRepo({
                   owner,
                   repo,
-                  title: issueTitle.startsWith('feat:') ? issueTitle : `feat: ${issueTitle}`,
-                  body: issueBody,
-                  labels: ['enhancement'],
+                  state: 'open',
+                  per_page: 100,
                 });
-                issueNumber = issue.number;
-                core.info(`Created issue #${issueNumber}`);
-              } else {
-                issueNumber = search.items[0].number;
-                core.info(`Issue already exists: #${issueNumber}`);
+                const found = issues.find(
+                  (i) => !i.pull_request && (i.title === issueTitle || i.title.includes(rawTitle)),
+                );
+                if (found) {
+                  issueNumber = found.number;
+                  core.info(`Issue already exists: #${issueNumber}`);
+                } else {
+                  const { data: issue } = await github.rest.issues.create({
+                    owner,
+                    repo,
+                    title: issueTitle,
+                    body: issueBody,
+                    labels: ['enhancement'],
+                  });
+                  issueNumber = issue.number;
+                  core.info(`Created issue #${issueNumber}`);
+                }
+              } catch (err) {
+                core.warning(`Issue step skipped: ${err.message}`);
               }
             }
 
@@ -86,11 +97,14 @@ jobs:
               '',
               `このドラフト PR は \`${branch}\` への push から [Actions run](${runUrl}) で自動作成されました。`,
               '',
-              '## Test plan',
-              '- [ ] ローカル検証・CI green',
+              '## Summary',
+              '- `apps/mobile/assets/` を正本とする入稿パイプライン（manifest / sync / validate / CI）',
+              '- 機能開発 Skill + assets Rule + `scripts/feature-start.sh`',
               '',
-              '- Ready for review 前に Summary を追記してください。',
-            ].join('\n');
+              '## Test plan',
+              '- [ ] `./scripts/assets/run.sh scripts/assets/validate_assets.py`',
+              '- [ ] CI: Asset pipeline validation / Mobile CI',
+            ].filter((line, i, arr) => !(line === '' && arr[i + 1] === '')).join('\n');
 
             try {
               await github.rest.pulls.create({
