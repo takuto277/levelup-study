@@ -3,6 +3,8 @@ package org.example.project.features.party
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -26,6 +28,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import org.example.project.components.PlayerSprite
 import org.example.project.components.PlayerSpriteMode
 import org.example.project.components.hasPartyPlayerSprite
@@ -83,11 +87,18 @@ private fun rarityGradient(rarity: Int): List<Color> = when (rarity) {
     else -> listOf(Color(0xFF94A3B8), Color(0xFFCBD5E1))
 }
 
-private fun weaponEmoji(weaponId: String?): String = when (weaponId) {
-    "wpn_staff" -> "🪄"
-    "wpn_sword" -> "⚔️"
-    "wpn_wand" -> "✨"
-    else -> ""
+private fun weaponDisplayName(weapon: org.example.project.domain.model.UserWeapon): String =
+    weapon.weapon?.name?.takeIf { it.isNotBlank() } ?: "武器（Lv.${weapon.level}）"
+
+private fun weaponEmoji(weapon: org.example.project.domain.model.UserWeapon): String {
+    val name = weapon.weapon?.name.orEmpty()
+    return when {
+        name.contains("杖") || name.contains("スタッフ") -> "🪄"
+        name.contains("剣") || name.contains("刀") -> "⚔️"
+        name.contains("弓") -> "🏹"
+        name.contains("聖") || name.contains("ワンド") -> "✨"
+        else -> "🗡️"
+    }
 }
 
 // ── メイン画面 ──────────────────────────────────────
@@ -149,10 +160,14 @@ fun PartyScreenView() {
         }
 
         uiState.selectedCharacter?.let { character ->
-            CharacterDetailSheet(
+            CharacterDetailScreen(
                 character = character,
                 weapon = uiState.ownedWeapons.find { it.id == character.equippedWeaponId },
-                onDismiss = { viewModel.onIntent(PartyIntent.DismissCharacterDetail) }
+                weapons = uiState.ownedWeapons,
+                onDismiss = { viewModel.onIntent(PartyIntent.DismissCharacterDetail) },
+                onEquipWeapon = { weaponId ->
+                    viewModel.onIntent(PartyIntent.EquipWeapon(character.id, weaponId))
+                }
             )
         }
 
@@ -307,12 +322,15 @@ private fun MainCharacterSection(
                         if (weapon != null) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(weaponEmoji(weapon.weaponId), fontSize = 14.sp)
+                                Text(weaponEmoji(weapon), fontSize = 14.sp)
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    weapon.weapon?.name ?: "武器",
-                                    fontSize = 12.sp,
-                                    color = TextSecondary
+                                    weaponDisplayName(weapon),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                         }
@@ -676,45 +694,64 @@ private fun MiniStat(emoji: String, value: String) {
 
 // ── キャラクター詳細シート ──────────────────────────
 @Composable
-private fun CharacterDetailSheet(
+private fun CharacterDetailScreen(
     character: UserCharacter,
     weapon: org.example.project.domain.model.UserWeapon?,
-    onDismiss: () -> Unit
+    weapons: List<org.example.project.domain.model.UserWeapon>,
+    onDismiss: () -> Unit,
+    onEquipWeapon: (String?) -> Unit,
 ) {
     val master = character.character ?: return
+    var pickingWeapon by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f))
-            .clickable(onClick = onDismiss)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.65f)
-                .align(Alignment.BottomCenter)
-                .clickable(enabled = false, onClick = {}),
-            color = CardWhite,
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            shadowElevation = 16.dp
+            modifier = Modifier.fillMaxSize(),
+            color = BgColor,
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // ドラッグハンドル
-                Box(
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
                     modifier = Modifier
-                        .padding(top = 12.dp)
-                        .align(Alignment.CenterHorizontally)
-                        .width(40.dp)
-                        .height(4.dp)
-                        .background(Color(0xFFD1D5DB), RoundedCornerShape(2.dp))
-                )
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = {
+                        if (pickingWeapon) pickingWeapon = false else onDismiss()
+                    }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "戻る", tint = TextPrimary)
+                    }
+                    Text(
+                        if (pickingWeapon) "武器を選択" else "キャラクター詳細",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                    )
+                }
 
-                // ヒーロー
+                if (pickingWeapon) {
+                    WeaponPickerContent(
+                        weapons = weapons,
+                        equippedWeaponId = character.equippedWeaponId,
+                        onSelect = { weaponId ->
+                            onEquipWeapon(weaponId)
+                            pickingWeapon = false
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .navigationBarsPadding(),
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                            .navigationBarsPadding(),
+                    ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -763,7 +800,7 @@ private fun CharacterDetailSheet(
                 // ステータス詳細
                 Surface(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    color = Color(0xFFF8FAFC),
+                    color = BgSurface,
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -782,7 +819,7 @@ private fun CharacterDetailSheet(
                         StatBar("🛡️ DEF", def, 500, DefBlue)
 
                         Spacer(modifier = Modifier.height(14.dp))
-                        HorizontalDivider(color = Color(0xFFE5E7EB))
+                        HorizontalDivider(color = Color(0xFF334155))
                         Spacer(modifier = Modifier.height(10.dp))
 
                         Row(
@@ -806,46 +843,63 @@ private fun CharacterDetailSheet(
                 // 装備
                 Surface(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    color = Color(0xFFFFFBEB),
-                    shape = RoundedCornerShape(16.dp)
+                    color = BgSurface,
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.35f)),
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("装備中の武器", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("装備中の武器", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            if (weapons.isNotEmpty()) {
+                                TextButton(onClick = { pickingWeapon = true }) {
+                                    Text("変更", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(10.dp))
                         if (weapon != null) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(48.dp)
+                                        .size(52.dp)
                                         .background(
-                                            rarityColor(weapon.weapon?.rarity ?: 1).copy(alpha = 0.12f),
-                                            CircleShape
+                                            rarityColor(weapon.weapon?.rarity ?: 1).copy(alpha = 0.18f),
+                                            CircleShape,
                                         ),
-                                    contentAlignment = Alignment.Center
+                                    contentAlignment = Alignment.Center,
                                 ) {
-                                    Text(weaponEmoji(weapon.weaponId), fontSize = 24.sp)
+                                    Text(weaponEmoji(weapon), fontSize = 26.sp)
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            weapon.weapon?.name ?: "武器",
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = TextPrimary
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Row {
-                                            repeat(weapon.weapon?.rarity ?: 0) {
-                                                Text("⭐", fontSize = 10.sp)
-                                            }
-                                        }
-                                    }
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        "Lv.${weapon.level}  ·  ATK +${weapon.weapon?.baseAtk ?: 0}",
-                                        fontSize = 12.sp,
-                                        color = TextSecondary
+                                        weaponDisplayName(weapon),
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                        maxLines = 2,
                                     )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        repeat(weapon.weapon?.rarity ?: 0) {
+                                            Text("★", fontSize = 11.sp, color = Color(0xFFFFD700))
+                                        }
+                                        if ((weapon.weapon?.rarity ?: 0) > 0) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                        }
+                                        Text(
+                                            "Lv.${weapon.level}  ·  ATK +${weapon.weapon?.baseAtk ?: 0}",
+                                            fontSize = 13.sp,
+                                            color = TextSecondary,
+                                        )
+                                    }
                                 }
                             }
                         } else {
@@ -866,6 +920,86 @@ private fun CharacterDetailSheet(
                 }
 
                 Spacer(modifier = Modifier.height(40.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeaponPickerContent(
+    weapons: List<org.example.project.domain.model.UserWeapon>,
+    equippedWeaponId: String?,
+    onSelect: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+    ) {
+        TextButton(onClick = { onSelect(null) }, modifier = Modifier.fillMaxWidth()) {
+            Text("装備を外す", fontWeight = FontWeight.Bold)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(weapons, key = { it.id }) { w ->
+                val selected = w.id == equippedWeaponId
+                Surface(
+                    onClick = { onSelect(w.id) },
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (selected) AccentBlue.copy(alpha = 0.18f) else BgSurface,
+                    border = BorderStroke(
+                        width = if (selected) 2.dp else 1.dp,
+                        color = if (selected) AccentBlue else Color(0xFF334155),
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(weaponEmoji(w), fontSize = 28.sp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                weaponDisplayName(w),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary,
+                                maxLines = 2,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                repeat(w.weapon?.rarity ?: 0) {
+                                    Text("★", fontSize = 10.sp, color = Color(0xFFFFD700))
+                                }
+                                if ((w.weapon?.rarity ?: 0) > 0) {
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+                                Text(
+                                    "Lv.${w.level}  ·  ATK +${w.weapon?.baseAtk ?: 0}",
+                                    fontSize = 12.sp,
+                                    color = TextSecondary,
+                                )
+                            }
+                        }
+                        if (selected) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "装備中",
+                                tint = AccentCyan,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -889,7 +1023,7 @@ private fun StatBar(label: String, value: Int, maxValue: Int, color: Color) {
                 .height(8.dp)
                 .clip(RoundedCornerShape(4.dp)),
             color = color,
-            trackColor = Color(0xFFE2E8F0)
+            trackColor = Color(0xFF334155)
         )
     }
 }

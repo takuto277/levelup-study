@@ -44,7 +44,8 @@ data class UserWeaponListResponse(
 
 @Serializable
 data class EquipWeaponRequest(
-    @SerialName("user_weapon_id") val userWeaponId: String?
+    /** user_weapons.id。バックエンド JSON キーは `weapon_id`（`user_weapon_id` も新版 API で受理） */
+    @SerialName("weapon_id") val userWeaponId: String?
 )
 
 // ── Mapper ──────────────────────────────────────

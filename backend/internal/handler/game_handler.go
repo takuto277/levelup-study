@@ -85,14 +85,20 @@ func (h *GameHandler) EquipWeapon(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		WeaponID *uuid.UUID `json:"weapon_id"` // null で装備解除
+		UserWeaponID *uuid.UUID `json:"user_weapon_id"` // user_weapons.id（null で装備解除）
+		WeaponID     *uuid.UUID `json:"weapon_id"`      // 旧クライアント互換
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "リクエストの形式が不正です")
 		return
 	}
 
-	if err := h.charRepo.EquipWeapon(charID, req.WeaponID); err != nil {
+	userWeaponID := req.UserWeaponID
+	if userWeaponID == nil {
+		userWeaponID = req.WeaponID
+	}
+
+	if err := h.charRepo.EquipWeapon(charID, userWeaponID); err != nil {
 		respondError(w, http.StatusInternalServerError, "武器装備に失敗しました")
 		return
 	}

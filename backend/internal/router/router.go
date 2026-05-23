@@ -53,6 +53,7 @@ type SecurityConfig struct {
 //
 // [ガチャ]
 //   POST   /api/v1/users/{userID}/gacha/pull           ガチャ実行
+//   GET    /api/v1/users/{userID}/gacha/history        ガチャ履歴
 //
 // [マスタデータ]
 //   GET    /api/v1/master/characters                   キャラマスタ
@@ -150,7 +151,10 @@ func NewRouter(
 				r.Get("/dungeons", gameH.ListDungeonProgress)
 
 				// ガチャ（専用レートリミット: 5 rps / burst 10）
-				r.With(mw.RateLimiter(5, 10)).Post("/gacha/pull", gachaH.Pull)
+				r.Route("/gacha", func(r chi.Router) {
+					r.With(mw.RateLimiter(5, 10)).Post("/pull", gachaH.Pull)
+					r.Get("/history", gachaH.ListHistory)
+				})
 			})
 		})
 
