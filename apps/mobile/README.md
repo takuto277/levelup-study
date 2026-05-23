@@ -67,8 +67,15 @@ If something actually fails, look for **`BUILD FAILED`**, **`e:`** errors, or th
 
 ### Build and Run iOS Application
 
-To build and run the development version of the iOS app, use the run configuration from the run widget
-in your IDE’s toolbar or open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+iOS ビルドでは Xcode の **Compile Kotlin Framework** フェーズが Gradle を実行するため **Java (JDK 17+)** が必要です。
+
+macOS で Android Studio を入れている場合は通常そのまま動きます（同梱 JBR を自動検出）。うまくいかないとき:
+
+```shell
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+```
+
+Xcode からビルド・実行する場合は [/iosApp](./iosApp) を開いて Run してください。
 
 ---
 

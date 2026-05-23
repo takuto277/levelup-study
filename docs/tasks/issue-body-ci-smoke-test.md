@@ -11,8 +11,9 @@ PR #7 マージ後、main 上で Mobile / iOS / Backend CI と Auto open PR が�
 
 ## スコープ（本イシュー）
 
-- [ ] 各 workflow に触れる最小差分のみ（本番コードへの影響なし）
+- [ ] 各 workflow に触れる最小差分のみ
 - [ ] PR 本文に Issue URL と issue-body リンクが含まれる
+- [ ] iOS Xcode ビルド: `Compile Kotlin Framework` で JAVA_HOME 未設定時に Gradle が失敗する問題を修正
 
 ## 受け入れ条件
 
