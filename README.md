@@ -48,7 +48,7 @@ export GH_TOKEN=（あなたの PAT）
 ./scripts/create-issue.sh --title "chore: 例" --body "本文" --label enhancement
 ```
 
-**zsh / bash の注意:** `--body` を **ダブルクォート `"..."` で渡すと**、本文中の **バッククォート `` ` `` で囲んだ部分がコマンド置換**されます（`RAILWAY.md` などが「コマンド」として実行されようになる）。Markdown にコードやファイル名を `` ` `` で書くときは、**`--body` 全体をシングルクォート `'...'` で囲む**か、**`--body-file`** に本文を書いて渡してください。
+**zsh / bash の注意:** `--body` を **ダブルクォート `"..."` で渡すと**、本文中の **バッククォート `` ` `` で囲んだ部分がコマンド置換**されます（`RENDER.md` などが「コマンド」として実行されようになる）。Markdown にコードやファイル名を `` ` `` で書くときは、**`--body` 全体をシングルクォート `'...'` で囲む**か、**`--body-file`** に本文を書いて渡してください。
 
 **`GraphQL: Resource not accessible by personal access token (createIssue)` のとき:** PAT に **イシュー作成権限**がありません。**Fine-grained** なら対象リポジトリを選び、**Repository permissions → Issues: Read and write** を付与して再生成する。**Classic** なら **`repo`** スコープ付きで作り直す。組織リポジトリなら **PAT の SSO 承認**が必要な場合があります。
 

@@ -48,6 +48,19 @@ GitHub Actions の **`backend-ci.yml` はテストのみ**（デプロイは Ren
 
 デプロイ後の **HTTPS のオリジン**（例: `https://levelup-study-api.onrender.com`）を、モバイルの **`ApiRoutes.BASE_URL`**（`apps/mobile/shared/.../ApiRoutes.kt`）に合わせる。Render のサービス名を変えた場合はダッシュボードの URL に合わせて修正する。
 
+## 関連ドキュメント
+
+| ドキュメント | 内容 |
+|-------------|------|
+| [`docs/planning/02_Backend_Architecture.md`](../docs/planning/02_Backend_Architecture.md) | API 一覧・Tech Stack・データ同期 |
+| [`docs/planning/01_Features_and_Roadmap.md`](../docs/planning/01_Features_and_Roadmap.md) | 機能ロードマップ・実装ステータス |
+| [`docs/architecture/01_Overview.md`](../docs/architecture/01_Overview.md) | モノレポ全体構成（KMP / Go） |
+| [`render.yaml`](../render.yaml) | Render Blueprint 定義 |
+
+## ローカル開発
+
+API のローカル実行は Docker Compose（PostgreSQL）+ `make run`。詳細は [`README.md`](README.md) の「ローカル開発セットアップ」。
+
 ## 関連ファイル
 
 | パス | 内容 |
