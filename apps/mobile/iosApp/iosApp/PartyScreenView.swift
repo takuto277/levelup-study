@@ -64,11 +64,24 @@ private func partyPlayerAvatar(size: CGFloat) -> some View {
     }
 }
 
+private func weaponDisplayName(_ weapon: UserWeapon) -> String {
+    if let name = weapon.weapon?.name, !name.isEmpty { return name }
+    return "武器（Lv.\(weapon.level)）"
+}
+
+private func weaponEmoji(_ weapon: UserWeapon) -> String {
+    let name = weapon.weapon?.name ?? ""
+    if name.contains("杖") || name.contains("スタッフ") { return "🪄" }
+    if name.contains("剣") || name.contains("刀") { return "⚔️" }
+    if name.contains("弓") { return "🏹" }
+    if name.contains("聖") || name.contains("ワンド") { return "✨" }
+    return "🗡️"
+}
+
 struct PartyScreenView: View {
     @StateObject private var holder = ViewModelHolder()
     @State private var uiState: PartyUiState
     @State private var showPicker = false
-    @State private var showWeaponPicker = false
 
     init() { let vm = KoinHelperKt.getPartyViewModel(); _uiState = State(initialValue: vm.uiState.value as! PartyUiState) }
 
@@ -103,10 +116,24 @@ struct PartyScreenView: View {
                 }
             }
 
-            if let sel = uiState.selectedCharacter { detailOverlay(sel) }
             if showPicker { pickerOverlay }
-            if showWeaponPicker, let sel = uiState.selectedCharacter { weaponPickerOverlay(for: sel) }
             if uiState.isLoading { Color.black.opacity(0.3).ignoresSafeArea(); ProgressView().scaleEffect(1.5).progressViewStyle(CircularProgressViewStyle(tint: .white)) }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { uiState.selectedCharacter != nil },
+            set: { if !$0 { holder.viewModel.onIntent(intent: PartyIntentDismissCharacterDetail()) } }
+        )) {
+            if let sel = uiState.selectedCharacter {
+                CharacterDetailFullScreen(
+                    character: sel,
+                    weapons: uiState.ownedWeapons,
+                    onDismiss: { holder.viewModel.onIntent(intent: PartyIntentDismissCharacterDetail()) },
+                    onEquip: { weaponId in
+                        holder.viewModel.onIntent(intent: PartyIntentEquipWeapon(userCharacterId: sel.id, userWeaponId: weaponId))
+                    }
+                )
+                .id("\(sel.id)-\(sel.equippedWeaponId ?? "none")")
+            }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: uiState.selectedCharacter != nil)
         .onReceive(Timer.publish(every: 0.3, on: .main, in: .common).autoconnect()) { _ in self.uiState = holder.viewModel.uiState.value as! PartyUiState }
@@ -195,112 +222,177 @@ struct PartyScreenView: View {
             }.background(bgCard).cornerRadius(26, corners: [.topLeft, .topRight])
         }
     }
+}
 
-    // MARK: - Detail
-    private func detailOverlay(_ c: UserCharacter) -> some View {
-        let m = c.character!
-        let hp = combatHp(c, m)
-        let atk = combatAtk(c, m)
-        let def = combatDef(c, m)
-        return ZStack(alignment: .bottom) {
-            Color.black.opacity(0.5).ignoresSafeArea().onTapGesture { holder.viewModel.onIntent(intent: PartyIntentDismissCharacterDetail()) }
+private struct CharacterDetailFullScreen: View {
+    let character: UserCharacter
+    let weapons: [UserWeapon]
+    let onDismiss: () -> Void
+    let onEquip: (String?) -> Void
+
+    @State private var showWeaponPicker = false
+
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [bgDark, Color(hex: 0x0F172A)], startPoint: .top, endPoint: .bottom).ignoresSafeArea()
             VStack(spacing: 0) {
-                RoundedRectangle(cornerRadius: 2).fill(Color(hex: 0x475569)).frame(width: 40, height: 4).padding(.top, 12)
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 14) {
-                        VStack(spacing: 6) { partyPlayerAvatar(size: 100); HStack(spacing: 2) { ForEach(0..<Int(m.rarity), id: \.self) { _ in Text("⭐").font(.system(size: 14)) } } }
-                            .frame(maxWidth: .infinity).padding(.vertical, 18).background(rarityColor(Int(m.rarity)).opacity(0.12)).cornerRadius(18).padding(.horizontal, 16)
-                        VStack(spacing: 4) {
-                            Text(m.name).font(.system(size: 22, weight: .heavy)).foregroundColor(textW)
-                            Text("Lv.\(c.level)  ·  XP \(c.currentXp)").font(.system(size: 12, weight: .bold)).foregroundColor(rarityColor(Int(m.rarity))).padding(.horizontal, 12).padding(.vertical, 4).background(rarityColor(Int(m.rarity)).opacity(0.15)).cornerRadius(8)
-                        }
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("ステータス").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
-                            statBar("❤️ HP", val: hp, max: 2000, c: Color(hex: 0xEF4444))
-                            statBar("⚔️ ATK", val: atk, max: 600, c: Color(hex: 0xF59E0B))
-                            statBar("🛡️ DEF", val: def, max: 500, c: accentBlue)
-                            Divider().background(bgSurface)
-                            HStack { Text("💪 総合戦闘力").font(.system(size: 13)).foregroundColor(textSub); Spacer(); Text("\(hp + atk * 2 + def)").font(.system(size: 18, weight: .heavy)).foregroundColor(textW) }
-                        }.padding(14).background(bgSurface).cornerRadius(14).padding(.horizontal, 16)
-                        weaponSection(for: c)
-                        Spacer().frame(height: 40)
-                    }.padding(.top, 8)
+                HStack {
+                    Button(action: {
+                        if showWeaponPicker { showWeaponPicker = false } else { onDismiss() }
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(textW)
+                            .padding(10)
+                    }
+                    Text(showWeaponPicker ? "武器を選択" : "キャラクター詳細")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(textW)
+                    Spacer()
+                }
+                .padding(.horizontal, 8)
+                .padding(.top, 8)
+
+                if showWeaponPicker {
+                    weaponPickerContent
+                } else {
+                    detailContent
                 }
             }
-            .frame(maxHeight: UIScreen.main.bounds.height * 0.7).background(bgCard).cornerRadius(26, corners: [.topLeft, .topRight])
         }
     }
 
-    private func weaponEmoji(_ weaponId: String?) -> String {
-        switch weaponId {
-        case "wpn_staff": return "🪄"
-        case "wpn_sword": return "⚔️"
-        case "wpn_wand": return "✨"
-        default: return "🗡️"
+    private var detailContent: some View {
+        let m = character.character!
+        let hp = combatHp(character, m)
+        let atk = combatAtk(character, m)
+        let def = combatDef(character, m)
+        let weapon = weapons.first { $0.id == character.equippedWeaponId }
+        return ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 14) {
+                VStack(spacing: 6) {
+                    partyPlayerAvatar(size: 100)
+                    HStack(spacing: 2) { ForEach(0..<Int(m.rarity), id: \.self) { _ in Text("⭐").font(.system(size: 14)) } }
+                }
+                .frame(maxWidth: .infinity).padding(.vertical, 18)
+                .background(rarityColor(Int(m.rarity)).opacity(0.12)).cornerRadius(18).padding(.horizontal, 16)
+                VStack(spacing: 4) {
+                    Text(m.name).font(.system(size: 22, weight: .heavy)).foregroundColor(textW)
+                    Text("Lv.\(character.level)  ·  XP \(character.currentXp)")
+                        .font(.system(size: 12, weight: .bold)).foregroundColor(rarityColor(Int(m.rarity)))
+                        .padding(.horizontal, 12).padding(.vertical, 4)
+                        .background(rarityColor(Int(m.rarity)).opacity(0.15)).cornerRadius(8)
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("ステータス").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
+                    statBar("❤️ HP", val: hp, max: 2000, c: Color(hex: 0xEF4444))
+                    statBar("⚔️ ATK", val: atk, max: 600, c: Color(hex: 0xF59E0B))
+                    statBar("🛡️ DEF", val: def, max: 500, c: accentBlue)
+                    Divider().background(bgSurface)
+                    HStack {
+                        Text("💪 総合戦闘力").font(.system(size: 13)).foregroundColor(textSub)
+                        Spacer()
+                        Text("\(hp + atk * 2 + def)").font(.system(size: 18, weight: .heavy)).foregroundColor(textW)
+                    }
+                }.padding(14).background(bgSurface).cornerRadius(14).padding(.horizontal, 16)
+                weaponSection(weapon: weapon)
+                Spacer().frame(height: 40)
+            }.padding(.top, 8)
         }
     }
 
-    private func weaponSection(for c: UserCharacter) -> some View {
-        let weapon = uiState.ownedWeapons.first { $0.id == c.equippedWeaponId }
-        return VStack(alignment: .leading, spacing: 10) {
+    private func weaponSection(weapon: UserWeapon?) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("装備中の武器").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
                 Spacer()
-                if !uiState.ownedWeapons.isEmpty {
+                if !weapons.isEmpty {
                     Button("変更") { showWeaponPicker = true }
                         .font(.system(size: 13, weight: .bold)).foregroundColor(accentBlue)
                 }
             }
             if let w = weapon {
-                HStack(spacing: 10) {
-                    Text(weaponEmoji(w.weaponId)).font(.system(size: 24))
-                    VStack(alignment: .leading) {
-                        Text(w.weapon?.name ?? "武器").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
-                        Text("Lv.\(w.level)").font(.system(size: 11)).foregroundColor(textSub)
+                HStack(spacing: 12) {
+                    Text(weaponEmoji(w)).font(.system(size: 28))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(weaponDisplayName(w))
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundColor(textW)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        HStack(spacing: 4) {
+                            if let rarity = w.weapon?.rarity {
+                                ForEach(0..<Int(rarity), id: \.self) { _ in
+                                    Text("★").font(.system(size: 10)).foregroundColor(Color(hex: 0xFFD700))
+                                }
+                            }
+                            Text("Lv.\(w.level)  ·  ATK +\(w.weapon?.baseAtk ?? 0)")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(textSub)
+                        }
                     }
                 }
             } else {
                 Text("武器未装備").font(.system(size: 13)).foregroundColor(textSub)
             }
         }
-        .padding(14).background(Color(hex: 0xFFFBEB)).cornerRadius(14).padding(.horizontal, 16)
+        .padding(14).background(bgSurface).cornerRadius(14)
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: 0xF59E0B).opacity(0.35), lineWidth: 1))
+        .padding(.horizontal, 16)
     }
 
-    private func weaponPickerOverlay(for character: UserCharacter) -> some View {
-        ZStack(alignment: .bottom) {
-            Color.black.opacity(0.5).ignoresSafeArea().onTapGesture { showWeaponPicker = false }
-            VStack(spacing: 12) {
-                HStack {
-                    Text("武器を選択").font(.system(size: 16, weight: .heavy)).foregroundColor(textW)
-                    Spacer()
-                    Button("閉じる") { showWeaponPicker = false }.font(.system(size: 13, weight: .bold)).foregroundColor(accentCyan)
-                }
-                Button("装備を外す") {
-                    holder.viewModel.onIntent(intent: PartyIntentEquipWeapon(userCharacterId: character.id, userWeaponId: nil))
-                    showWeaponPicker = false
-                }.foregroundColor(accentBlue)
-                ScrollView {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                        ForEach(uiState.ownedWeapons, id: \.id) { w in
-                            Button(action: {
-                                holder.viewModel.onIntent(intent: PartyIntentEquipWeapon(userCharacterId: character.id, userWeaponId: w.id))
-                                showWeaponPicker = false
-                            }) {
-                                HStack {
-                                    Text(weaponEmoji(w.weaponId))
-                                    VStack(alignment: .leading) {
-                                        Text(w.weapon?.name ?? "武器").font(.system(size: 12, weight: .bold)).foregroundColor(textW)
-                                        Text("Lv.\(w.level)").font(.system(size: 10)).foregroundColor(textSub)
+    private var weaponPickerContent: some View {
+        VStack(spacing: 12) {
+            Button("装備を外す") {
+                onEquip(nil)
+                showWeaponPicker = false
+            }.foregroundColor(accentBlue)
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    ForEach(weapons, id: \.id) { w in
+                        let selected = w.id == character.equippedWeaponId
+                        Button(action: {
+                            onEquip(w.id)
+                            showWeaponPicker = false
+                        }) {
+                            HStack(spacing: 12) {
+                                Text(weaponEmoji(w)).font(.system(size: 28))
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(weaponDisplayName(w))
+                                        .font(.system(size: 16, weight: .bold))
+                                        .foregroundColor(textW)
+                                        .multilineTextAlignment(.leading)
+                                        .lineLimit(2)
+                                    HStack(spacing: 4) {
+                                        if let rarity = w.weapon?.rarity {
+                                            ForEach(0..<Int(rarity), id: \.self) { _ in
+                                                Text("★").font(.system(size: 10)).foregroundColor(Color(hex: 0xFFD700))
+                                            }
+                                        }
+                                        Text("Lv.\(w.level)  ·  ATK +\(w.weapon?.baseAtk ?? 0)")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(textSub)
                                     }
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(10).background(w.id == character.equippedWeaponId ? accentBlue.opacity(0.15) : bgSurface).cornerRadius(12)
-                            }.buttonStyle(.plain)
-                        }
+                                Spacer()
+                                if selected {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(accentCyan)
+                                        .font(.system(size: 20))
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 14).padding(.vertical, 12)
+                            .background(selected ? accentBlue.opacity(0.18) : bgSurface)
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(selected ? accentBlue : Color(hex: 0x334155), lineWidth: selected ? 2 : 1)
+                            )
+                        }.buttonStyle(.plain)
                     }
-                }.frame(maxHeight: 280)
+                }.padding(.horizontal, 16)
             }
-            .padding(18).background(bgCard).cornerRadius(26, corners: [.topLeft, .topRight])
         }
     }
 
