@@ -77,7 +77,7 @@ jobs:
                 head: branch,
                 base: 'main',
                 body,
-                draft: true,
+                draft: false,
               });
               core.info(`Created draft PR #${pr.number}: ${pr.html_url}`);
             } catch (err) {
