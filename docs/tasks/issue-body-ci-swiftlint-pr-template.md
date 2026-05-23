@@ -7,11 +7,11 @@ PR 作成時に Swift の品質チェックと iOS ビルド確認がなく、�
 ## 目的
 
 - PR 時に **SwiftLint** と **iOS Simulator ビルド** を GitHub Actions で実行
-- PR 本文テンプレートを **なぜ / 何が / どうなる / CI** の日本語構成に統一
+- PR 本文テンプレートを **なぜ / 何が / どうなる / ユーザーがやるべきこと** の日本語構成に統一
 - 自動 PR 作成時も同テンプレートを使用
 
 ## 受け入れ条件
 
 - [ ] `ios-ci.yml` が PR で SwiftLint を実行
-- [ ] `.github/pull_request_template.md` が日本語セクションを含む
-- [ ] `open-pr-on-push.yml` がテンプレートを読み込む
+- [ ] `.github/pull_request_template.md` に「ユーザーがやるべきこと」セクションがある
+- [ ] `open-pr-on-push.yml` がテンプレートを読み込み、既存 PR も同期する
