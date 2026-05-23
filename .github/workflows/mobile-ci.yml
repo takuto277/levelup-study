@@ -17,14 +17,13 @@ concurrency:
   group: mobile-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    working-directory: apps/mobile
-
 jobs:
   compile-shared-android:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/mobile
     steps:
       - uses: actions/checkout@v4
 
@@ -35,10 +34,12 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
+      - uses: gradle/actions/setup-gradle@v4
+
       - name: local.properties (sdk.dir + api.key)
         run: |
           SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-          test -n "$SDK" || { echo "Android SDK not found (ANDROID_HOME=$ANDROID_HOME)" >&2; exit 1; }
+          test -n "$SDK" || { echo "Android SDK not found" >&2; exit 1; }
           {
             echo "sdk.dir=$SDK"
             echo "api.key=ci-placeholder-not-for-production"
@@ -47,4 +48,5 @@ jobs:
       - name: Gradle compile (:shared Android)
         env:
           GRADLE_OPTS: -Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.configuration-cache=false
-        run: chmod +x gradlew && ./gradlew :shared:compileDebugKotlinAndroid --no-daemon --no-configuration-cache --stacktrace
+          LEVELUP_API_KEY: ci-placeholder-not-for-production
+        run: ./gradlew :shared:compileDebugKotlinAndroid --no-daemon --stacktrace

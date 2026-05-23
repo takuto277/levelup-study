@@ -38,6 +38,9 @@ jobs:
     name: Xcode build (Simulator)
     runs-on: macos-14
     timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/mobile
     steps:
       - uses: actions/checkout@v4
 
@@ -46,11 +49,11 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      # KMP の android ターゲット設定に SDK パスが必要（iOS リンクでも AGP が評価される）
       - uses: android-actions/setup-android@v3
 
+      - uses: gradle/actions/setup-gradle@v4
+
       - name: local.properties (CI placeholder)
-        working-directory: apps/mobile
         run: |
           SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
           test -n "$SDK" || { echo "Android SDK not found" >&2; exit 1; }
@@ -60,10 +63,10 @@ jobs:
           } > local.properties
 
       - name: Build KMP Shared (iOS Simulator)
-        working-directory: apps/mobile
         env:
           GRADLE_OPTS: -Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.configuration-cache=false
-        run: chmod +x gradlew && ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon --no-configuration-cache --stacktrace
+          LEVELUP_API_KEY: ci-placeholder-not-for-production
+        run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
 
       - name: Xcode build
         working-directory: apps/mobile/iosApp
