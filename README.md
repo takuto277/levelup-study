@@ -27,7 +27,9 @@ npx rulesync generate
 | [Backend — CI](.github/workflows/backend-ci.yml) | `push`（`main`）/ `pull_request`（`backend/**` など） | `go test` / `go vet` |
 | [Mobile — CI](.github/workflows/mobile-ci.yml) | `push`（`main`）/ `pull_request`（`apps/mobile/**`） | KMP `:shared:compileDebugKotlinAndroid` |
 | [iOS — CI](.github/workflows/ios-ci.yml) | `pull_request`（`apps/mobile/iosApp/**`） | SwiftLint + iOS Simulator ビルド |
-| [Auto open draft PR](.github/workflows/open-pr-on-push.yml) | `main` 以外への `push` | 同じヘッドのオープン PR が無ければドラフト PR を作成（日本語テンプレート） |
+| [Auto open PR](.github/workflows/open-pr-on-push.yml) | `main` 以外への `push` | オープン PR が無ければ PR 自動作成（日本語テンプレ + ユーザーチェックリスト） |
+| [Asset pipeline validation](.github/workflows/assets-ci.yml) | `pull_request`（アセット関連パス） | manifest / sync / slug 検証 |
+| [Master images validation](.github/workflows/master-images-ci.yml) | `pull_request`（`backend/assets/master/**` 等） | Supabase マスタ manifest 検証 |
 | [Create issue (manual)](.github/workflows/create-issue.yml) | `workflow_dispatch` | Actions タブから手動でイシュー起票 |
 
 イシューは [テンプレート](.github/ISSUE_TEMPLATE/) から作成できます。PR には [テンプレート](.github/pull_request_template.md) が挿入されます。
@@ -52,9 +54,30 @@ export GH_TOKEN=（あなたの PAT）
 
 スクリプトは [scripts/create-issue.sh](scripts/create-issue.sh)。リポジトリルートで `git remote` が解決できる前提です。
 
+### 機能開発を一括で始める（Issue + ブランチ）
+
+```bash
+export GH_TOKEN=（あなたの PAT）
+./scripts/feature-start.sh \
+  --title "feat: 機能名" \
+  --body-file docs/tasks/issue-body-xxx.md \
+  --branch-slug "my-feature"
+```
+
+AI 向けの詳細手順: [.cursor/skills/feature-delivery/SKILL.md](.cursor/skills/feature-delivery/SKILL.md)
+
+### ゲームアセット（敵・背景・スプライト）の入稿
+
+正本は `apps/mobile/assets/`。手順は [docs/assets/01_Asset_Ingestion_Workflow.md](docs/assets/01_Asset_Ingestion_Workflow.md)。
+
+```bash
+./scripts/assets/run.sh scripts/assets/sync_battle_assets.py
+./scripts/assets/run.sh scripts/assets/validate_assets.py
+```
+
 ### ディレクトリ構成
 - `.rulesync/`: AI 設定のソースファイル
 - `.cursor/rules/`: Cursor 用の自動生成ルール (編集禁止)
 - `CLAUDE.md`: Claude Code 用の自動生成ガイド (編集禁止)
 - `docs/`: プロジェクトの設計・計画ドキュメント
-- `scripts/`: 開発用スクリプト（例: `create-issue.sh`）
+- `scripts/`: 開発用スクリプト（`create-issue.sh`, `feature-start.sh`, `assets/`）

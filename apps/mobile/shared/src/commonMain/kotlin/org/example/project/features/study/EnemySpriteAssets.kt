@@ -22,7 +22,38 @@ object EnemySpriteAssets {
         )
     }
 
-    private val fallbackByLogical: Map<String, String> = emptyMap()
+    private val fallbackByLogical: Map<String, String> = mapOf(
+        "abyssal_serpent" to "abyssal_serpent",
+        "bat" to "bat",
+        "cave_bat" to "bat",
+        "cerberus" to "cerberus",
+        "corrupted_paladin" to "corrupted_paladin",
+        "crimson_demon" to "crimson_demon",
+        "crystal_slime" to "slime",
+        "dark_knight" to "dark_knight",
+        "dark_miner" to "goblin",
+        "dragon" to "dragon",
+        "fire_slime" to "slime",
+        "forest_slime" to "slime",
+        "forgotten_tome" to "lich",
+        "gargoyle" to "gargoyle",
+        "goblin" to "goblin",
+        "golem" to "golem",
+        "ink_wraith" to "specter",
+        "lava_golem" to "golem",
+        "lich" to "lich",
+        "lizardman" to "lizardman",
+        "mimic" to "mimic",
+        "nightmare" to "nightmare",
+        "phoenix" to "phoenix",
+        "rust_monster" to "slime",
+        "specter" to "specter",
+        "stone_sentinel" to "stone_sentinel",
+        "thunderbird" to "thunderbird",
+        "treant" to "treant",
+        "werewolf" to "werewolf",
+        "wisp" to "wisp",
+    )
 
     fun drawableKey(logicalKey: String): String {
         val k = logicalKey.trim().lowercase()

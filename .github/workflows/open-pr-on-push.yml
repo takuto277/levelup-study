@@ -1,5 +1,5 @@
-# main 以外への push で、まだ PR が無ければドラフト PR を自動作成する
-name: Auto open draft PR
+# main 以外への push で、まだ PR が無ければ PR を自動作成する
+name: Auto open PR
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create draft PR if none exists
+      - name: Create PR if none exists
         uses: actions/github-script@v7
         with:
           github-token: ${{ github.token }}
@@ -58,9 +58,32 @@ jobs:
                 owner, repo, state: 'open', per_page: 100,
               });
               const hit = issues.find(
-                (i) => !i.pull_request && (i.title.includes(searchTitle) || i.title.includes(branchSlug.replace(/-/g, ' '))),
+                (i) => !i.pull_request && (
+                  i.title.includes(searchTitle)
+                  || i.title.includes(branchSlug.replace(/-/g, ' '))
+                ),
               );
               if (hit) issueNum = hit.number;
+            }
+
+            const checklist = [];
+            if (issueNum) {
+              checklist.push(
+                `- [x] **Issue 連携** — \`Fixes #${issueNum}\` を自動設定済み（マージで Issue がクローズされます）`,
+              );
+            } else {
+              checklist.push(
+                '- [ ] **Issue 連携** — 先頭の `Fixes #n` を記入するか、[Issue を作成](https://github.com/' + owner + '/' + repo + '/issues/new/choose)',
+              );
+            }
+            checklist.push(
+              '- [ ] **説明文** — 「なぜ / 何が / どうなる」の3セクションを埋める',
+              '- [ ] **CI** — PR の Checks タブですべて green',
+              '- [ ] **レビュー依頼** — 内容を確認し、レビュアーを指定',
+              '- [ ] **（該当時）手元確認** — シミュレータ / API / スクリプトの動作確認',
+            );
+            if (fs.existsSync(`docs/tasks/issue-body-${branchSlug}.md`)) {
+              checklist.push('- [ ] **Issue 本文** — `docs/tasks/issue-body-' + branchSlug + '.md` と実装が一致しているか');
             }
 
             const templatePath = '.github/pull_request_template.md';
@@ -68,28 +91,32 @@ jobs:
               ? fs.readFileSync(templatePath, 'utf8')
               : '## 概要\n\n-';
 
-            template = template.replace(
-              'Fixes #<!-- イシュー番号。例: Fixes #2 -->',
-              issueNum ? `Fixes #${issueNum}` : 'Fixes #<!-- イシュー番号を記入 -->',
-            );
+            template = template
+              .replace('Fixes #<!-- AUTO_FIXES_ISSUE -->', issueNum ? `Fixes #${issueNum}` : 'Fixes #<!-- 番号を記入 -->')
+              .replace('<!-- AUTO_USER_CHECKLIST -->', checklist.join('\n'));
 
             const title = issueNum
               ? `feat: ${branchSlug.replace(/-/g, ' ')} (#${issueNum})`
               : `[auto] ${branch.replace(/\//g, '_')}`;
 
             const body = [
-              `<!-- このドラフト PR は \`${branch}\` への push から [Actions run](${runUrl}) で自動作成されました。 -->`,
+              `<!-- 自動 PR: \`${branch}\` ([Actions run](${runUrl})) -->`,
               '',
               template,
             ].join('\n');
 
-            const { data: pr } = await github.rest.pulls.create({
-              owner,
-              repo,
-              title,
-              head: branch,
-              base,
-              body,
-              draft: true,
-            });
-            core.info(`Created draft PR #${pr.number}: ${pr.html_url}`);
+            try {
+              const { data: pr } = await github.rest.pulls.create({
+                owner,
+                repo,
+                title,
+                head: branch,
+                base,
+                body,
+                draft: false,
+              });
+              core.info(`Created PR #${pr.number}: ${pr.html_url}`);
+            } catch (err) {
+              const detail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+              core.setFailed(`pulls.create failed: ${detail}`);
+            }

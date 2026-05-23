@@ -1,4 +1,4 @@
-Fixes #<!-- イシュー番号。例: Fixes #2 -->
+Fixes #<!-- AUTO_FIXES_ISSUE -->
 
 ## なぜやったのか（背景・目的）
 
@@ -18,22 +18,25 @@ Fixes #<!-- イシュー番号。例: Fixes #2 -->
 
 -
 
-## CI / 品質チェック
+## ユーザーがやるべきこと（マージ前）
 
-マージ前に **Checks タブ** で以下が green であること（変更パスに応じて自動実行）:
+<!-- レビュー依頼前に確認。自動 PR でも Actions がチェックリストを生成します。 -->
 
-| チェック | 対象 | 内容 |
-|----------|------|------|
-| **iOS — CI** | `apps/mobile/iosApp/**` | SwiftLint + iOS Simulator ビルド |
-| **Mobile — CI** | `apps/mobile/**` | KMP Android コンパイル |
-| **Backend — CI** | `backend/**` | `go test` / `go vet` |
-| **Asset pipeline validation** | `apps/mobile/assets/**` 等 | manifest / sync 検証 |
-| **Master images validation** | `backend/assets/master/**` 等 | Supabase マスタ manifest |
+<!-- AUTO_USER_CHECKLIST -->
 
-- [ ] 上記 CI が green（該当 workflow のみで可）
-- [ ] SwiftLint 違反なし（iOS 変更時）
-- [ ] 手元で必要な動作確認済み
+## CI / 品質チェック（参考）
+
+PR の **Checks タブ** で green を確認（変更パスに応じて自動実行）:
+
+| チェック | 主な対象 |
+|----------|----------|
+| **iOS — CI** | `apps/mobile/iosApp/**` — SwiftLint + Simulator ビルド |
+| **Mobile — CI** | `apps/mobile/**` — KMP Android コンパイル |
+| **Backend — CI** | `backend/**` |
+| **Asset pipeline validation** | `apps/mobile/assets/**` 等 |
+| **Master images validation** | `backend/assets/master/**` 等 |
 
 ## 関連イシュー
 
-<!-- 本文先頭の `Fixes #n` でマージ時にイシューが自動クローズされます -->
+- 本文先頭の **`Fixes #番号`** があると、`main` マージ時に Issue が **自動クローズ** されます
+- `docs/tasks/issue-body-{ブランチslug}.md` があるブランチは push 時に Issue 番号の自動連携を試みます（手動追記は不要な場合あり）
