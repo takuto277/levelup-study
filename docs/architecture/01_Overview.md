@@ -114,7 +114,14 @@ SwiftUIを含むネイティブ層がデータを自前で永続化すること�
 ---
 
 ## 6. 今後のステップ (Next Steps)
-1. 要件定義のブラッシュアップ（どんなガチャがあるか？RPGの戦闘システムはどうするか？）
-2. `apps/` への Kotlin Multiplatform プロジェクトの初期化 (`kmp-wizard` 等の利用)
-3. `backend/` のGoモジュールの初期化と最低限のAPI立ち上げ (Ping/Pongなど)
-4. クライアントからの疎通確認
+
+### 完了済み
+1. ~~KMP プロジェクト初期化~~ — `apps/mobile/shared` + iOS / Android UI
+2. ~~Go バックエンド API 立ち上げ~~ — Render 上で 20+ エンドポイント稼働
+3. ~~クライアントからの疎通~~ — Repository 層で Real API 接続済み
+
+### 次の優先タスク
+1. Supabase Auth ログイン UI とユーザー ID 紐付け
+2. コアゲームループの設計準拠（報酬式・装備・LvUP・サーバーバトル）
+3. OpenAPI 定義（`backend/api/` — 未作成）
+4. 詳細は [`docs/planning/01_Features_and_Roadmap.md`](../planning/01_Features_and_Roadmap.md) および [GitHub Issues](https://github.com/takuto277/levelup-study/issues) を参照
