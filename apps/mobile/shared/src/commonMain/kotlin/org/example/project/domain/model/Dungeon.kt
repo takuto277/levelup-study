@@ -43,8 +43,8 @@ data class MasterDungeon(
     val sortOrder: Int,
     val unlockCondition: String?,
     val imageUrl: String,
-    val rewardSummary: String? = null,
-    val isActive: Boolean
+    val isActive: Boolean,
+    val stages: List<DungeonStage> = emptyList(),
 )
 
 /**
@@ -72,6 +72,15 @@ data class DungeonStageEnemy(
 )
 
 /**
+ * ステージ drop_table の1行
+ */
+data class StageDrop(
+    val itemType: String,
+    val amount: Int,
+    val rate: Double = 1.0,
+)
+
+/**
  * ダンジョンステージマスタ
  */
 data class DungeonStage(
@@ -80,9 +89,8 @@ data class DungeonStage(
     val stageNumber: Int,
     val stageName: String? = null,
     val recommendedPower: Int,
-    /** 後方互換用 JSON。正は [enemies] */
-    val enemyComposition: String,
-    val dropTable: String,
+    val enemyComposition: String = "[]",
+    val drops: List<StageDrop> = emptyList(),
     val enemies: List<DungeonStageEnemy> = emptyList()
 )
 

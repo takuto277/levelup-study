@@ -288,18 +288,32 @@ private struct DungeonDetailOverlay: View {
                             Text("ダンジョン情報").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
                             infoRow("総ステージ", "📍 \(dungeon.totalStages)F")
                             infoRow("推定レベル", "Lv.\(dungeon.estimatedRecommendedLevel())")
+                            if let next = dungeon.nextStageNumber {
+                                infoRow("次のステージ", "Stage \(next)")
+                                if let enemies = dungeon.nextStageEnemySummary, !enemies.isEmpty {
+                                    infoRow("出現敵", enemies)
+                                }
+                            }
                         }
                         .padding(16).background(bgSurface).cornerRadius(14).padding(.horizontal, 16)
 
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("🎁 報酬").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
+                            Text("🎁 次ステージ報酬").font(.system(size: 14, weight: .bold)).foregroundColor(textW)
                             HStack {
-                                Spacer()
-                                VStack(spacing: 4) {
-                                    Text("✨").font(.system(size: 24))
-                                    Text("\(dungeon.rewards.exp) EXP").font(.system(size: 13, weight: .bold)).foregroundColor(Color(hex: 0x34D399))
+                                if dungeon.rewards.gold > 0 {
+                                    rewardChip("💰", "\(dungeon.rewards.gold) G", Color(hex: 0xF59E0B))
+                                }
+                                if dungeon.rewards.exp > 0 {
+                                    rewardChip("✨", "\(dungeon.rewards.exp) EXP", Color(hex: 0x34D399))
+                                }
+                                if dungeon.rewards.gachaStones > 0 {
+                                    rewardChip("💎", "\(dungeon.rewards.gachaStones)", accentCyan)
                                 }
                                 Spacer()
+                            }
+                            if let bonus = dungeon.rewards.bonusItemName, !bonus.isEmpty, dungeon.rewards.bonusItemDropRate > 0 {
+                                Text("\(bonus)（確率 \(Int(dungeon.rewards.bonusItemDropRate * 100))%）")
+                                    .font(.system(size: 11)).foregroundColor(Color(hex: 0xEC4899))
                             }
                         }
                         .padding(16).background(bgSurface).cornerRadius(14).padding(.horizontal, 16)
@@ -326,6 +340,13 @@ private struct DungeonDetailOverlay: View {
 
     private func infoRow(_ label: String, _ value: String) -> some View {
         HStack { Text(label).font(.system(size: 12)).foregroundColor(textSub); Spacer(); Text(value).font(.system(size: 12, weight: .bold)).foregroundColor(textW) }
+    }
+
+    private func rewardChip(_ emoji: String, _ text: String, _ color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(emoji).font(.system(size: 22))
+            Text(text).font(.system(size: 12, weight: .bold)).foregroundColor(color)
+        }.padding(.trailing, 12)
     }
 }
 

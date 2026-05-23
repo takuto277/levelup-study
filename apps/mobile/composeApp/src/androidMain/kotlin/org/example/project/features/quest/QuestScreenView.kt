@@ -39,6 +39,7 @@ private val AccentIndigo = Color(0xFF6366F1)
 private val AccentCyan = Color(0xFF22D3EE)
 private val GoldColor = Color(0xFFFFD700)
 private val ExpGreen = Color(0xFF10B981)
+private val GoldYellow = Color(0xFFF59E0B)
 private val GachaViolet = Color(0xFF8B5CF6)
 private val BgSurface = Color(0xFF1A2744)
 
@@ -481,6 +482,12 @@ private fun DungeonDetailSheet(
                         Spacer(modifier = Modifier.height(12.dp))
                         DetailInfoRow("総ステージ", "📍 ${dungeon.totalStages}ステージ")
                         DetailInfoRow("推定レベル", "Lv.${dungeon.estimatedRecommendedLevel()}")
+                        dungeon.nextStageNumber?.let { stageNum ->
+                            DetailInfoRow("次のステージ", "Stage $stageNum")
+                            dungeon.nextStageEnemySummary?.let { summary ->
+                                DetailInfoRow("出現敵", summary)
+                            }
+                        }
                     }
                 }
 
@@ -495,7 +502,7 @@ private fun DungeonDetailSheet(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            "🎁 クリア報酬",
+                            "🎁 次ステージ報酬",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
@@ -506,7 +513,18 @@ private fun DungeonDetailSheet(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            RewardDetailItem("✨", "経験値", "${dungeon.rewards.exp} EXP", ExpGreen)
+                            if (dungeon.rewards.gold > 0) {
+                                RewardDetailItem("💰", "ゴールド", "${dungeon.rewards.gold} G", GoldYellow)
+                            }
+                            if (dungeon.rewards.exp > 0) {
+                                RewardDetailItem("✨", "経験値", "${dungeon.rewards.exp} EXP", ExpGreen)
+                            }
+                            if (dungeon.rewards.gachaStones > 0) {
+                                RewardDetailItem("💎", "召喚石", "${dungeon.rewards.gachaStones}", AccentCyan)
+                            }
+                        }
+                        if (dungeon.rewards.gold == 0 && dungeon.rewards.exp == 0 && dungeon.rewards.gachaStones == 0) {
+                            Text("報酬情報なし", fontSize = 13.sp, color = TextSecondary)
                         }
 
                         dungeon.rewards.bonusItemName?.let { itemName ->

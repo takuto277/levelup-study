@@ -9,6 +9,7 @@ import org.example.project.core.network.NetworkResult
 import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.dto.DungeonProgressListResponse
 import org.example.project.data.remote.dto.DungeonStageListResponse
+import org.example.project.data.remote.dto.MasterDungeonDetailResponse
 import org.example.project.data.remote.dto.MasterDungeonListResponse
 
 /**
@@ -29,9 +30,9 @@ class DungeonGateway(private val client: HttpClient) {
     /** GET /api/v1/master/dungeons/{dungeonId} — ダンジョン詳細（ステージ含む） */
     suspend fun getDungeonStages(dungeonId: String): NetworkResult<DungeonStageListResponse> =
         runCatching {
-            val response: DungeonStageListResponse =
+            val response: MasterDungeonDetailResponse =
                 client.get(ApiRoutes.masterDungeon(dungeonId)).body()
-            NetworkResult.Success(response)
+            NetworkResult.Success(DungeonStageListResponse(stages = response.stages))
         }.getOrElse { e ->
             NetworkResult.Error(message = e.message ?: "ステージ情報の取得に失敗しました")
         }
