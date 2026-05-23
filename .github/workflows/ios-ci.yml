@@ -46,10 +46,16 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      # KMP の android ターゲット設定に SDK パスが必要（iOS リンクでも AGP が評価される）
+      - uses: android-actions/setup-android@v3
+
       - name: local.properties (CI placeholder)
         working-directory: apps/mobile
         run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK" || { echo "Android SDK not found" >&2; exit 1; }
           {
+            echo "sdk.dir=$SDK"
             echo "api.key=ci-placeholder-not-for-production"
           } > local.properties
 

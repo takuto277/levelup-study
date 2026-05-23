@@ -37,8 +37,10 @@ jobs:
 
       - name: local.properties (sdk.dir + api.key)
         run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK" || { echo "Android SDK not found (ANDROID_HOME=$ANDROID_HOME)" >&2; exit 1; }
           {
-            echo "sdk.dir=${ANDROID_HOME}"
+            echo "sdk.dir=$SDK"
             echo "api.key=ci-placeholder-not-for-production"
           } > local.properties
 
