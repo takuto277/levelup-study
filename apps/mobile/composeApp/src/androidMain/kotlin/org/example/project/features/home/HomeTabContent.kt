@@ -2,8 +2,8 @@ package org.example.project.features.home
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -232,6 +232,10 @@ private fun HomeCharacterHero(
             val playerIdleRes = remember {
                 context.resources.getIdentifier("sprite_player_idle_1", "drawable", context.packageName)
             }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.clickable(onClick = onTapCharacter)
+            ) {
             if (playerIdleRes != 0) {
                 Image(
                     painter = painterResource(playerIdleRes),
@@ -261,6 +265,7 @@ private fun HomeCharacterHero(
                 ) {
                     Text("Lv.$lv", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = HomeTheme.AccentBlue)
                 }
+            }
             }
         }
     }

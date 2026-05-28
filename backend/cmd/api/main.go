@@ -79,7 +79,7 @@ func main() {
 	// --- Handler 初期化 ---
 	userH := handler.NewUserHandler(userRepo)
 	studyH := handler.NewStudyHandler(studyService)
-	gameH := handler.NewGameHandler(charRepo, weaponRepo, partyRepo, dungeonRepo)
+	gameH := handler.NewGameHandler(db, userRepo, charRepo, weaponRepo, partyRepo, dungeonRepo)
 	gachaH := handler.NewGachaHandler(gachaService, gachaRepo)
 	masterH := handler.NewMasterHandler(masterRepo)
 

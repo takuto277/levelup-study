@@ -3,6 +3,7 @@ package org.example.project.data.remote.gateway
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import org.example.project.core.network.ApiRoutes
@@ -11,6 +12,7 @@ import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.dto.EquipWeaponRequest
 import org.example.project.data.remote.dto.MasterWeaponListResponse
 import org.example.project.data.remote.dto.UserWeaponListResponse
+import org.example.project.data.remote.dto.UserWeaponResponse
 
 /**
  * 武器 API Gateway
@@ -48,5 +50,15 @@ class WeaponGateway(private val client: HttpClient) {
         NetworkResult.Success(Unit)
     }.getOrElse { e ->
         NetworkResult.Error(message = e.message ?: "武器の装備に失敗しました")
+    }
+
+    /** POST /api/v1/users/{userId}/weapons/{weaponId}/level-up */
+    suspend fun levelUpWeapon(userWeaponId: String): NetworkResult<UserWeaponResponse> = runCatching {
+        val userId = UserSessionStore.requireUserId()
+        val response: UserWeaponResponse =
+            client.post(ApiRoutes.levelUpWeapon(userId, userWeaponId)).body()
+        NetworkResult.Success(response)
+    }.getOrElse { e ->
+        NetworkResult.Error(message = e.message ?: "武器のレベルアップに失敗しました")
     }
 }

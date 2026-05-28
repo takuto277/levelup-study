@@ -147,11 +147,28 @@ fun PartyScreenView() {
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                uiState.party?.let { party ->
+                    PartySlotSection(
+                        party = party,
+                        selectedSlot = uiState.selectedSlot,
+                        onSlotClick = { slot -> viewModel.onIntent(PartyIntent.SelectSlot(slot)) },
+                        onRemoveSlot = { slot -> viewModel.onIntent(PartyIntent.RemoveFromSlot(slot)) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
                 CharacterListSection(
                     characters = uiState.ownedCharacters,
-                    selectedSlot = null,
+                    selectedSlot = uiState.selectedSlot,
                     onCharacterClick = { charId ->
-                        viewModel.onIntent(PartyIntent.SelectCharacter(charId))
+                        val slot = uiState.selectedSlot
+                        if (slot != null) {
+                            viewModel.onIntent(PartyIntent.AssignCharacter(slot, charId))
+                            viewModel.onIntent(PartyIntent.SelectSlot(slot))
+                        } else {
+                            viewModel.onIntent(PartyIntent.SelectCharacter(charId))
+                        }
                     }
                 )
 
@@ -167,7 +184,20 @@ fun PartyScreenView() {
                 onDismiss = { viewModel.onIntent(PartyIntent.DismissCharacterDetail) },
                 onEquipWeapon = { weaponId ->
                     viewModel.onIntent(PartyIntent.EquipWeapon(character.id, weaponId))
+                },
+                onLevelUpCharacter = {
+                    viewModel.onIntent(PartyIntent.LevelUpCharacter(character.id))
+                },
+                onLevelUpWeapon = { weaponId ->
+                    viewModel.onIntent(PartyIntent.LevelUpWeapon(weaponId))
                 }
+            )
+        }
+
+        uiState.selectedSlot?.let { slot ->
+            SlotSelectionBanner(
+                slotPosition = slot,
+                onCancel = { viewModel.onIntent(PartyIntent.SelectSlot(slot)) }
             )
         }
 
@@ -692,6 +722,8 @@ private fun MiniStat(emoji: String, value: String) {
     }
 }
 
+private fun levelUpGoldCost(level: Int): Int = level.coerceAtLeast(1) * 50
+
 // ── キャラクター詳細シート ──────────────────────────
 @Composable
 private fun CharacterDetailScreen(
@@ -700,6 +732,8 @@ private fun CharacterDetailScreen(
     weapons: List<org.example.project.domain.model.UserWeapon>,
     onDismiss: () -> Unit,
     onEquipWeapon: (String?) -> Unit,
+    onLevelUpCharacter: () -> Unit,
+    onLevelUpWeapon: (String) -> Unit,
 ) {
     val master = character.character ?: return
     var pickingWeapon by remember { mutableStateOf(false) }
@@ -916,6 +950,40 @@ private fun CharacterDetailScreen(
                                 Text("武器未装備", fontSize = 14.sp, color = TextSecondary)
                             }
                         }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onLevelUpCharacter,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentIndigo)
+                ) {
+                    Text(
+                        "LvUP（${levelUpGoldCost(character.level)} G）",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                weapon?.let { equipped ->
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedButton(
+                        onClick = { onLevelUpWeapon(equipped.id) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            "武器 LvUP（${levelUpGoldCost(equipped.level)} G）",
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFF59E0B)
+                        )
                     }
                 }
 

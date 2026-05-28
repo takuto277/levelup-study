@@ -291,6 +291,9 @@ struct HomeScreenView: View {
                     .offset(y: isBouncing ? -10 : 0)
                     .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: isBouncing)
                     .onAppear { isBouncing = true }
+                    .onTapGesture {
+                        homeViewModel.onIntent(intent: HomeIntentTapMainCharacter())
+                    }
 
                 Spacer().frame(height: 4)
                 HStack(spacing: 6) {

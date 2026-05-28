@@ -3,11 +3,13 @@ package org.example.project.data.remote.gateway
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.post
 import org.example.project.core.network.ApiRoutes
 import org.example.project.core.network.NetworkResult
 import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.dto.MasterCharacterListResponse
 import org.example.project.data.remote.dto.UserCharacterListResponse
+import org.example.project.data.remote.dto.UserCharacterResponse
 
 /**
  * キャラクター API Gateway
@@ -31,5 +33,15 @@ class CharacterGateway(private val client: HttpClient) {
         NetworkResult.Success(response)
     }.getOrElse { e ->
         NetworkResult.Error(message = e.message ?: "所持キャラクターの取得に失敗しました")
+    }
+
+    /** POST /api/v1/users/{userId}/characters/{characterId}/level-up */
+    suspend fun levelUpCharacter(userCharacterId: String): NetworkResult<UserCharacterResponse> = runCatching {
+        val userId = UserSessionStore.requireUserId()
+        val response: UserCharacterResponse =
+            client.post(ApiRoutes.levelUpCharacter(userId, userCharacterId)).body()
+        NetworkResult.Success(response)
+    }.getOrElse { e ->
+        NetworkResult.Error(message = e.message ?: "キャラクターのレベルアップに失敗しました")
     }
 }
