@@ -38,6 +38,7 @@ AI コーディングエージェント（Cursor 等）が **PR 前の品質確�
 | `github-implement-pr` | Issue 実装〜PR までの入口 |
 | `github-issue-create-from-plan` | 設計合意後の Issue 起票 |
 | `github-pr-create` | PR 本文テンプレ + `gh pr create --body-file` |
+| `github-pr-self-review` | **PR 作成直後の必須セルフレビュー**（完了報告前） |
 | `github-pr-review` | PR レビュー |
 | `github-pr-feedback-address` | レビュー指摘の実装対応 |
 | `github-pr-comment-reply` | PR コメント返信 |
@@ -45,6 +46,15 @@ AI コーディングエージェント（Cursor 等）が **PR 前の品質確�
 | `git-branch-create` / `git-worktree-create` / `git-commit-message` | Git 操作 |
 | `grill-me` / `grill-with-docs` | 要件・設計の詰め |
 | `project-context` | 本リポジトリの制約サマリ |
+| `skills-readme-sync` | `.cursor/skills/README.md` とスキル一覧の同期 |
+
+## スキル検証（`.cursor/skills/` 変更時）
+
+```bash
+./scripts/validate-skills.sh
+```
+
+セットアップ: [docs/ai/SETUP.md](docs/ai/SETUP.md)
 
 ## GitHub CLI
 

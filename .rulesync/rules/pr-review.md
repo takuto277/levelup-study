@@ -20,6 +20,7 @@ globs:
 2. **実装** → `./scripts/validate-pr.sh`
 3. **`docs/tasks/pr-body-{slug}.md`** — github-pr-create テンプレ
 4. **`git push`** → **`gh pr create --body-file`**
+5. **セルフレビュー（必須）** — github-pr-self-review（ユーザーへ「PR 完了」報告の前）
 
 ## ユーザーがやるべきこと
 

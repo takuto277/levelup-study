@@ -1,0 +1,26 @@
+name: Skills — CI
+
+on:
+  pull_request:
+    paths:
+      - '.cursor/skills/**'
+      - 'scripts/validate-skills.sh'
+      - '.github/workflows/skills-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - '.cursor/skills/**'
+      - 'scripts/validate-skills.sh'
+      - '.github/workflows/skills-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate agent skills
+        run: bash scripts/validate-skills.sh

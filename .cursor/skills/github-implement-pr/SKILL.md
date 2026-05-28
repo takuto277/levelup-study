@@ -34,6 +34,7 @@ GitHub Issue または実装指示を受け、作業領域の準備、実装、�
 - ブランチ名生成: `../git-branch-create/SKILL.md`
 - コミットメッセージ作成: `../git-commit-message/SKILL.md`
 - push / PR 作成: `../github-pr-create/SKILL.md`
+- PR 直後セルフレビュー: `../github-pr-self-review/SKILL.md`
 
 Issue 確認、実装、品質確認は専用スキルへ分けず、このスキル内の手順に従う。
 
@@ -129,10 +130,11 @@ Issue 確認、実装、品質確認は専用スキルへ分けず、このス�
 
 - Issue を閉じる意図が明確なら `Close #123`、関連付けのみなら `Refs #123` を使う。
 - 作成後に `gh pr view --json title,body,url` で結果を確認し、PR URL を最終報告に含める。
+- **PR 作成直後に [github-pr-self-review](../github-pr-self-review/SKILL.md) を必ず実行**してから最終報告する（`[must]` は修正して push 後に再実行）。
 
 # 最終報告
 
-- 変更概要、実行した検証、作成した PR URL を簡潔に返す。
+- 変更概要、実行した検証、作成した PR URL、**セルフレビュー結果**を簡潔に返す。
 - 失敗や未解決事項がある場合は、原因、現在の状態、次に必要な判断を明記する。
 
 # 品質チェック
@@ -145,6 +147,7 @@ Issue 確認、実装、品質確認は専用スキルへ分けず、このス�
 - [ ] `main`、`master`、`develop` への直接実装と直接 push を避ける
 - [ ] 無関係な変更を stage/commit しない
 - [ ] PR 本文は `--body-file`、本文更新は `--body-file` または `gh api --field body=@file` で安全に渡す
+- [ ] PR 作成直後に github-pr-self-review を実行した
 
 # LevelUp Study 向け補足
 
