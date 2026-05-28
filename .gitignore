@@ -1,6 +1,7 @@
 # =========================
-# OS generated files
+# Local tooling (never commit)
 # =========================
+.local/
 .DS_Store
 .DS_Store?
 ._*
