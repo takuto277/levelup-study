@@ -65,7 +65,18 @@ Plan（必要なら grill-me / grill-with-docs）
 4. **CI** は push 後のセーフティネット（PR の Checklist にユーザー確認項目として記載）
 5. **マージはユーザー**
 
-## 6. レビュー対応
+## 5b. セルフレビュー（必須・PR 作成直後）
+
+**ユーザーへ「PR 完了」と報告する前に必ず実行。**
+
+[github-pr-self-review](../github-pr-self-review/SKILL.md) → 内部で [github-pr-review](../github-pr-review/SKILL.md) と同手順。
+
+- `gh pr diff` で差分を読み、`[must]` / `[should]` / `[nit]` を判定
+- `[must]` がある → 修正して push し、セルフレビューをやり直す
+- `[should]` / `[nit]` → GitHub PR にコメント（APPROVE はしない）
+- 指摘ゼロでも「セルフレビュー済み」を報告に含める
+
+## 6. レビュー対応（他者レビュー・指摘対応）
 
 - レビュー実施: [github-pr-review](../github-pr-review/SKILL.md)
 - 指摘対応: [github-pr-feedback-address](../github-pr-feedback-address/SKILL.md)
@@ -74,6 +85,7 @@ Plan（必要なら grill-me / grill-with-docs）
 ## 禁止事項
 
 - validate 未実行で PR 完了報告
+- **セルフレビュー未実施で PR 完了報告**
 - GitHub Actions で Issue / PR を自動作成する（廃止済み）
 - ユーザー明示なしの commit / push / merge
 - PR 本文空・Verification なし

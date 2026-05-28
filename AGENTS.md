@@ -38,7 +38,8 @@ AI コーディングエージェント（Cursor 等）が **PR 前の品質確�
 | `github-implement-pr` | Issue 実装〜PR までの入口 |
 | `github-issue-create-from-plan` | 設計合意後の Issue 起票 |
 | `github-pr-create` | PR 本文テンプレ + `gh pr create --body-file` |
-| `github-pr-review` | PR レビュー |
+| `github-pr-self-review` | **PR 作成直後の必須セルフレビュー** |
+| `github-pr-review` | PR レビュー（他者レビュー・再チェック） |
 | `github-pr-feedback-address` | レビュー指摘の実装対応 |
 | `github-pr-comment-reply` | PR コメント返信 |
 | `qa-test-design` | 手動 UI 確認含むテスト観点 |
