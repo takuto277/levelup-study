@@ -11,8 +11,9 @@ LevelUp 固有設定: [LEVELUP.md](./LEVELUP.md)
 
 | Skill | Description |
 |-------|-------------|
-| [feature-delivery](feature-delivery/SKILL.md) | Issue → 実装 → validate → PR → レビューの標準フロー |
+| [feature-delivery](feature-delivery/SKILL.md) | Issue → 実装 → validate → PR → セルフレビュー → レビュー対応の標準フロー |
 | [project-context](project-context/SKILL.md) | 本リポジトリの制約サマリ |
+| [github-pr-self-review](github-pr-self-review/SKILL.md) | **PR 作成直後の必須セルフレビュー**（[must] は修正して push） |
 
 ### Git ローカル操作
 
@@ -28,6 +29,7 @@ LevelUp 固有設定: [LEVELUP.md](./LEVELUP.md)
 |-------|-------------|
 | [github-issue-create-from-plan](github-issue-create-from-plan/SKILL.md) | 設計プラン合意後に GitHub Issue を作成する |
 | [github-pr-create](github-pr-create/SKILL.md) | PR 本文生成を含めて GitHub に PR を作成する |
+| [github-pr-self-review](github-pr-self-review/SKILL.md) | PR 作成直後に必須のセルフレビュー（完了報告前） |
 | [github-pr-feedback-address](github-pr-feedback-address/SKILL.md) | GitHub PR のレビュー指摘を確認し、実装対応から返信まで行う |
 | [github-pr-review](github-pr-review/SKILL.md) | 指定した GitHub PR をレビューし、FB 対応後の再チェックまで行う |
 | [github-pr-comment-reply](github-pr-comment-reply/SKILL.md) | GitHub PR の review comment や conversation comment に返信する |
@@ -57,14 +59,28 @@ LevelUp 固有設定: [LEVELUP.md](./LEVELUP.md)
 | Skill | Description |
 |-------|-------------|
 | [skill-author](skill-author/SKILL.md) | SKILL.md ファイルの作成と改善を行う |
+| [skills-readme-sync](skills-readme-sync/SKILL.md) | **本リポジトリ専用** — README のスキル一覧を現在の構成へ同期する |
 
 ## 方針
 
 - **Issue / PR / レビュー**: `gh` CLI + 上記スキル（GitHub Actions workflow は使わない）
-- **CI（Actions）**: lint / test のみ（backend-ci, mobile-ci, ios-ci, assets-ci 等）
+- **PR 作成後**: 必ず `github-pr-self-review` を実行してから完了報告
+- **CI（Actions）**: lint / test + skills-ci（`.cursor/skills/` 変更時）
 - **PR 本文テンプレ**: `github-pr-create` スキル内（`.github/pull_request_template.md` は廃止）
 
+## セットアップ
+
+[docs/ai/SETUP.md](../../docs/ai/SETUP.md)
+
 ## upstream 同期
+
+```bash
+./scripts/sync-upstream-skills.sh --dry-run
+./scripts/sync-upstream-skills.sh
+./scripts/validate-skills.sh
+```
+
+手動の場合:
 
 ```bash
 git clone https://github.com/u7chan/agent-skills /tmp/u7chan-agent-skills

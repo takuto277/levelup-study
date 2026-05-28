@@ -37,6 +37,13 @@ GitHub Actions は push 後のセーフティネット。**PR 作成前**にロ�
 
 ## レビュー
 
+- **PR 作成直後（必須）**: [github-pr-self-review](./github-pr-self-review/SKILL.md)
 - 指摘対応: [github-pr-feedback-address](./github-pr-feedback-address/SKILL.md)
 - レビュー実施: [github-pr-review](./github-pr-review/SKILL.md)
 - コメント返信: [github-pr-comment-reply](./github-pr-comment-reply/SKILL.md)
+
+## スキルメンテ
+
+- 一覧同期: [skills-readme-sync](./skills-readme-sync/SKILL.md)
+- 検証: `./scripts/validate-skills.sh`
+- upstream 取り込み: `./scripts/sync-upstream-skills.sh`
