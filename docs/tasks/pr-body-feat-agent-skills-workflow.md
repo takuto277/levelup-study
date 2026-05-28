@@ -1,21 +1,26 @@
 ## Issues
 
-- （Auto open PR 起票後に Close #n に更新）
+- Refs #（Issue 番号があれば Close #n に更新）
 
 ## Why
 
-友人の agent-skills 方式を LevelUp Study に取り込み、**push 前のローカル validate** と **PR 本文テンプレのスキル化** を標準にする。GA はセーフティネットとして維持。
+[u7chan/agent-skills](https://github.com/u7chan/agent-skills) をベースに `.cursor/skills/` を全面更新し、**Issue / PR / レビューをすべて `gh` CLI + スキル**に統一する。GitHub Actions は lint/test のみに限定し、Auto open PR / create-issue workflow / PR テンプレートを廃止する。
 
 ## Summary
 
-`AGENTS.md` と `validate-pr.sh` を追加し、`.cursor/skills/` に github-pr-create 等を配置。feature-delivery / pr-review を更新。
+- u7chan/agent-skills 由来スキル 14 種を `.cursor/skills/` に配置
+- `LEVELUP.md` / `AGENTS.md` / `feature-delivery` で LevelUp 固有フローを定義
+- `.github/workflows/open-pr-on-push.yml`, `create-issue.yml`, `pull_request_template.md` を削除
+- README / 開発フロー doc / pr-review ルールを gh CLI 前提に更新
 
 ## Changes
 
-- `AGENTS.md` — エージェント向け validate コマンド一覧
-- `scripts/validate-pr.sh` — 変更パスに応じた lint/test
-- `.cursor/skills/github-pr-create` 他 — PR テンプレ・実装フロー・QA 観点
-- `feature-delivery` / `pr-review.mdc` — ローカル validate 必須化
+- `.cursor/skills/` — github-implement-pr, github-pr-create, github-pr-review, github-pr-feedback-address, github-issue-create-from-plan, git-worktree-create, grill-me, grill-with-docs, qa-test-design 等
+- `.cursor/skills/LEVELUP.md`, `.cursor/skills/README.md` — 一覧と LevelUp 補足
+- `.cursor/skills/feature-delivery/SKILL.md` — gh CLI フロー完結
+- `AGENTS.md`, `.cursor/rules/pr-review.mdc`, `CLAUDE.md`, `README.md` — Actions 依存の記述削除
+- `scripts/feature-start.sh` — Auto open PR 言及削除
+- `docs/architecture/02_Development_Workflow.md`, `docs/assets/01_Asset_Ingestion_Workflow.md`
 
 ## Verification
 
@@ -24,7 +29,8 @@
 ## Checklist（エージェント実施分）
 
 - [x] `./scripts/validate-pr.sh --all`
-- [x] ドキュメント・スキル整合
+- [x] スキル・ドキュメント整合
+- [x] Auto open PR / create-issue workflow 削除
 
 ## ユーザーがやるべきこと（マージ前）
 

@@ -49,7 +49,7 @@ flowchart LR
    ```
 
 4. **PR を作成**  
-   `feat/{issue番号}-短い説明` ブランチで push すると [Auto open draft PR](https://github.com/takuto277/levelup-study/blob/main/.github/workflows/open-pr-on-push.yml) がドラフト PR を作成します。  
+   `feat/{issue番号}-短い説明` ブランチで push したあと、[github-pr-create スキル](.cursor/skills/github-pr-create/SKILL.md) に従い `gh pr create --body-file` で PR を作成します。  
    本文に `Fixes #番号` を記載してください。
 
 ### 推奨サイズ

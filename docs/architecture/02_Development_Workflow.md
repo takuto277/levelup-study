@@ -55,7 +55,7 @@
 | 2 | `feat/{番号}-slug` ブランチ（`scripts/feature-start.sh` 推奨） |
 | 3 | PNG を `apps/mobile/assets/source/` に配置し `manifest.yaml` 更新 |
 | 4 | `./scripts/assets/run.sh scripts/assets/sync_battle_assets.py` 等（詳細は下記） |
-| 5 | push → ドラフト PR 自動作成 → レビュー |
+| 5 | push → [github-pr-create スキル](.cursor/skills/github-pr-create/SKILL.md) で `gh pr create` → レビュー |
 
 **詳細:** [`docs/assets/01_Asset_Ingestion_Workflow.md`](../assets/01_Asset_Ingestion_Workflow.md)
 
@@ -75,6 +75,6 @@ export GH_TOKEN=（PAT）
   --branch-slug "feature-slug"
 ```
 
-実装後は `git push -u origin HEAD` でドラフト PR が自動作成されます（`.github/workflows/open-pr-on-push.yml`）。
+実装後は `./scripts/validate-pr.sh` を実行し、`git push -u origin HEAD` のあと [github-pr-create](.cursor/skills/github-pr-create/SKILL.md) スキルで `gh pr create --body-file` します。
 
-**AI 向け:** `.cursor/skills/feature-delivery/SKILL.md`
+**AI 向け:** [AGENTS.md](../../AGENTS.md) + `.cursor/skills/feature-delivery/SKILL.md`

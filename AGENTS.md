@@ -1,7 +1,10 @@
 # AGENTS.md — LevelUp Study エージェント向けリファレンス
 
 AI コーディングエージェント（Cursor 等）が **PR 前の品質確認** と **GitHub 操作** で参照する設定ファイル。
-GitHub Actions は push 後の **セーフティネット**。エージェントは **マージ前にローカルで lint / test を実行** する。
+
+- **GitHub Actions**: push 後の **lint / test セーフティネットのみ**
+- **Issue / PR / レビュー**: **`gh` CLI + `.cursor/skills/`**（Actions workflow は使わない）
+- **PR 本文テンプレ**: [`.cursor/skills/github-pr-create/SKILL.md`](.cursor/skills/github-pr-create/SKILL.md)（`.github/pull_request_template.md` は廃止）
 
 ## 検証（PR 前必須）
 
@@ -27,29 +30,37 @@ GitHub Actions は push 後の **セーフティネット**。エージェント
 
 ## スキル（`.cursor/skills/`）
 
+ベース: [u7chan/agent-skills](https://github.com/u7chan/agent-skills)。LevelUp 補足: [LEVELUP.md](.cursor/skills/LEVELUP.md)
+
 | スキル | 用途 |
 |--------|------|
-| `feature-delivery` | LevelUp 標準フロー（Issue → 実装 → validate → PR） |
-| `github-implement-pr` | Issue 実装〜PR までの入口（汎用手順） |
-| `github-pr-create` | **PR 本文テンプレ + `gh pr create --body-file`** |
-| `qa-test-design` | 手動 UI 確認含むテスト観点の洗い出し |
-| `git-branch-create` / `git-commit-message` | ブランチ名・コミットメッセージ |
-
-PR 本文の構造は **`.github/pull_request_template.md` ではなく `github-pr-create` スキル** を正とする。
-Auto open PR（push 時 Actions）が起動した場合も、エージェントは validate 結果を `Verification` に追記する。
+| `feature-delivery` | LevelUp 標準フロー（Issue → 実装 → validate → PR → レビュー） |
+| `github-implement-pr` | Issue 実装〜PR までの入口 |
+| `github-issue-create-from-plan` | 設計合意後の Issue 起票 |
+| `github-pr-create` | PR 本文テンプレ + `gh pr create --body-file` |
+| `github-pr-review` | PR レビュー |
+| `github-pr-feedback-address` | レビュー指摘の実装対応 |
+| `github-pr-comment-reply` | PR コメント返信 |
+| `qa-test-design` | 手動 UI 確認含むテスト観点 |
+| `git-branch-create` / `git-worktree-create` / `git-commit-message` | Git 操作 |
+| `grill-me` / `grill-with-docs` | 要件・設計の詰め |
+| `project-context` | 本リポジトリの制約サマリ |
 
 ## GitHub CLI
 
-- PR 作成・更新は **`gh` / `gh api`** を使う（GitHub コネクタは 403 になりやすい）
-- PR 本文は **`--body-file`** または `gh api --field body=@file`（シェル直埋め込み禁止）
+- Issue: `gh issue create --body-file ...` または `./scripts/create-issue.sh`
+- PR: `gh pr create --body-file ...`（[github-pr-create](.cursor/skills/github-pr-create/SKILL.md)）
+- レビュー: `gh pr review`, `gh api`（[github-pr-review](.cursor/skills/github-pr-review/SKILL.md)）
+- **GitHub コネクタは使わない**（403 になりやすい）
+- 本文は **`--body-file`** または `gh api --field body=@file`（シェル直埋め込み禁止）
 
 ## モノレポ構成
 
 - `backend/` — Go API（Render）
 - `apps/mobile/` — KMP shared + Android composeApp + iosApp
-- `docs/tasks/` — issue-body / 実行計画書
+- `docs/tasks/` — issue-body / pr-body / 実行計画書
 
-## ブランチ命名（本リポジトリ慣習）
+## ブランチ命名
 
 - `feat/{issue-slug}` または `feat/{numbers}-{slug}-batch`
 - `main` / `master` へ直接 push しない

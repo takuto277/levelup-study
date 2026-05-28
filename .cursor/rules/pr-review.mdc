@@ -1,5 +1,5 @@
 ---
-globs: .github/pull_request_template.md,.github/workflows/open-pr*.yml,docs/tasks/issue-body-*.md,docs/tasks/pr-body-*.md,AGENTS.md,.cursor/skills/**/*
+globs: docs/tasks/issue-body-*.md,docs/tasks/pr-body-*.md,AGENTS.md,.cursor/skills/**/*
 ---
 
 # PR 作成ルール（AI 担当）
@@ -10,18 +10,20 @@ globs: .github/pull_request_template.md,.github/workflows/open-pr*.yml,docs/task
 2. iosApp 変更時は macOS で `./scripts/validate-pr.sh --ios` も
 3. GitHub Actions は **push 後のセーフティネット**（lint/test の再実行）。エージェントの主 validate ではない
 
-## PR 本文（正: スキル）
+## Issue / PR（正: gh CLI + スキル）
 
-- **正**: [.cursor/skills/github-pr-create/SKILL.md](../skills/github-pr-create/SKILL.md) のテンプレ
-- **レガシー**: `.github/pull_request_template.md` — Auto open PR が埋める用。エージェントは `Verification` / `Checklist` をスキル形式で上書き同期してよい
+- **Issue 起票**: `./scripts/create-issue.sh` または [github-issue-create-from-plan](../skills/github-issue-create-from-plan/SKILL.md)
+- **PR 本文**: [github-pr-create](../skills/github-pr-create/SKILL.md) のテンプレ → `docs/tasks/pr-body-{slug}.md`
+- **PR 作成**: `gh pr create --body-file docs/tasks/pr-body-{slug}.md`
+- **レビュー**: [github-pr-review](../skills/github-pr-review/SKILL.md) / [github-pr-feedback-address](../skills/github-pr-feedback-address/SKILL.md)
+- GitHub Actions で Issue / PR を自動作成しない（廃止済み）
 
 ## AI（実装者）が PR 作成前に必ず行うこと
 
 1. **`docs/tasks/issue-body-{slug}.md`**（背景・目的・スコープ・受け入れ条件）
 2. **`./scripts/validate-pr.sh`** 実行 → 結果を PR の `Verification` に記載
 3. **`docs/tasks/pr-body-{slug}.md`** を [github-pr-create](../skills/github-pr-create/SKILL.md) テンプレで生成
-4. **push** → Auto open PR または `gh pr create --body-file`
-5. Auto open PR 使用時も **validate 結果が本文に無ければ `gh pr edit --body-file`**
+4. **`git push -u origin HEAD`** → **`gh pr create --body-file`**
 
 ## ユーザーがやるべきこと（PR 本文のチェックリスト）
 
@@ -36,16 +38,13 @@ Issue 連携・説明文・validate 記載は **ユーザー TODO に載せな�
 ```markdown
 # Issue: 短いタイトル
 
-Fixes #（任意・Auto PR 用）
-
 ## 背景
 ## 目的
 ## スコープ
 ## 受け入れ条件
 ```
 
-## 自動 PR
+## PR 設定
 
-- `draft: false`
-- push 時に Issue 起票 + テンプレ同期（[open-pr-on-push.yml](../../.github/workflows/open-pr-on-push.yml)）
-- エージェントはスキル本文との **整合**（特に Verification）を担保する
+- `draft: false`（特に指定がなければ）
+- `Close #123` または `Refs #123` は [github-pr-create](../skills/github-pr-create/SKILL.md) に従う
