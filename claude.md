@@ -10,7 +10,7 @@
 1. `docs/` を読み、仕様を理解する。
 2. **実行計画書の作成**: 3ステップ以上の変更を伴う場合、`task-init` コマンドを使用して `docs/tasks/` に実行計画書を作成する。
    - 実装詳細セクションには、具体的なコードの変更内容と、その実装を選択する「理由」を詳しく記述すること。
-3. **機能開発（Issue → PR）**: ユーザーが実装〜PR まで依頼した場合、`feature-delivery` スキルに従う（`scripts/feature-start.sh` / `scripts/create-issue.sh` 参照）。
+3. **機能開発（Issue → PR）**: ユーザーが実装〜PR まで依頼した場合、`.cursor/skills/feature-delivery` に従う。Issue / PR / レビューは **`gh` CLI + スキル**（[AGENTS.md](../../AGENTS.md)）。GitHub Actions は lint/test のみ。
 4. **アセット入稿**: 画像追加・変更時は `assets` ルールと `docs/assets/01_Asset_Ingestion_Workflow.md` に従う。
 5. 最小差分で実装し、ビルド・テストを確認する。
 6. 完了後、変更内容を簡潔に報告する。

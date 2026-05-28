@@ -1,28 +1,33 @@
 ---
 targets: [cursor]
 globs:
-  - .github/pull_request_template.md
-  - .github/workflows/open-pr*.yml
   - docs/tasks/issue-body-*.md
+  - docs/tasks/pr-body-*.md
+  - AGENTS.md
+  - .cursor/skills/**/*
 ---
 # PR 作成ルール（AI 担当）
 
-## AI（実装者）が PR 作成前に必ず行うこと
+## 品質ゲート
 
-1. **`docs/tasks/issue-body-{slug}.md` を用意**（背景・目的・スコープ・受け入れ条件）
-2. **実装後に push** → Auto open PR が以下を **自動で** 行う:
-   - Issue 起票（無ければ作成）+ `Fixes #n`
-   - PR 本文「なぜ / 何が / どうなる」の生成
-   - Issue GitHub URL + issue-body ファイル URL の記載
-3. **`issue-body` が無い小さな変更**は Issue なし PR でよい（Fixes 行も不要）
+1. **push 前** に `./scripts/validate-pr.sh` を実行（[AGENTS.md](../../AGENTS.md)）
+2. iosApp 変更時は macOS で `./scripts/validate-pr.sh --ios` も
+3. GitHub Actions は **push 後のセーフティネット**（lint/test）
 
-## ユーザーがやるべきこと（PR 本文のチェックリスト）
+## Issue / PR（gh CLI + スキル）
+
+1. **`docs/tasks/issue-body-{slug}.md`** — `./scripts/create-issue.sh` または github-issue-create-from-plan
+2. **実装** → `./scripts/validate-pr.sh`
+3. **`docs/tasks/pr-body-{slug}.md`** — github-pr-create テンプレ
+4. **`git push`** → **`gh pr create --body-file`**
+
+## ユーザーがやるべきこと
 
 - **CI** — Checks タブ green
 - **レビュー依頼**
-- **（該当時）手元確認** — Secrets 設定・デプロイ・実機確認など人間のみ可能な作業
+- **（該当時）手元確認**
 
-Issue 連携・説明文記入・issue-body 整合確認は **ユーザー TODO に載せない**（AI / Actions 担当）。
+Issue 連携・説明文・validate 記載は **ユーザー TODO に載せない**。
 
 ## issue-body ファイル形式
 
@@ -31,11 +36,6 @@ Issue 連携・説明文記入・issue-body 整合確認は **ユーザー TODO 
 
 ## 背景
 ## 目的
-## スコープ（本イシュー）  ← PR「何が」に反映
-## 受け入れ条件            ← PR「どうなる」に反映
+## スコープ
+## 受け入れ条件
 ```
-
-## 自動 PR
-
-- `draft: false`
-- 既存 PR も push 時にテンプレ同期（空セクション・旧チェックリストを検知して更新）

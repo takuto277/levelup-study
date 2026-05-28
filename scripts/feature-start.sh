@@ -73,7 +73,7 @@ if issue_url="$(./scripts/create-issue.sh "${issue_args[@]}" 2>/dev/null | tail 
 else
   echo "警告: Issue を自動作成できませんでした（GH_TOKEN 未設定など）。" >&2
   echo "  手動: ./scripts/create-issue.sh --title \"$title\" --body-file ${body_file:-/dev/null}" >&2
-  echo "  または Actions → Create issue (manual) を実行" >&2
+  echo "  GitHub Web の Issue テンプレートから手動起票も可" >&2
 fi
 
 branch_name="feat/${issue_num:+$issue_num-}${branch_slug}"
@@ -122,4 +122,4 @@ fi
 echo ""
 echo "Branch: $branch_name"
 [[ -n "$issue_url" ]] && echo "Issue:  $issue_url"
-echo "Next: 実装 → validate → git push -u origin HEAD（Auto open PR が Issue + 説明文付き PR を作成）"
+echo "Next: 実装 → ./scripts/validate-pr.sh → git push -u origin HEAD → github-pr-create スキルで gh pr create"
