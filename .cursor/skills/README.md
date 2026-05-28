@@ -13,7 +13,6 @@ LevelUp 固有設定: [LEVELUP.md](./LEVELUP.md)
 |-------|-------------|
 | [feature-delivery](feature-delivery/SKILL.md) | Issue → 実装 → validate → PR → セルフレビュー → レビュー対応の標準フロー |
 | [project-context](project-context/SKILL.md) | 本リポジトリの制約サマリ |
-| [github-pr-self-review](github-pr-self-review/SKILL.md) | **PR 作成直後の必須セルフレビュー**（[must] は修正して push） |
 
 ### Git ローカル操作
 
