@@ -2,6 +2,7 @@ package org.example.project.features.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,22 +24,12 @@ class HomeViewModel(
 
     private val kv = KeyValueStore()
 
-    private val characterSpeechLines = listOf(
-        "今日の特訓も頑張ろうな！",
-        "知識こそ最強の武器だ。",
-        "お前の成長、楽しみにしてるぞ。",
-        "さぁ、冒険の時間だ！",
-        "集中すれば、何でもできる。",
-        "タップしてくれたか！ その調子だ。",
-        "次のレベルアップは近いぞ。"
-    )
-    private var speechTapIndex = 0
-
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
         loadHome()
+        startCharacterMessageRotation()
     }
 
     fun clearError() {
@@ -49,15 +40,27 @@ class HomeViewModel(
         when (intent) {
             is HomeIntent.Refresh -> loadHome()
             is HomeIntent.StartStudy -> { }
-            is HomeIntent.TapMainCharacter -> {
-                speechTapIndex = (speechTapIndex + 1) % characterSpeechLines.size
-                _uiState.update {
-                    it.copy(characterSpeechLine = characterSpeechLines[speechTapIndex])
-                }
-            }
+            is HomeIntent.TapMainCharacter -> advanceCharacterMessage()
             is HomeIntent.SelectDungeon -> selectDungeon(intent.id, intent.name, intent.imageUrl)
             is HomeIntent.AddGenre -> addGenre(intent.label, intent.emoji, intent.colorHex)
             is HomeIntent.DeleteGenre -> deleteGenre(intent.genreId)
+        }
+    }
+
+    private fun startCharacterMessageRotation() {
+        viewModelScope.launch {
+            while (true) {
+                delay(CHARACTER_MESSAGE_ROTATION_MS)
+                advanceCharacterMessage()
+            }
+        }
+    }
+
+    private fun advanceCharacterMessage() {
+        val size = HomeCharacterDialogue.idleMessages.size
+        if (size == 0) return
+        _uiState.update { state ->
+            state.copy(characterMessageIndex = (state.characterMessageIndex + 1) % size)
         }
     }
 
@@ -152,6 +155,7 @@ class HomeViewModel(
     private companion object {
         /** サーバーに存在しないローカル専用ダンジョンの選択をホーム再読込後も維持する */
         const val KEY_PERSISTED_LOCAL_DUNGEON_ID = "home_persisted_local_dungeon_id"
+        const val CHARACTER_MESSAGE_ROTATION_MS = 4_000L
     }
 
     private fun addGenre(label: String, emoji: String, colorHex: String) {

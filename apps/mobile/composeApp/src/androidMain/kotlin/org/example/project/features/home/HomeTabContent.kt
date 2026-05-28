@@ -83,23 +83,6 @@ fun HomeTabContent(
         label = "breath"
     )
 
-    val messages = remember {
-        listOf(
-            "今日の特訓も頑張ろうな！",
-            "知識こそ最強の武器だ。",
-            "お前の成長、楽しみにしてるぞ。",
-            "さぁ、冒険の時間だ！",
-            "集中すれば、何でもできる。"
-        )
-    }
-    var messageIndex by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            kotlinx.coroutines.delay(4000L)
-            messageIndex = (messageIndex + 1) % messages.size
-        }
-    }
-
     if (showAddGenreDialog) {
         GenreManageDialog(
             genres = homeState.genres,
@@ -139,9 +122,7 @@ fun HomeTabContent(
         Spacer(modifier = Modifier.weight(0.4f))
 
         HomeCharacterHero(
-            messages = messages,
-            messageIndex = messageIndex,
-            speechLine = homeState.characterSpeechLine,
+            message = homeState.characterMessage,
             bounceY = bounceY,
             glowAlpha = glowAlpha,
             breathScale = breathScale,
@@ -209,9 +190,7 @@ private fun HeaderCapsule(emoji: String, caption: String, value: String) {
 
 @Composable
 private fun HomeCharacterHero(
-    messages: List<String>,
-    messageIndex: Int,
-    speechLine: String?,
+    message: String,
     bounceY: Float,
     glowAlpha: Float,
     breathScale: Float,
@@ -241,10 +220,12 @@ private fun HomeCharacterHero(
         )
 
         Column(
-            modifier = Modifier.align(Alignment.Center),
+            modifier = Modifier
+                .align(Alignment.Center)
+                .clickable(onClick = onTapCharacter),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            SpeechBubble(text = speechLine ?: messages[messageIndex])
+            SpeechBubble(text = message)
             Spacer(modifier = Modifier.height(8.dp))
 
             val context = LocalContext.current
