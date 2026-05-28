@@ -44,11 +44,13 @@ else
       apps/mobile/*) need_mobile=true ;;
       apps/mobile/assets/*|scripts/assets/*) need_assets=true ;;
       backend/assets/master/*|scripts/master-images/*) need_master=true ;;
-      .github/workflows/backend-ci.yml) need_backend=true ;;
-      .github/workflows/mobile-ci.yml) need_mobile=true ;;
-      .github/workflows/ios-ci.yml) need_mobile=true; RUN_IOS=true ;;
-      .github/workflows/assets-ci.yml) need_assets=true ;;
-      .github/workflows/master-images-ci.yml) need_master=true ;;
+      .github/workflows/ci.yml)
+        need_backend=true
+        need_mobile=true
+        need_assets=true
+        need_master=true
+        RUN_IOS=true
+        ;;
       scripts/*.sh) need_script_syntax=true ;;
     esac
   done <<< "$CHANGED"

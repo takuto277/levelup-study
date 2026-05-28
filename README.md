@@ -24,11 +24,7 @@ npx rulesync generate
 
 | Workflow | トリガー | 内容 |
 |----------|----------|------|
-| [Backend — CI](.github/workflows/backend-ci.yml) | `push`（`main`）/ `pull_request`（`backend/**` など） | `go test` / `go vet` |
-| [Mobile — CI](.github/workflows/mobile-ci.yml) | `push`（`main`）/ `pull_request`（`apps/mobile/**`） | KMP `:shared:compileDebugKotlinAndroid` |
-| [iOS — CI](.github/workflows/ios-ci.yml) | `pull_request`（`apps/mobile/iosApp/**`） | SwiftLint + iOS Simulator ビルド |
-| [Asset pipeline validation](.github/workflows/assets-ci.yml) | `pull_request`（アセット関連パス） | manifest / sync / slug 検証 |
-| [Master images validation](.github/workflows/master-images-ci.yml) | `pull_request`（`backend/assets/master/**` 等） | Supabase マスタ manifest 検証 |
+| [CI](.github/workflows/ci.yml) | すべての `pull_request` / `main` への `push` / 手動 | 変更パスに応じて backend test、KMP Android、iOS、assets、master images、skills を実行 |
 
 **Issue / PR / レビュー** は GitHub Actions では行いません。[AGENTS.md](AGENTS.md) と [`.cursor/skills/`](.cursor/skills/)（[u7chan/agent-skills](https://github.com/u7chan/agent-skills) ベース）+ **`gh` CLI** を使います。
 

@@ -5,7 +5,7 @@
 ## 自動デプロイ
 
 GitHub リポジトリを接続すると、**`main` に push したあと**（かつ `buildFilter` の `backend/**` に該当する変更のとき）、Render がビルド・デプロイします。  
-GitHub Actions の **`backend-ci.yml` はテストのみ**（デプロイは Render 側）。
+GitHub Actions の **`CI` workflow（`.github/workflows/ci.yml`）はテストのみ**（デプロイは Render 側）。
 
 > **Note:** 旧 Railway / Fly.io 向けドキュメント（`RAILWAY.md` / `FLY.md`）は Render 統一に伴い削除済み。ホスティング手順は本ファイルのみを参照してください。
 

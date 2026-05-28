@@ -164,7 +164,7 @@ make master-images-upload
 
 ## ☁️ Render（本番 API・自動デプロイ）
 
-**Blueprint（リポジトリ直下の `render.yaml`）** と GitHub 連携で、**`main` の `backend/**` 変更**を push すると Render がビルド・デプロイします（無料枠は **スリープあり**）。GitHub Actions の `backend-ci.yml` は **テストのみ**。
+**Blueprint（リポジトリ直下の `render.yaml`）** と GitHub 連携で、**`main` の `backend/**` 変更**を push すると Render がビルド・デプロイします（無料枠は **スリープあり**）。GitHub Actions の **`CI` workflow** は **テストのみ**。
 
 手順は **`RENDER.md`** を参照。
 
