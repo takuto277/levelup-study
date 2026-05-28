@@ -23,6 +23,17 @@ class HomeViewModel(
 
     private val kv = KeyValueStore()
 
+    private val characterSpeechLines = listOf(
+        "今日の特訓も頑張ろうな！",
+        "知識こそ最強の武器だ。",
+        "お前の成長、楽しみにしてるぞ。",
+        "さぁ、冒険の時間だ！",
+        "集中すれば、何でもできる。",
+        "タップしてくれたか！ その調子だ。",
+        "次のレベルアップは近いぞ。"
+    )
+    private var speechTapIndex = 0
+
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
@@ -38,7 +49,12 @@ class HomeViewModel(
         when (intent) {
             is HomeIntent.Refresh -> loadHome()
             is HomeIntent.StartStudy -> { }
-            is HomeIntent.TapMainCharacter -> { }
+            is HomeIntent.TapMainCharacter -> {
+                speechTapIndex = (speechTapIndex + 1) % characterSpeechLines.size
+                _uiState.update {
+                    it.copy(characterSpeechLine = characterSpeechLines[speechTapIndex])
+                }
+            }
             is HomeIntent.SelectDungeon -> selectDungeon(intent.id, intent.name, intent.imageUrl)
             is HomeIntent.AddGenre -> addGenre(intent.label, intent.emoji, intent.colorHex)
             is HomeIntent.DeleteGenre -> deleteGenre(intent.genreId)

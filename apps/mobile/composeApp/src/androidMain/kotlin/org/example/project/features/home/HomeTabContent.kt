@@ -2,6 +2,7 @@ package org.example.project.features.home
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
@@ -140,10 +141,12 @@ fun HomeTabContent(
         HomeCharacterHero(
             messages = messages,
             messageIndex = messageIndex,
+            speechLine = homeState.characterSpeechLine,
             bounceY = bounceY,
             glowAlpha = glowAlpha,
             breathScale = breathScale,
-            homeState = homeState
+            homeState = homeState,
+            onTapCharacter = { homeViewModel.onIntent(HomeIntent.TapMainCharacter) }
         )
 
         Spacer(modifier = Modifier.weight(0.3f))
@@ -208,10 +211,12 @@ private fun HeaderCapsule(emoji: String, caption: String, value: String) {
 private fun HomeCharacterHero(
     messages: List<String>,
     messageIndex: Int,
+    speechLine: String?,
     bounceY: Float,
     glowAlpha: Float,
     breathScale: Float,
-    homeState: HomeUiState
+    homeState: HomeUiState,
+    onTapCharacter: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -239,13 +244,17 @@ private fun HomeCharacterHero(
             modifier = Modifier.align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            SpeechBubble(text = messages[messageIndex])
+            SpeechBubble(text = speechLine ?: messages[messageIndex])
             Spacer(modifier = Modifier.height(8.dp))
 
             val context = LocalContext.current
             val playerIdleRes = remember {
                 context.resources.getIdentifier("sprite_player_idle_1", "drawable", context.packageName)
             }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.clickable(onClick = onTapCharacter)
+            ) {
             if (playerIdleRes != 0) {
                 Image(
                     painter = painterResource(playerIdleRes),
@@ -275,6 +284,7 @@ private fun HomeCharacterHero(
                 ) {
                     Text("Lv.$lv", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = HomeTheme.AccentBlue)
                 }
+            }
             }
         }
     }

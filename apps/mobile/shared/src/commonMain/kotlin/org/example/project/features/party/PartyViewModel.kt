@@ -28,14 +28,18 @@ class PartyViewModel(
     fun onIntent(intent: PartyIntent) {
         when (intent) {
             is PartyIntent.Refresh -> loadPartyData()
-            is PartyIntent.SelectSlot -> _uiState.update { it.copy(selectedSlot = intent.slotPosition) }
+            is PartyIntent.SelectSlot -> _uiState.update {
+                it.copy(
+                    selectedSlot = if (it.selectedSlot == intent.slotPosition) null else intent.slotPosition
+                )
+            }
             is PartyIntent.AssignCharacter -> assignCharacter(intent.slotPosition, intent.userCharacterId)
             is PartyIntent.RemoveFromSlot -> removeFromSlot(intent.slotPosition)
             is PartyIntent.SelectCharacter -> selectCharacter(intent.userCharacterId)
             is PartyIntent.DismissCharacterDetail -> _uiState.update { it.copy(selectedCharacter = null) }
             is PartyIntent.EquipWeapon -> equipWeapon(intent.userCharacterId, intent.userWeaponId)
-            is PartyIntent.LevelUpCharacter -> { /* TODO */ }
-            is PartyIntent.LevelUpWeapon -> { /* TODO */ }
+            is PartyIntent.LevelUpCharacter -> levelUpCharacter(intent.userCharacterId)
+            is PartyIntent.LevelUpWeapon -> levelUpWeapon(intent.userWeaponId)
         }
     }
 
@@ -108,6 +112,45 @@ class PartyViewModel(
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message ?: "武器装備に失敗しました") }
             }
+        }
+    }
+
+    private fun levelUpCharacter(userCharacterId: String) {
+        viewModelScope.launch {
+            try {
+                partyUseCase.levelUpCharacter(userCharacterId)
+                refreshAfterMutation(userCharacterId)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "レベルアップに失敗しました") }
+            }
+        }
+    }
+
+    private fun levelUpWeapon(userWeaponId: String) {
+        val characterId = _uiState.value.selectedCharacter?.id
+        viewModelScope.launch {
+            try {
+                partyUseCase.levelUpWeapon(userWeaponId)
+                refreshAfterMutation(characterId)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "武器のレベルアップに失敗しました") }
+            }
+        }
+    }
+
+    private suspend fun refreshAfterMutation(selectedCharacterId: String?) {
+        val data = partyUseCase.loadPartyData()
+        _uiState.update {
+            it.copy(
+                party = Party(slots = data.party.slots.sortedBy { s -> s.slotPosition }),
+                ownedCharacters = data.ownedCharacters,
+                ownedWeapons = data.ownedWeapons,
+                selectedCharacter = selectedCharacterId?.let { id ->
+                    data.ownedCharacters.find { c -> c.id == id }
+                },
+                isLoading = false,
+                error = null
+            )
         }
     }
 }

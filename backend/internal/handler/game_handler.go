@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/takuto277/levelup-study/backend/internal/model"
 	"github.com/takuto277/levelup-study/backend/internal/repository"
+	"gorm.io/gorm"
 )
 
 // ============================================================
@@ -15,6 +16,8 @@ import (
 // ============================================================
 
 type GameHandler struct {
+	db          *gorm.DB
+	userRepo    *repository.UserRepository
 	charRepo    *repository.CharacterRepository
 	weaponRepo  *repository.WeaponRepository
 	partyRepo   *repository.PartyRepository
@@ -22,12 +25,16 @@ type GameHandler struct {
 }
 
 func NewGameHandler(
+	db *gorm.DB,
+	userRepo *repository.UserRepository,
 	charRepo *repository.CharacterRepository,
 	weaponRepo *repository.WeaponRepository,
 	partyRepo *repository.PartyRepository,
 	dungeonRepo *repository.DungeonProgressRepository,
 ) *GameHandler {
 	return &GameHandler{
+		db:          db,
+		userRepo:    userRepo,
 		charRepo:    charRepo,
 		weaponRepo:  weaponRepo,
 		partyRepo:   partyRepo,
@@ -60,15 +67,19 @@ func (h *GameHandler) ListCharacters(w http.ResponseWriter, r *http.Request) {
 // GetCharacter — GET /api/v1/users/{userID}/characters/{characterID}
 // 所持キャラの詳細を取得する
 func (h *GameHandler) GetCharacter(w http.ResponseWriter, r *http.Request) {
+	userID, err := parseUUID(chi.URLParam(r, "userID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なユーザーIDです")
+		return
+	}
 	charID, err := parseUUID(chi.URLParam(r, "characterID"))
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "不正なキャラクターIDです")
 		return
 	}
 
-	uc, err := h.charRepo.GetByID(charID)
-	if err != nil {
-		respondError(w, http.StatusNotFound, "キャラクターが見つかりません")
+	uc, ok := h.ownedCharacter(w, userID, charID)
+	if !ok {
 		return
 	}
 
@@ -78,9 +89,18 @@ func (h *GameHandler) GetCharacter(w http.ResponseWriter, r *http.Request) {
 // EquipWeapon — PUT /api/v1/users/{userID}/characters/{characterID}/equip
 // キャラクターに武器を装備する
 func (h *GameHandler) EquipWeapon(w http.ResponseWriter, r *http.Request) {
+	userID, err := parseUUID(chi.URLParam(r, "userID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なユーザーIDです")
+		return
+	}
 	charID, err := parseUUID(chi.URLParam(r, "characterID"))
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "不正なキャラクターIDです")
+		return
+	}
+
+	if _, ok := h.ownedCharacter(w, userID, charID); !ok {
 		return
 	}
 
@@ -96,6 +116,12 @@ func (h *GameHandler) EquipWeapon(w http.ResponseWriter, r *http.Request) {
 	userWeaponID := req.UserWeaponID
 	if userWeaponID == nil {
 		userWeaponID = req.WeaponID
+	}
+
+	if userWeaponID != nil {
+		if _, ok := h.ownedWeapon(w, userID, *userWeaponID); !ok {
+			return
+		}
 	}
 
 	if err := h.charRepo.EquipWeapon(charID, userWeaponID); err != nil {
@@ -182,6 +208,10 @@ func (h *GameHandler) UpdatePartySlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, ok := h.ownedCharacter(w, userID, req.UserCharacterID); !ok {
+		return
+	}
+
 	partySlot := &model.UserPartySlot{
 		UserID:          userID,
 		SlotPosition:    slotPos,
@@ -246,4 +276,87 @@ func (h *GameHandler) ListDungeonProgress(w http.ResponseWriter, r *http.Request
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{"progress": list})
+}
+
+// LevelUpCharacter — POST /api/v1/users/{userID}/characters/{characterID}/level-up
+func (h *GameHandler) LevelUpCharacter(w http.ResponseWriter, r *http.Request) {
+	userID, err := parseUUID(chi.URLParam(r, "userID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なユーザーIDです")
+		return
+	}
+	charID, err := parseUUID(chi.URLParam(r, "characterID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なキャラクターIDです")
+		return
+	}
+
+	var charIDOut uuid.UUID
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		uc, err := ensureCharacterOwnedTx(tx, h.charRepo, charID, userID)
+		if err != nil {
+			return err
+		}
+		if uc.Level >= maxCharacterLevel {
+			return errMaxLevel
+		}
+		cost := levelUpGoldCost(uc.Level)
+		if err := h.deductGoldTx(tx, userID, cost); err != nil {
+			return err
+		}
+		if err := h.charRepo.LevelUp(tx, charID, uc.Level+1); err != nil {
+			return err
+		}
+		charIDOut = charID
+		return nil
+	}); err != nil {
+		mapLevelUpError(w, err)
+		return
+	}
+
+	updated, err := h.reloadCharacter(charIDOut)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "キャラクター取得に失敗しました")
+		return
+	}
+	respondJSON(w, http.StatusOK, updated)
+}
+
+// LevelUpWeapon — POST /api/v1/users/{userID}/weapons/{weaponID}/level-up
+func (h *GameHandler) LevelUpWeapon(w http.ResponseWriter, r *http.Request) {
+	userID, err := parseUUID(chi.URLParam(r, "userID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なユーザーIDです")
+		return
+	}
+	weaponID, err := parseUUID(chi.URLParam(r, "weaponID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正な武器IDです")
+		return
+	}
+
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		var uw model.UserWeapon
+		if err := tx.First(&uw, "id = ? AND user_id = ?", weaponID, userID).Error; err != nil {
+			return err
+		}
+		if uw.Level >= maxWeaponLevel {
+			return errMaxLevel
+		}
+		cost := levelUpGoldCost(uw.Level)
+		if err := h.deductGoldTx(tx, userID, cost); err != nil {
+			return err
+		}
+		return h.weaponRepo.LevelUpTx(tx, weaponID, uw.Level+1)
+	}); err != nil {
+		mapLevelUpError(w, err)
+		return
+	}
+
+	updated, err := h.reloadWeapon(weaponID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "武器取得に失敗しました")
+		return
+	}
+	respondJSON(w, http.StatusOK, updated)
 }

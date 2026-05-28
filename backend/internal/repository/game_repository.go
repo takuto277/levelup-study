@@ -122,6 +122,16 @@ func (r *WeaponRepository) GetByID(id uuid.UUID) (*model.UserWeapon, error) {
 	return &uw, nil
 }
 
+// GetByIDForUser — user_id を検証して所持武器を1件取得する
+func (r *WeaponRepository) GetByIDForUser(id, userID uuid.UUID) (*model.UserWeapon, error) {
+	var uw model.UserWeapon
+	err := r.db.Preload("Weapon").Where("id = ? AND user_id = ?", id, userID).First(&uw).Error
+	if err != nil {
+		return nil, err
+	}
+	return &uw, nil
+}
+
 // ListByUser — ユーザーの所持武器一覧を取得する
 func (r *WeaponRepository) ListByUser(userID uuid.UUID) ([]model.UserWeapon, error) {
 	var list []model.UserWeapon
@@ -132,6 +142,13 @@ func (r *WeaponRepository) ListByUser(userID uuid.UUID) ([]model.UserWeapon, err
 // LevelUp — 武器レベルを更新する
 func (r *WeaponRepository) LevelUp(id uuid.UUID, newLevel int) error {
 	return r.db.Model(&model.UserWeapon{}).
+		Where("id = ?", id).
+		Update("level", newLevel).Error
+}
+
+// LevelUpTx — トランザクション内で武器レベルを更新する
+func (r *WeaponRepository) LevelUpTx(tx *gorm.DB, id uuid.UUID, newLevel int) error {
+	return tx.Model(&model.UserWeapon{}).
 		Where("id = ?", id).
 		Update("level", newLevel).Error
 }

@@ -21,6 +21,9 @@ class StudyQuestViewModel(
     private var timerJob: Job? = null
     private val viewModelScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var sessionStartedAt: String? = null
+    private var wallClockEpochMs: Long = 0L
+    private var pausedAccumulatedMs: Long = 0L
+    private var pauseStartedMs: Long? = null
 
     init { loadPartyLead() }
 
@@ -269,6 +272,7 @@ class StudyQuestViewModel(
         if (_uiState.value.status == StudySessionStatus.RUNNING) return
 
         sessionStartedAt = Clock.System.now().toString()
+        resetWallClock()
         phaseElapsed = 0L
         pendingAfterEnemyDefeat = null
 
@@ -370,9 +374,14 @@ class StudyQuestViewModel(
         when (current.status) {
             StudySessionStatus.RUNNING -> {
                 timerJob?.cancel()
+                pauseStartedMs = Clock.System.now().toEpochMilliseconds()
                 _uiState.update { it.copy(status = StudySessionStatus.PAUSED) }
             }
             StudySessionStatus.PAUSED -> {
+                pauseStartedMs?.let { started ->
+                    pausedAccumulatedMs += Clock.System.now().toEpochMilliseconds() - started
+                }
+                pauseStartedMs = null
                 _uiState.update { it.copy(status = StudySessionStatus.RUNNING) }
                 startTimer()
             }
@@ -464,6 +473,7 @@ class StudyQuestViewModel(
                 }
             }
         }
+        resetWallClock()
         startTimer()
     }
 
@@ -511,6 +521,9 @@ class StudyQuestViewModel(
     private fun stopQuest() {
         timerJob?.cancel()
         timerJob = null
+        pauseStartedMs = null
+        pausedAccumulatedMs = 0L
+        wallClockEpochMs = 0L
         _uiState.update {
             StudyQuestUiState(
                 status = StudySessionStatus.READY,
@@ -529,6 +542,22 @@ class StudyQuestViewModel(
         }
     }
 
+    private fun resetWallClock() {
+        wallClockEpochMs = Clock.System.now().toEpochMilliseconds()
+        pausedAccumulatedMs = 0L
+        pauseStartedMs = null
+    }
+
+    private fun currentElapsedSeconds(): Long {
+        if (wallClockEpochMs == 0L) return _uiState.value.elapsedSeconds
+        val activePauseMs = pauseStartedMs?.let {
+            Clock.System.now().toEpochMilliseconds() - it
+        } ?: 0L
+        val elapsedMs = Clock.System.now().toEpochMilliseconds() -
+            wallClockEpochMs - pausedAccumulatedMs - activePauseMs
+        return (elapsedMs / 1000).coerceAtLeast(0)
+    }
+
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
@@ -544,9 +573,10 @@ class StudyQuestViewModel(
                         return@update state
                     }
 
-                    val newElapsed = state.elapsedSeconds + 1
+                    val newElapsed = currentElapsedSeconds()
+                    val elapsedDelta = (newElapsed - state.elapsedSeconds).coerceAtLeast(0)
                     if (state.adventurePhase != AdventurePhase.ENEMY_DEFEATED) {
-                        phaseElapsed++
+                        phaseElapsed += elapsedDelta
                     }
 
                     val overTime = state.type == StudySessionType.STUDY && newElapsed > targetSeconds

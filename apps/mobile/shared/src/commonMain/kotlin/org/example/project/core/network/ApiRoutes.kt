@@ -51,9 +51,17 @@ object ApiRoutes {
     fun equipWeapon(userId: String, characterId: String) =
         "/api/v1/users/$userId/characters/$characterId/equip"
 
+    /** POST: キャラクターレベルアップ */
+    fun levelUpCharacter(userId: String, characterId: String) =
+        "/api/v1/users/$userId/characters/$characterId/level-up"
+
     // ── User Weapons ────────────────────────────
     /** GET: 所持武器一覧 */
     fun userWeapons(userId: String) = "/api/v1/users/$userId/weapons"
+
+    /** POST: 武器レベルアップ */
+    fun levelUpWeapon(userId: String, weaponId: String) =
+        "/api/v1/users/$userId/weapons/$weaponId/level-up"
 
     // ── Party ───────────────────────────────────
     /** GET: パーティ取得 */
