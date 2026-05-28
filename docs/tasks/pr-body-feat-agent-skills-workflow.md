@@ -1,6 +1,6 @@
 ## Issues
 
-- Refs #（Issue 番号があれば Close #n に更新）
+- Close #40
 
 ## Why
 
@@ -25,6 +25,7 @@
 ## Verification
 
 - `./scripts/validate-pr.sh --all` — passed
+- `./scripts/validate-pr.sh` — scripts 変更時 shell syntax check、docs のみ時はスキップメッセージを表示
 
 ## Checklist（エージェント実施分）
 

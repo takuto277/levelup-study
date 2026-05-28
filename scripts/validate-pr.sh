@@ -31,6 +31,7 @@ need_backend=false
 need_mobile=false
 need_assets=false
 need_master=false
+need_script_syntax=false
 
 if $RUN_ALL; then
   need_backend=true
@@ -43,21 +44,23 @@ else
       apps/mobile/*) need_mobile=true ;;
       apps/mobile/assets/*|scripts/assets/*) need_assets=true ;;
       backend/assets/master/*|scripts/master-images/*) need_master=true ;;
+      .github/workflows/backend-ci.yml) need_backend=true ;;
+      .github/workflows/mobile-ci.yml) need_mobile=true ;;
       .github/workflows/ios-ci.yml) need_mobile=true; RUN_IOS=true ;;
+      .github/workflows/assets-ci.yml) need_assets=true ;;
+      .github/workflows/master-images-ci.yml) need_master=true ;;
+      scripts/*.sh) need_script_syntax=true ;;
     esac
   done <<< "$CHANGED"
 fi
 
-if ! $need_backend && ! $need_mobile && ! $need_assets && ! $need_master && [[ -z "$CHANGED" ]]; then
-  echo "ℹ️  変更ファイルが検出できませんでした。--all で全チェックを実行してください。"
-  exit 0
-fi
-
 FAILED=0
+STEPS_RAN=0
 
 run_step() {
   local name="$1"
   shift
+  STEPS_RAN=$((STEPS_RAN + 1))
   echo ""
   echo "━━━ $name ━━━"
   if "$@"; then
@@ -97,6 +100,17 @@ if $need_master; then
   run_step "Master images validate" bash -c 'cd backend && make master-images-validate'
 fi
 
+if $need_script_syntax; then
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    case "$f" in
+      scripts/*.sh)
+        run_step "Shell syntax ($f)" bash -n "$f"
+        ;;
+    esac
+  done <<< "$CHANGED"
+fi
+
 if $RUN_IOS && $need_mobile; then
   if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "⚠️  iOS xcodebuild は macOS のみ。CI（iOS — CI workflow）で確認してください。"
@@ -110,5 +124,14 @@ echo ""
 if [[ $FAILED -ne 0 ]]; then
   echo "validate-pr: 1 件以上失敗" >&2
   exit 1
+fi
+if [[ $STEPS_RAN -eq 0 ]]; then
+  if [[ -z "$CHANGED" ]]; then
+    echo "ℹ️  変更ファイルが検出できませんでした。--all で全チェックを実行してください。"
+  else
+    echo "ℹ️  変更パス（docs/skills 等）に対応する自動チェックはありません。"
+    echo "    コード変更がある場合は ./scripts/validate-pr.sh --all を実行してください。"
+  fi
+  exit 0
 fi
 echo "validate-pr: すべて成功"

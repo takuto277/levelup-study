@@ -15,7 +15,7 @@
 - `AGENTS.md`、 `scripts/validate-pr.sh`
 - `.cursor/skills/` に github-pr-create, github-implement-pr, qa-test-design, git-*
 - `feature-delivery` / `pr-review.mdc` 更新
-- GA ワークフロー自体の削除はしない（セーフティネットとして維持）
+- lint/test 用 GA（backend-ci / mobile-ci / ios-ci 等）は維持。Auto open PR / create-issue workflow は廃止
 
 ## 受け入れ条件
 
