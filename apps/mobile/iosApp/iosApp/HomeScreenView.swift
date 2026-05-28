@@ -60,7 +60,6 @@ struct HomeScreenView: View {
     @State private var studyMinutes: Int
     @State private var selectedGenreSlug = "general"
     @State private var isBouncing = false
-    @State private var messageIndex = 0
     @State private var showAddGenreSheet = false
     @State private var newGenreLabel = ""
     @State private var genrePendingDelete: MasterStudyGenre? = nil
@@ -69,15 +68,11 @@ struct HomeScreenView: View {
     private let homeViewModel = KoinHelperKt.getHomeViewModel()
     @State private var homeState: HomeUiState?
 
-    private let messages = ["今日の特訓も頑張ろうな！", "知識こそ最強の武器だ。", "お前の成長、楽しみにしてるぞ。", "さぁ、冒険の時間だ！", "集中すれば、何でもできる。"]
-    let messageTimer = Timer.publish(every: 4, on: .main, in: .common).autoconnect()
-
     init() {
         _showStudySheet = State(initialValue: false)
         _studyMinutes = State(initialValue: HomeStudyMinutesPersisted.load())
         _selectedGenreSlug = State(initialValue: "general")
         _isBouncing = State(initialValue: false)
-        _messageIndex = State(initialValue: 0)
         _showAddGenreSheet = State(initialValue: false)
         _newGenreLabel = State(initialValue: "")
         _homeState = State(initialValue: nil)
@@ -149,7 +144,6 @@ struct HomeScreenView: View {
                 KoinHelperKt.getSettingsViewModel().refreshFromPlatform()
             }
         }
-        .onReceive(messageTimer) { _ in withAnimation(.easeInOut(duration: 0.3)) { messageIndex = (messageIndex + 1) % messages.count } }
         .onAppear { homeViewModel.onIntent(intent: HomeIntentRefresh()) }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in self.homeState = homeViewModel.uiState.value as? HomeUiState }
         .onChange(of: studyMinutes) { _, newValue in
@@ -272,7 +266,10 @@ struct HomeScreenView: View {
                 VStack(spacing: 0) {
                     HStack(spacing: 6) {
                         Text("💬").font(.system(size: 12))
-                        Text("「\(messages[messageIndex])」").font(.system(size: 13, weight: .bold)).foregroundColor(textW)
+                        Text("「\(homeState?.characterMessage ?? "今日の特訓も頑張ろうな！")」")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(textW)
+                            .animation(.easeInOut(duration: 0.3), value: homeState?.characterMessageIndex ?? 0)
                     }
                     .padding(.horizontal, 16).padding(.vertical, 10)
                     .background(bgCard).cornerRadius(18)
@@ -303,6 +300,10 @@ struct HomeScreenView: View {
                         .padding(.horizontal, 8).padding(.vertical, 2).background(accentCyan.opacity(0.15)).cornerRadius(8)
                 }
             }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            homeViewModel.onIntent(intent: HomeIntentTapMainCharacter())
         }
     }
 

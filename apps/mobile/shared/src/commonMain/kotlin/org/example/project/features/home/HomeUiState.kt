@@ -19,8 +19,13 @@ data class HomeUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     /** ネット未接続時はダンジョンの代わりに訓練場モードで勉強する */
-    val isOfflineTraining: Boolean = false
+    val isOfflineTraining: Boolean = false,
+    /** ホーム中央キャラのセリフ（自動ローテーション / タップで更新） */
+    val characterMessageIndex: Int = 0
 ) {
+    val characterMessage: String
+        get() = HomeCharacterDialogue.messageAt(characterMessageIndex)
+
     val formattedStudyTime: String
         get() {
             val hours = totalStudySeconds / 3600

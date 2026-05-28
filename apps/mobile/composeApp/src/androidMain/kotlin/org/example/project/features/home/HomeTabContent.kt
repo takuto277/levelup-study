@@ -3,6 +3,7 @@ package org.example.project.features.home
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -82,23 +83,6 @@ fun HomeTabContent(
         label = "breath"
     )
 
-    val messages = remember {
-        listOf(
-            "今日の特訓も頑張ろうな！",
-            "知識こそ最強の武器だ。",
-            "お前の成長、楽しみにしてるぞ。",
-            "さぁ、冒険の時間だ！",
-            "集中すれば、何でもできる。"
-        )
-    }
-    var messageIndex by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            kotlinx.coroutines.delay(4000L)
-            messageIndex = (messageIndex + 1) % messages.size
-        }
-    }
-
     if (showAddGenreDialog) {
         GenreManageDialog(
             genres = homeState.genres,
@@ -138,12 +122,12 @@ fun HomeTabContent(
         Spacer(modifier = Modifier.weight(0.4f))
 
         HomeCharacterHero(
-            messages = messages,
-            messageIndex = messageIndex,
+            message = homeState.characterMessage,
             bounceY = bounceY,
             glowAlpha = glowAlpha,
             breathScale = breathScale,
-            homeState = homeState
+            homeState = homeState,
+            onTapCharacter = { homeViewModel.onIntent(HomeIntent.TapMainCharacter) }
         )
 
         Spacer(modifier = Modifier.weight(0.3f))
@@ -206,12 +190,12 @@ private fun HeaderCapsule(emoji: String, caption: String, value: String) {
 
 @Composable
 private fun HomeCharacterHero(
-    messages: List<String>,
-    messageIndex: Int,
+    message: String,
     bounceY: Float,
     glowAlpha: Float,
     breathScale: Float,
-    homeState: HomeUiState
+    homeState: HomeUiState,
+    onTapCharacter: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -236,10 +220,12 @@ private fun HomeCharacterHero(
         )
 
         Column(
-            modifier = Modifier.align(Alignment.Center),
+            modifier = Modifier
+                .align(Alignment.Center)
+                .clickable(onClick = onTapCharacter),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            SpeechBubble(text = messages[messageIndex])
+            SpeechBubble(text = message)
             Spacer(modifier = Modifier.height(8.dp))
 
             val context = LocalContext.current
