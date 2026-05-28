@@ -64,7 +64,7 @@ LevelUp 固有設定: [LEVELUP.md](./LEVELUP.md)
 
 - **Issue / PR / レビュー**: `gh` CLI + 上記スキル（GitHub Actions workflow は使わない）
 - **PR 作成後**: 必ず `github-pr-self-review` を実行してから完了報告
-- **CI（Actions）**: lint / test + skills-ci（`.cursor/skills/` 変更時）
+- **CI（Actions）**: [CI workflow](../../.github/workflows/ci.yml)（lint / test。変更パスに応じて job 実行）
 - **PR 本文テンプレ**: `github-pr-create` スキル内（`.github/pull_request_template.md` は廃止）
 
 ## セットアップ

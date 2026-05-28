@@ -1,0 +1,295 @@
+# 変更パスに応じて lint / test を実行（PR と main push のセーフティネット）
+# 本番デプロイは Render（backend/** の push 時）。ここは検証のみ。
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      assets: ${{ steps.filter.outputs.assets }}
+      master_images: ${{ steps.filter.outputs.master_images }}
+      skills: ${{ steps.filter.outputs.skills }}
+      any_code: ${{ steps.filter.outputs.any_code }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'render.yaml'
+            mobile:
+              - 'apps/mobile/**'
+            assets:
+              - 'apps/mobile/assets/**'
+              - 'scripts/assets/**'
+              - 'apps/mobile/composeApp/src/androidMain/res/drawable/**'
+              - 'apps/mobile/iosApp/iosApp/Assets.xcassets/**'
+              - 'apps/mobile/shared/**/EnemySpriteAssets.kt'
+            master_images:
+              - 'backend/assets/master/**'
+              - 'scripts/master-images/**'
+            skills:
+              - '.cursor/skills/**'
+              - 'scripts/validate-skills.sh'
+            any_code:
+              - 'backend/**'
+              - 'render.yaml'
+              - 'apps/mobile/**'
+              - 'scripts/assets/**'
+              - 'scripts/master-images/**'
+              - '.cursor/skills/**'
+              - 'scripts/validate-skills.sh'
+              - '.github/workflows/**'
+
+  backend:
+    name: Backend — test
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Go test
+        run: CGO_ENABLED=1 go test ./... -count=1
+
+      - name: go vet
+        run: go vet ./...
+
+  mobile-android:
+    name: Mobile — KMP Android compile
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: local.properties (sdk.dir + api.key)
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK" || { echo "Android SDK not found" >&2; exit 1; }
+          {
+            echo "sdk.dir=$SDK"
+            echo "api.key=ci-placeholder-not-for-production"
+          } > local.properties
+
+      - name: Gradle compile (:shared Android)
+        env:
+          GRADLE_OPTS: -Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.configuration-cache=false
+          LEVELUP_API_KEY: ci-placeholder-not-for-production
+        run: ./gradlew :shared:compileDebugKotlinAndroid --no-daemon --stacktrace
+
+  ios:
+    name: iOS — SwiftLint + Simulator build
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.mobile == 'true'
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        working-directory: apps/mobile/iosApp
+        run: brew install swiftlint
+
+      - name: Lint Swift sources
+        working-directory: apps/mobile/iosApp
+        run: swiftlint lint --config .swiftlint.yml --no-cache
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.3'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: local.properties (CI placeholder)
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK" || { echo "Android SDK not found" >&2; exit 1; }
+          {
+            echo "sdk.dir=$SDK"
+            echo "api.key=ci-placeholder-not-for-production"
+          } > local.properties
+
+      - name: Build KMP Shared (iOS Simulator)
+        env:
+          GRADLE_OPTS: -Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.configuration-cache=false
+          LEVELUP_API_KEY: ci-placeholder-not-for-production
+        run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon --stacktrace
+
+      - name: Xcode build (Simulator)
+        run: |
+          xcodebuild \
+            -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            build \
+            CODE_SIGNING_ALLOWED=NO
+
+  assets:
+    name: Assets — validate
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.assets == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r scripts/assets/requirements.txt
+
+      - name: Check EnemySpriteAssets.kt is generated
+        run: python3 scripts/assets/generate_enemy_sprite_assets.py --check
+
+      - name: Check platform sync
+        run: python3 scripts/assets/sync_battle_assets.py --check
+
+      - name: Validate manifest and files
+        run: python3 scripts/assets/validate_assets.py
+
+  master-images:
+    name: Master images — validate
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.master_images == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r scripts/master-images/requirements.txt
+
+      - name: Validate master image manifest
+        run: python3 scripts/master-images/validate.py
+
+  skills:
+    name: Skills — validate
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.skills == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate agent skills
+        run: bash scripts/validate-skills.sh
+
+  ci-summary:
+    name: CI summary
+    needs:
+      - changes
+      - backend
+      - mobile-android
+      - ios
+      - assets
+      - master-images
+      - skills
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report skipped vs executed
+        env:
+          BACKEND: ${{ needs.changes.outputs.backend }}
+          MOBILE: ${{ needs.changes.outputs.mobile }}
+          ASSETS: ${{ needs.changes.outputs.assets }}
+          MASTER: ${{ needs.changes.outputs.master_images }}
+          SKILLS: ${{ needs.changes.outputs.skills }}
+          ANY_CODE: ${{ needs.changes.outputs.any_code }}
+          DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          MOBILE_RESULT: ${{ needs.mobile-android.result }}
+          IOS_RESULT: ${{ needs.ios.result }}
+          ASSETS_RESULT: ${{ needs.assets.result }}
+          MASTER_RESULT: ${{ needs.master-images.result }}
+          SKILLS_RESULT: ${{ needs.skills.result }}
+        run: |
+          set -euo pipefail
+          echo "=== CI path detection ==="
+          echo "backend=$BACKEND mobile=$MOBILE assets=$ASSETS master_images=$MASTER skills=$SKILLS any_code=$ANY_CODE"
+          echo ""
+          echo "=== Job results ==="
+          echo "backend=$BACKEND_RESULT mobile-android=$MOBILE_RESULT ios=$IOS_RESULT"
+          echo "assets=$ASSETS_RESULT master-images=$MASTER_RESULT skills=$SKILLS_RESULT"
+          echo ""
+
+          failed=0
+          check_job() {
+            local name="$1"
+            local wanted="$2"
+            local result="$3"
+            if [[ "$DISPATCH" == "true" || "$wanted" == "true" ]]; then
+              if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+                echo "FAIL: $name ($result)" >&2
+                failed=1
+              fi
+            fi
+          }
+
+          check_job backend "$BACKEND" "$BACKEND_RESULT"
+          check_job mobile-android "$MOBILE" "$MOBILE_RESULT"
+          check_job ios "$MOBILE" "$IOS_RESULT"
+          check_job assets "$ASSETS" "$ASSETS_RESULT"
+          check_job master-images "$MASTER" "$MASTER_RESULT"
+          check_job skills "$SKILLS" "$SKILLS_RESULT"
+
+          if [[ "$DISPATCH" != "true" && "$ANY_CODE" != "true" ]]; then
+            echo "No application code paths changed (docs-only / metadata-only PR)."
+            echo "Domain jobs were skipped by design."
+          fi
+
+          exit "$failed"

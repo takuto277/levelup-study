@@ -2,7 +2,7 @@
 
 AI コーディングエージェント（Cursor 等）が **PR 前の品質確認** と **GitHub 操作** で参照する設定ファイル。
 
-- **GitHub Actions**: push 後の **lint / test セーフティネットのみ**
+- **GitHub Actions**: push / PR 時の **lint / test セーフティネット**（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）
 - **Issue / PR / レビュー**: **`gh` CLI + `.cursor/skills/`**（Actions workflow は使わない）
 - **PR 本文テンプレ**: [`.cursor/skills/github-pr-create/SKILL.md`](.cursor/skills/github-pr-create/SKILL.md)（`.github/pull_request_template.md` は廃止）
 
@@ -24,7 +24,7 @@ AI コーディングエージェント（Cursor 等）が **PR 前の品質確�
 | Backend | `cd backend && CGO_ENABLED=1 go test ./... -count=1 && go vet ./...` | CI と同等 |
 | Mobile (KMP Android) | `cd apps/mobile && ./gradlew :shared:compileDebugKotlinAndroid` | CI と同等 |
 | Mobile (KMP iOS link) | `cd apps/mobile && ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` | CI ios job 前半 |
-| iOS (Swift) | `cd apps/mobile && xcodebuild ...` | **ローカル macOS のみ**。CI は macos-15 + Xcode 26.3 |
+| iOS (Swift) | `cd apps/mobile && xcodebuild ...` | **ローカル macOS のみ**。CI は macos-15 + Xcode 26.3（`CI` workflow の iOS job） |
 | Assets | `./scripts/assets/run.sh scripts/assets/validate_assets.py` | assets 変更時 |
 | Master images | `cd backend && make master-images-validate` | master 画像変更時 |
 
