@@ -52,12 +52,18 @@ func (r *StudyRepository) ListSessionsByUser(userID uuid.UUID, limit, offset int
 
 // GetDailyStudySeconds — 指定日のユーザーの合計勉強秒数を取得する（日次ボーナス判定用）
 func (r *StudyRepository) GetDailyStudySeconds(userID uuid.UUID, date time.Time) (int64, error) {
+	return r.GetDailyStudySecondsTx(r.db, userID, date)
+}
+
+// GetDailyStudySecondsTx — 指定日のユーザーの合計勉強秒数を取得する（トランザクション内）
+func (r *StudyRepository) GetDailyStudySecondsTx(tx *gorm.DB, userID uuid.UUID, date time.Time) (int64, error) {
 	// date の 00:00:00 〜 23:59:59 (UTC) の範囲で合計する
-	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	utcDate := date.UTC()
+	startOfDay := time.Date(utcDate.Year(), utcDate.Month(), utcDate.Day(), 0, 0, 0, 0, time.UTC)
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	var total int64
-	err := r.db.Model(&model.StudySession{}).
+	err := tx.Model(&model.StudySession{}).
 		Where("user_id = ? AND started_at >= ? AND started_at < ?", userID, startOfDay, endOfDay).
 		Select("COALESCE(SUM(duration_seconds), 0)").
 		Scan(&total).Error
