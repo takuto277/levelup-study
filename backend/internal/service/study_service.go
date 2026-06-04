@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -28,7 +29,9 @@ type CompleteStudyRequest struct {
 	StartedAt       time.Time  `json:"started_at"`
 	EndedAt         time.Time  `json:"ended_at"`
 	DurationSeconds int        `json:"duration_seconds"`
-	Category        *string    `json:"category"`
+	Category        *string    `json:"category"` // 旧クライアント互換。UUID 文字列なら genre_id としても扱う。
+	GenreID         *uuid.UUID `json:"genre_id,omitempty"`
+	DungeonID       *uuid.UUID `json:"dungeon_id,omitempty"`
 	IsCompleted     bool       `json:"is_completed"`
 	UserCharacterID *uuid.UUID `json:"user_character_id,omitempty"` // 冒険に出した所持キャラ（省略時はパーティ先頭スロット）
 	// 冒険クエスト用: 通常敵・ボス（最終フロア撃破）討伐数。旧クライアントは 0 のまま。
@@ -83,10 +86,27 @@ func (s *StudyService) CompleteStudy(userID uuid.UUID, req CompleteStudyRequest)
 
 	// --- トランザクション開始 ---
 	err := s.db.Transaction(func(tx *gorm.DB) error {
+		var user model.User
+		if err := tx.First(&user, "id = ?", userID).Error; err != nil {
+			return fmt.Errorf("ユーザー取得に失敗: %w", err)
+		}
+
+		genreID := resolveStudyGenreID(req)
+		dungeonID := resolveStudyDungeonID(req, &user)
+
+		dailySecondsBefore, err := s.studyRepo.GetDailyStudySecondsTx(tx, userID, req.StartedAt)
+		if err != nil {
+			return fmt.Errorf("日次勉強時間の取得に失敗: %w", err)
+		}
+		reachedDailyBonus := dailySecondsBefore < dailyStudyBonusThresholdSeconds &&
+			dailySecondsBefore+int64(req.DurationSeconds) >= dailyStudyBonusThresholdSeconds
+
 		// --- 2. セッション保存 ---
 		session := model.StudySession{
 			UserID:          userID,
 			Category:        req.Category,
+			GenreID:         genreID,
+			DungeonID:       dungeonID,
 			StartedAt:       req.StartedAt,
 			EndedAt:         req.EndedAt,
 			DurationSeconds: req.DurationSeconds,
@@ -104,6 +124,7 @@ func (s *StudyService) CompleteStudy(userID uuid.UUID, req CompleteStudyRequest)
 			req.DefeatNormalCount,
 			req.DefeatBossCount,
 			req.DifficultyMultiplier,
+			reachedDailyBonus,
 		)
 		if err := s.studyRepo.CreateRewards(tx, rewards); err != nil {
 			return fmt.Errorf("報酬保存に失敗: %w", err)
@@ -120,6 +141,11 @@ func (s *StudyService) CompleteStudy(userID uuid.UUID, req CompleteStudyRequest)
 			if err := s.grantStudyExperienceToAdventurer(tx, userID, req.UserCharacterID, totalXP); err != nil {
 				return fmt.Errorf("経験値付与に失敗: %w", err)
 			}
+		}
+
+		// --- 6. ダンジョンステージ進行 ---
+		if err := s.advanceStudyDungeon(tx, userID, dungeonID, req.DurationSeconds); err != nil {
+			return fmt.Errorf("ダンジョン進行に失敗: %w", err)
 		}
 
 		return nil
@@ -161,14 +187,14 @@ func (s *StudyService) validateRequest(req CompleteStudyRequest) error {
 // calculateRewards — 報酬を計算する
 //
 // 経験値: 10秒ごと +1、通常敵撃破 +10、ボス撃破 +50（いずれも難易度倍率を乗算。デフォルト等倍 1.0）
-// ダイヤ（stones）: 2分（120秒）ごとに +1
-// ゴールド: 10分ごとに +10（従来どおり）
+// ダイヤ（stones）: 10分ごと +5、30分 / 60分 / 日次2時間ボーナス
 func (s *StudyService) calculateRewards(
 	sessionID uuid.UUID,
 	durationSec int,
 	defeatNormal int,
 	defeatBoss int,
 	difficultyMult float64,
+	grantDailyBonus bool,
 ) ([]model.StudyReward, int, int, int) {
 	var rewards []model.StudyReward
 	totalStones := 0
@@ -186,8 +212,8 @@ func (s *StudyService) calculateRewards(
 		defeatBoss = 0
 	}
 
-	// --- ダイヤ（知識の結晶 / stones）: 2分ごとに +1 ---
-	stonesFromTime := durationSec / 120
+	// --- ダイヤ（知識の結晶 / stones）: 10分ごとに +5 ---
+	stonesFromTime := (durationSec / 600) * 5
 	if stonesFromTime > 0 {
 		totalStones += stonesFromTime
 		rewards = append(rewards, model.StudyReward{
@@ -197,14 +223,33 @@ func (s *StudyService) calculateRewards(
 		})
 	}
 
-	// --- ゴールド: 10分ごとに +10 ---
-	goldBase := (minutes / 10) * 10
-	if goldBase > 0 {
-		totalGold += goldBase
+	if minutes >= 30 {
+		const bonus = 10
+		totalStones += bonus
 		rewards = append(rewards, model.StudyReward{
 			SessionID:  sessionID,
-			RewardType: "gold",
-			Amount:     goldBase,
+			RewardType: "stones_bonus_30",
+			Amount:     bonus,
+		})
+	}
+
+	if minutes >= 60 {
+		const bonus = 25
+		totalStones += bonus
+		rewards = append(rewards, model.StudyReward{
+			SessionID:  sessionID,
+			RewardType: "stones_bonus_60",
+			Amount:     bonus,
+		})
+	}
+
+	if grantDailyBonus {
+		const bonus = 50
+		totalStones += bonus
+		rewards = append(rewards, model.StudyReward{
+			SessionID:  sessionID,
+			RewardType: "stones_bonus_daily",
+			Amount:     bonus,
 		})
 	}
 
@@ -225,6 +270,58 @@ func (s *StudyService) calculateRewards(
 	}
 
 	return rewards, totalStones, totalGold, totalXP
+}
+
+const (
+	dailyStudyBonusThresholdSeconds = int64(2 * 60 * 60)
+	studySecondsPerDungeonStage     = 10 * 60
+)
+
+func resolveStudyGenreID(req CompleteStudyRequest) *uuid.UUID {
+	if req.GenreID != nil && *req.GenreID != uuid.Nil {
+		return req.GenreID
+	}
+	if req.Category == nil || *req.Category == "" {
+		return nil
+	}
+	parsed, err := uuid.Parse(*req.Category)
+	if err != nil {
+		return nil
+	}
+	return &parsed
+}
+
+func resolveStudyDungeonID(req CompleteStudyRequest, user *model.User) *uuid.UUID {
+	if req.DungeonID != nil && *req.DungeonID != uuid.Nil {
+		return req.DungeonID
+	}
+	return user.SelectedDungeonID
+}
+
+func (s *StudyService) advanceStudyDungeon(tx *gorm.DB, userID uuid.UUID, dungeonID *uuid.UUID, durationSec int) error {
+	if dungeonID == nil || *dungeonID == uuid.Nil {
+		return nil
+	}
+	stageAdvance := durationSec / studySecondsPerDungeonStage
+	if stageAdvance <= 0 {
+		return nil
+	}
+
+	progress, err := s.dungeonRepo.GetByUserAndDungeonTx(tx, userID, *dungeonID)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		newStage := 1 + stageAdvance
+		return s.dungeonRepo.Upsert(tx, &model.UserDungeonProgress{
+			UserID:          userID,
+			DungeonID:       *dungeonID,
+			CurrentStage:    newStage,
+			MaxClearedStage: newStage - 1,
+		})
+	}
+
+	return s.dungeonRepo.AdvanceStage(tx, progress.ID, progress.CurrentStage+stageAdvance)
 }
 
 // ListSessions — ユーザーの勉強セッション一覧を取得する

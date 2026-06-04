@@ -246,6 +246,35 @@ func TestStudyRepository_GetDailyStudySeconds(t *testing.T) {
 	}
 }
 
+func TestStudyRepository_GetDailyStudySecondsUsesUTCDay(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	userRepo := repository.NewUserRepository(db)
+	studyRepo := repository.NewStudyRepository(db)
+
+	user := &model.User{ID: uuid.New(), DisplayName: "UTC日次テスト"}
+	userRepo.Create(user)
+
+	jst := time.FixedZone("JST", 9*60*60)
+	sessionTimeUTC := time.Date(2026, 6, 4, 15, 30, 0, 0, time.UTC)
+	s := &model.StudySession{
+		UserID:          user.ID,
+		StartedAt:       sessionTimeUTC,
+		EndedAt:         sessionTimeUTC.Add(30 * time.Minute),
+		DurationSeconds: 1800,
+		IsCompleted:     true,
+	}
+	db.Create(s)
+
+	queryTimeJST := time.Date(2026, 6, 5, 0, 30, 0, 0, jst)
+	total, err := studyRepo.GetDailyStudySeconds(user.ID, queryTimeJST)
+	if err != nil {
+		t.Fatalf("日次秒数取得に失敗: %v", err)
+	}
+	if total != 1800 {
+		t.Errorf("UTC日次合計: got=%d, want=1800", total)
+	}
+}
+
 // ============================================================
 // CharacterRepository のテスト
 // ============================================================

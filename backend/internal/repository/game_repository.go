@@ -78,8 +78,8 @@ func (r *CharacterRepository) UpdateLevelAndXP(tx *gorm.DB, id uuid.UUID, level 
 	return tx.Model(&model.UserCharacter{}).
 		Where("id = ?", id).
 		Updates(map[string]interface{}{
-			"level":       level,
-			"current_xp":  currentXP,
+			"level":      level,
+			"current_xp": currentXP,
 		}).Error
 }
 
@@ -229,8 +229,13 @@ func (r *DungeonProgressRepository) Upsert(tx *gorm.DB, progress *model.UserDung
 
 // GetByUserAndDungeon — 特定ダンジョンの進行状況を取得する
 func (r *DungeonProgressRepository) GetByUserAndDungeon(userID, dungeonID uuid.UUID) (*model.UserDungeonProgress, error) {
+	return r.GetByUserAndDungeonTx(r.db, userID, dungeonID)
+}
+
+// GetByUserAndDungeonTx — 特定ダンジョンの進行状況を取得する（トランザクション内）
+func (r *DungeonProgressRepository) GetByUserAndDungeonTx(tx *gorm.DB, userID, dungeonID uuid.UUID) (*model.UserDungeonProgress, error) {
 	var progress model.UserDungeonProgress
-	err := r.db.
+	err := tx.
 		Where("user_id = ? AND dungeon_id = ?", userID, dungeonID).
 		First(&progress).Error
 	if err != nil {
@@ -251,10 +256,15 @@ func (r *DungeonProgressRepository) ListByUser(userID uuid.UUID) ([]model.UserDu
 
 // AdvanceStage — ステージを進める（トランザクション内で使う）
 func (r *DungeonProgressRepository) AdvanceStage(tx *gorm.DB, id uuid.UUID, newStage int) error {
+	maxCleared := newStage - 1
 	return tx.Model(&model.UserDungeonProgress{}).
 		Where("id = ?", id).
 		Updates(map[string]interface{}{
-			"current_stage":     newStage,
-			"max_cleared_stage": gorm.Expr("GREATEST(max_cleared_stage, ?)", newStage-1),
+			"current_stage": newStage,
+			"max_cleared_stage": gorm.Expr(
+				"CASE WHEN max_cleared_stage < ? THEN ? ELSE max_cleared_stage END",
+				maxCleared,
+				maxCleared,
+			),
 		}).Error
 }

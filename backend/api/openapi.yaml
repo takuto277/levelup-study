@@ -792,6 +792,15 @@ components:
         category:
           type: string
           nullable: true
+          description: Legacy compatibility field. UUID values are also stored as genre_id.
+        genre_id:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/UUID"
+        dungeon_id:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/UUID"
         is_completed:
           type: boolean
         user_character_id:
@@ -894,6 +903,14 @@ components:
         category:
           type: string
           nullable: true
+        genre_id:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/UUID"
+        dungeon_id:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/UUID"
         started_at:
           $ref: "#/components/schemas/Timestamp"
         ended_at:
@@ -917,7 +934,7 @@ components:
           $ref: "#/components/schemas/UUID"
         reward_type:
           type: string
-          enum: [stones, gold, xp, item_drop]
+          enum: [stones, stones_bonus_30, stones_bonus_60, stones_bonus_daily, gold, xp, item_drop]
         amount:
           type: integer
         item_id:

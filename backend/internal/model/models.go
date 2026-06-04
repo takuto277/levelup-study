@@ -25,14 +25,14 @@ func ensureUUID(id *uuid.UUID) {
 // ============================================================
 
 type User struct {
-	ID                 uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	DisplayName        string     `gorm:"type:varchar(50);not null"                       json:"display_name"`
-	TotalStudySeconds  int64      `gorm:"not null;default:0"                              json:"total_study_seconds"`
-	Stones             int        `gorm:"not null;default:0"                              json:"stones"`
-	Gold               int        `gorm:"not null;default:0"                              json:"gold"`
-	SelectedDungeonID  *uuid.UUID `gorm:"type:uuid"                                       json:"selected_dungeon_id"`
-	CreatedAt          time.Time  `gorm:"autoCreateTime"                                  json:"created_at"`
-	UpdatedAt          time.Time  `gorm:"autoUpdateTime"                                  json:"updated_at"`
+	ID                uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	DisplayName       string     `gorm:"type:varchar(50);not null"                       json:"display_name"`
+	TotalStudySeconds int64      `gorm:"not null;default:0"                              json:"total_study_seconds"`
+	Stones            int        `gorm:"not null;default:0"                              json:"stones"`
+	Gold              int        `gorm:"not null;default:0"                              json:"gold"`
+	SelectedDungeonID *uuid.UUID `gorm:"type:uuid"                                       json:"selected_dungeon_id"`
+	CreatedAt         time.Time  `gorm:"autoCreateTime"                                  json:"created_at"`
+	UpdatedAt         time.Time  `gorm:"autoUpdateTime"                                  json:"updated_at"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error { ensureUUID(&u.ID); return nil }
@@ -43,14 +43,16 @@ func (u *User) BeforeCreate(tx *gorm.DB) error { ensureUUID(&u.ID); return nil }
 // ============================================================
 
 type StudySession struct {
-	ID              uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	UserID          uuid.UUID `gorm:"type:uuid;not null;index"                       json:"user_id"`
-	Category        *string   `gorm:"type:varchar(50)"                               json:"category"`         // 勉強カテゴリ（英語, 数学 等）
-	StartedAt       time.Time `gorm:"not null"                                       json:"started_at"`       // 開始日時
-	EndedAt         time.Time `gorm:"not null"                                       json:"ended_at"`         // 終了日時
-	DurationSeconds int       `gorm:"not null"                                       json:"duration_seconds"` // 実勉強秒数
-	IsCompleted     bool      `gorm:"not null;default:false"                         json:"is_completed"`     // ポモドーロ目標達成か
-	CreatedAt       time.Time `gorm:"autoCreateTime"                                 json:"created_at"`
+	ID              uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	UserID          uuid.UUID  `gorm:"type:uuid;not null;index"                       json:"user_id"`
+	Category        *string    `gorm:"type:varchar(50)"                               json:"category"`         // 旧クライアント互換（genre_id 移行前の値）
+	GenreID         *uuid.UUID `gorm:"type:uuid;index"                                json:"genre_id"`         // 勉強ジャンル（m_study_genres）
+	DungeonID       *uuid.UUID `gorm:"type:uuid;index"                                json:"dungeon_id"`       // この勉強中に進行したダンジョン
+	StartedAt       time.Time  `gorm:"not null"                                       json:"started_at"`       // 開始日時
+	EndedAt         time.Time  `gorm:"not null"                                       json:"ended_at"`         // 終了日時
+	DurationSeconds int        `gorm:"not null"                                       json:"duration_seconds"` // 実勉強秒数
+	IsCompleted     bool       `gorm:"not null;default:false"                         json:"is_completed"`     // ポモドーロ目標達成か
+	CreatedAt       time.Time  `gorm:"autoCreateTime"                                 json:"created_at"`
 
 	// リレーション
 	Rewards []StudyReward `gorm:"foreignKey:SessionID" json:"rewards,omitempty"`
@@ -308,8 +310,8 @@ func (ps *UserPartySlot) BeforeCreate(tx *gorm.DB) error { ensureUUID(&ps.ID); r
 
 type UserDungeonProgress struct {
 	ID              uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	UserID          uuid.UUID `gorm:"type:uuid;not null"                             json:"user_id"`
-	DungeonID       uuid.UUID `gorm:"type:uuid;not null"                             json:"dungeon_id"`         // → m_dungeons
+	UserID          uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_dungeon" json:"user_id"`
+	DungeonID       uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_dungeon" json:"dungeon_id"`        // → m_dungeons
 	CurrentStage    int       `gorm:"not null;default:1"                              json:"current_stage"`     // 現在挑戦中
 	MaxClearedStage int       `gorm:"not null;default:0"                              json:"max_cleared_stage"` // 最高クリア済み
 	UpdatedAt       time.Time `gorm:"autoUpdateTime"                                  json:"updated_at"`
