@@ -124,5 +124,5 @@ SwiftUIを含むネイティブ層がデータを自前で永続化すること�
 ### 次の優先タスク
 1. Supabase Auth ログイン UI とユーザー ID 紐付け
 2. コアゲームループの設計準拠（報酬式・装備・LvUP・サーバーバトル）
-3. OpenAPI 定義（`backend/api/` — 未作成）
+3. OpenAPI 定義（[`backend/api/openapi.yaml`](../../backend/api/openapi.yaml)）
 4. 詳細は [`docs/planning/01_Features_and_Roadmap.md`](../planning/01_Features_and_Roadmap.md) および [GitHub Issues](https://github.com/takuto277/levelup-study/issues) を参照

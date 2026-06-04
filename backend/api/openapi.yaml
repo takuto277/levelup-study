@@ -2,15 +2,33 @@ openapi: 3.0.3
 info:
   title: LevelUp Study API
   version: 0.1.0
-  description: Public API contract for the LevelUp Study backend.
+  description: |
+    HTTP API contract for the LevelUp Study Go backend.
+
+    The router source of truth is backend/internal/router/router.go.
+    API Key authentication is skipped only when DEV_MODE is enabled.
 servers:
-  - url: /
-security:
-  - ApiKeyAuth: []
+  - url: https://levelup-study-api.onrender.com
+    description: Production
+  - url: http://localhost:8080
+    description: Local development
+tags:
+  - name: Health
+  - name: Users
+  - name: Study
+  - name: Characters
+  - name: Weapons
+  - name: Party
+  - name: Dungeons
+  - name: Gacha
+  - name: Master
+  - name: Debug
+
 paths:
   /:
     get:
       tags: [Health]
+      operationId: getHealth
       summary: Health check
       security: []
       responses:
@@ -20,11 +38,14 @@ paths:
             text/plain:
               schema:
                 type: string
-                example: LevelUp Study API is running
+
   /api/v1/users:
     post:
       tags: [Users]
+      operationId: createUser
       summary: Create a user
+      security:
+        - ApiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -40,44 +61,21 @@ paths:
                 $ref: "#/components/schemas/User"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /api/v1/debug/users/{userID}/currencies:
-    post:
-      tags: [Debug]
-      summary: Patch user currencies in development mode
-      description: Registered only when DEV_MODE is enabled.
-      security:
-        - ApiKeyAuth: []
-          BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DebugPatchCurrenciesRequest"
-      responses:
-        "200":
-          description: Updated user.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "404":
-          $ref: "#/components/responses/NotFound"
+
   /api/v1/users/{userID}:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
     get:
       tags: [Users]
+      operationId: getUser
       summary: Get a user
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
       responses:
         "200":
           description: User.
@@ -87,16 +85,19 @@ paths:
                 $ref: "#/components/schemas/User"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
     put:
       tags: [Users]
+      operationId: updateUser
       summary: Update a user
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
       requestBody:
         required: true
         content:
@@ -112,18 +113,21 @@ paths:
                 $ref: "#/components/schemas/User"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
     delete:
       tags: [Users]
+      operationId: deleteUser
       summary: Delete a user
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
       responses:
         "200":
           description: User deleted.
@@ -133,17 +137,56 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /api/v1/users/{userID}/study/complete:
+
+  /api/v1/debug/users/{userID}/currencies:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
     post:
-      tags: [Study]
-      summary: Complete a study session
+      tags: [Debug]
+      operationId: debugPatchCurrencies
+      summary: Patch user currencies in DEV_MODE
+      description: This route is registered only when DEV_MODE is enabled.
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DebugPatchCurrenciesRequest"
+      responses:
+        "200":
+          description: Updated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/users/{userID}/study/complete:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
+    post:
+      tags: [Study]
+      operationId: completeStudy
+      summary: Complete a study session and grant rewards
+      security:
+        - ApiKeyAuth: []
+          BearerAuth: []
       requestBody:
         required: true
         content:
@@ -152,77 +195,84 @@ paths:
               $ref: "#/components/schemas/CompleteStudyRequest"
       responses:
         "200":
-          description: Study completion result.
+          description: Study session completed.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CompleteStudyResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/users/{userID}/study/sessions:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
     get:
       tags: [Study]
+      operationId: listStudySessions
       summary: List study sessions
       security:
         - ApiKeyAuth: []
           BearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/UserID"
-        - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Offset"
+        - $ref: "#/components/parameters/LimitQuery"
+        - $ref: "#/components/parameters/OffsetQuery"
       responses:
         "200":
           description: Study sessions.
           content:
             application/json:
               schema:
-                type: object
-                required: [sessions]
-                properties:
-                  sessions:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/StudySession"
+                $ref: "#/components/schemas/StudySessionsResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/users/{userID}/characters:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
     get:
-      tags: [Game]
+      tags: [Characters]
+      operationId: listUserCharacters
       summary: List owned characters
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
       responses:
         "200":
           description: Owned characters.
           content:
             application/json:
               schema:
-                type: object
-                required: [characters]
-                properties:
-                  characters:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/UserCharacter"
+                $ref: "#/components/schemas/UserCharactersResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/users/{userID}/characters/{characterID}:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
+      - $ref: "#/components/parameters/CharacterIDPath"
     get:
-      tags: [Game]
+      tags: [Characters]
+      operationId: getUserCharacter
       summary: Get an owned character
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
-        - $ref: "#/components/parameters/CharacterID"
       responses:
         "200":
           description: Owned character.
@@ -232,18 +282,24 @@ paths:
                 $ref: "#/components/schemas/UserCharacter"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
   /api/v1/users/{userID}/characters/{characterID}/equip:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
+      - $ref: "#/components/parameters/CharacterIDPath"
     put:
-      tags: [Game]
+      tags: [Characters]
+      operationId: equipWeapon
       summary: Equip or unequip a weapon
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
-        - $ref: "#/components/parameters/CharacterID"
       requestBody:
         required: true
         content:
@@ -252,27 +308,33 @@ paths:
               $ref: "#/components/schemas/EquipWeaponRequest"
       responses:
         "200":
-          description: Weapon equipped.
+          description: Weapon equipped or unequipped.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/users/{userID}/characters/{characterID}/level-up:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
+      - $ref: "#/components/parameters/CharacterIDPath"
     post:
-      tags: [Game]
+      tags: [Characters]
+      operationId: levelUpCharacter
       summary: Level up an owned character
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
-        - $ref: "#/components/parameters/CharacterID"
       responses:
         "200":
           description: Updated owned character.
@@ -282,44 +344,52 @@ paths:
                 $ref: "#/components/schemas/UserCharacter"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
   /api/v1/users/{userID}/weapons:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
     get:
-      tags: [Game]
+      tags: [Weapons]
+      operationId: listUserWeapons
       summary: List owned weapons
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
       responses:
         "200":
           description: Owned weapons.
           content:
             application/json:
               schema:
-                type: object
-                required: [weapons]
-                properties:
-                  weapons:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/UserWeapon"
+                $ref: "#/components/schemas/UserWeaponsResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/users/{userID}/weapons/{weaponID}/level-up:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
+      - $ref: "#/components/parameters/WeaponIDPath"
     post:
-      tags: [Game]
+      tags: [Weapons]
+      operationId: levelUpWeapon
       summary: Level up an owned weapon
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
-        - $ref: "#/components/parameters/WeaponID"
       responses:
         "200":
           description: Updated owned weapon.
@@ -329,44 +399,52 @@ paths:
                 $ref: "#/components/schemas/UserWeapon"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
   /api/v1/users/{userID}/party:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
     get:
-      tags: [Game]
+      tags: [Party]
+      operationId: getParty
       summary: Get party slots
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
       responses:
         "200":
           description: Party slots.
           content:
             application/json:
               schema:
-                type: object
-                required: [slots]
-                properties:
-                  slots:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/UserPartySlot"
+                $ref: "#/components/schemas/PartyResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/users/{userID}/party/{slotPosition}:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
+      - $ref: "#/components/parameters/SlotPositionPath"
     put:
-      tags: [Game]
-      summary: Update a party slot
+      tags: [Party]
+      operationId: updatePartySlot
+      summary: Set a party slot
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
-        - $ref: "#/components/parameters/SlotPosition"
       requestBody:
         required: true
         content:
@@ -382,19 +460,21 @@ paths:
                 $ref: "#/components/schemas/UserPartySlot"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
     delete:
-      tags: [Game]
+      tags: [Party]
+      operationId: removePartySlot
       summary: Remove a party slot
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
-        - $ref: "#/components/parameters/SlotPosition"
       responses:
         "200":
           description: Party slot removed.
@@ -404,43 +484,49 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/users/{userID}/dungeons:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
     get:
-      tags: [Game]
+      tags: [Dungeons]
+      operationId: listDungeonProgress
       summary: List dungeon progress
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
       responses:
         "200":
           description: Dungeon progress.
           content:
             application/json:
               schema:
-                type: object
-                required: [progress]
-                properties:
-                  progress:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/UserDungeonProgress"
+                $ref: "#/components/schemas/DungeonProgressResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/users/{userID}/gacha/pull:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
     post:
       tags: [Gacha]
+      operationId: pullGacha
       summary: Pull a gacha banner
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/UserID"
       requestBody:
         required: true
         content:
@@ -449,164 +535,170 @@ paths:
               $ref: "#/components/schemas/GachaPullRequest"
       responses:
         "200":
-          description: Pull result.
+          description: Gacha pull result.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/GachaPullResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
   /api/v1/users/{userID}/gacha/history:
+    parameters:
+      - $ref: "#/components/parameters/UserIDPath"
     get:
       tags: [Gacha]
+      operationId: listGachaHistory
       summary: List gacha history
       security:
         - ApiKeyAuth: []
           BearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/UserID"
-        - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Offset"
-        - in: query
-          name: banner_id
-          schema:
-            type: string
-            format: uuid
+        - $ref: "#/components/parameters/LimitQuery"
+        - $ref: "#/components/parameters/OffsetQuery"
+        - $ref: "#/components/parameters/BannerIDQuery"
       responses:
         "200":
           description: Gacha history.
           content:
             application/json:
               schema:
-                type: object
-                required: [history, limit, offset]
-                properties:
-                  history:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/GachaHistory"
-                  limit:
-                    type: integer
-                  offset:
-                    type: integer
+                $ref: "#/components/schemas/GachaHistoryResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/master/characters:
     get:
       tags: [Master]
-      summary: List character masters
+      operationId: listMasterCharacters
+      summary: List character master data
+      security:
+        - ApiKeyAuth: []
       responses:
         "200":
-          description: Character masters.
+          description: Character master data.
           content:
             application/json:
               schema:
-                type: object
-                required: [characters]
-                properties:
-                  characters:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/MasterCharacter"
+                $ref: "#/components/schemas/MasterCharactersResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/master/weapons:
     get:
       tags: [Master]
-      summary: List weapon masters
+      operationId: listMasterWeapons
+      summary: List weapon master data
+      security:
+        - ApiKeyAuth: []
       responses:
         "200":
-          description: Weapon masters.
+          description: Weapon master data.
           content:
             application/json:
               schema:
-                type: object
-                required: [weapons]
-                properties:
-                  weapons:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/MasterWeapon"
+                $ref: "#/components/schemas/MasterWeaponsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/master/dungeons:
     get:
       tags: [Master]
-      summary: List dungeon masters
+      operationId: listMasterDungeons
+      summary: List dungeon master data
+      security:
+        - ApiKeyAuth: []
       responses:
         "200":
-          description: Dungeon masters.
+          description: Dungeon master data.
           content:
             application/json:
               schema:
-                type: object
-                required: [dungeons]
-                properties:
-                  dungeons:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/MasterDungeon"
+                $ref: "#/components/schemas/MasterDungeonsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/master/dungeons/{dungeonID}:
+    parameters:
+      - $ref: "#/components/parameters/DungeonIDPath"
     get:
       tags: [Master]
-      summary: Get a dungeon master
-      parameters:
-        - $ref: "#/components/parameters/DungeonID"
+      operationId: getMasterDungeon
+      summary: Get dungeon master detail
+      security:
+        - ApiKeyAuth: []
       responses:
         "200":
-          description: Dungeon master.
+          description: Dungeon master detail.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/MasterDungeon"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
   /api/v1/master/gacha/banners:
     get:
       tags: [Master]
+      operationId: listActiveGachaBanners
       summary: List active gacha banners
+      security:
+        - ApiKeyAuth: []
       responses:
         "200":
           description: Active gacha banners.
           content:
             application/json:
               schema:
-                type: object
-                required: [banners]
-                properties:
-                  banners:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/GachaBanner"
+                $ref: "#/components/schemas/GachaBannersResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/master/genres:
     get:
       tags: [Master]
-      summary: List study genre masters
+      operationId: listStudyGenres
+      summary: List study genre master data
+      security:
+        - ApiKeyAuth: []
       responses:
         "200":
-          description: Study genre masters.
+          description: Study genre master data.
           content:
             application/json:
               schema:
-                type: object
-                required: [genres]
-                properties:
-                  genres:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/MasterStudyGenre"
+                $ref: "#/components/schemas/StudyGenresResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
     post:
       tags: [Master]
+      operationId: createStudyGenre
       summary: Create a study genre
       security:
         - ApiKeyAuth: []
@@ -626,26 +718,38 @@ paths:
                 $ref: "#/components/schemas/MasterStudyGenre"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
   /api/v1/master/genres/{genreID}:
+    parameters:
+      - $ref: "#/components/parameters/GenreIDPath"
     delete:
       tags: [Master]
+      operationId: deleteStudyGenre
       summary: Delete a study genre
+      description: Logical delete. Returns 204 when the genre is already inactive or successfully deactivated.
       security:
         - ApiKeyAuth: []
           BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/GenreID"
       responses:
         "204":
           description: Study genre deleted or already inactive.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -656,67 +760,90 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
   parameters:
-    UserID:
-      in: path
+    UserIDPath:
       name: userID
+      in: path
       required: true
       schema:
         type: string
         format: uuid
-    CharacterID:
-      in: path
+    CharacterIDPath:
       name: characterID
+      in: path
       required: true
       schema:
         type: string
         format: uuid
-    WeaponID:
-      in: path
+    WeaponIDPath:
       name: weaponID
+      in: path
       required: true
       schema:
         type: string
         format: uuid
-    DungeonID:
-      in: path
+    DungeonIDPath:
       name: dungeonID
+      in: path
       required: true
       schema:
         type: string
         format: uuid
-    GenreID:
-      in: path
+    GenreIDPath:
       name: genreID
+      in: path
       required: true
       schema:
         type: string
         format: uuid
-    SlotPosition:
-      in: path
+    SlotPositionPath:
       name: slotPosition
+      in: path
       required: true
       schema:
         type: integer
         minimum: 1
         maximum: 4
-    Limit:
-      in: query
+    LimitQuery:
       name: limit
+      in: query
+      required: false
       schema:
         type: integer
         minimum: 1
         default: 20
-    Offset:
-      in: query
+    OffsetQuery:
       name: offset
+      in: query
+      required: false
       schema:
         type: integer
         minimum: 0
         default: 0
+    BannerIDQuery:
+      name: banner_id
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uuid
+
   responses:
     BadRequest:
-      description: Invalid request.
+      description: Bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing or invalid bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Missing or invalid API key, or access to another user's resource.
       content:
         application/json:
           schema:
@@ -727,49 +854,55 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: Rate limit exceeded.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
     InternalServerError:
       description: Internal server error.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+
   schemas:
-    UUID:
-      type: string
-      format: uuid
-    Timestamp:
-      type: string
-      format: date-time
-    JSONValue:
-      description: Arbitrary JSON payload stored by the backend.
-      nullable: true
     ErrorResponse:
       type: object
       required: [error]
       properties:
         error:
           type: string
+
     MessageResponse:
       type: object
       required: [message]
       properties:
         message:
           type: string
+
     CreateUserRequest:
       type: object
       required: [display_name]
       properties:
         display_name:
           type: string
+          minLength: 1
+          maxLength: 50
+
     UpdateUserRequest:
       type: object
       properties:
         display_name:
           type: string
+          maxLength: 50
         selected_dungeon_id:
+          type: string
           nullable: true
-          allOf:
-            - $ref: "#/components/schemas/UUID"
+          pattern: "^$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          description: UUID string to select a dungeon. Empty string or null clears the selection.
+
     DebugPatchCurrenciesRequest:
       type: object
       properties:
@@ -777,14 +910,52 @@ components:
           type: integer
         gold_delta:
           type: integer
+      description: At least one of stones_delta or gold_delta must be non-zero.
+
+    User:
+      type: object
+      required:
+        - id
+        - display_name
+        - total_study_seconds
+        - stones
+        - gold
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        total_study_seconds:
+          type: integer
+          format: int64
+        stones:
+          type: integer
+        gold:
+          type: integer
+        selected_dungeon_id:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
     CompleteStudyRequest:
       type: object
-      required: [started_at, ended_at, duration_seconds, is_completed]
+      required: [started_at, ended_at, duration_seconds]
       properties:
         started_at:
-          $ref: "#/components/schemas/Timestamp"
+          type: string
+          format: date-time
         ended_at:
-          $ref: "#/components/schemas/Timestamp"
+          type: string
+          format: date-time
         duration_seconds:
           type: integer
           minimum: 1
@@ -794,10 +965,11 @@ components:
           nullable: true
         is_completed:
           type: boolean
+          default: false
         user_character_id:
+          type: string
+          format: uuid
           nullable: true
-          allOf:
-            - $ref: "#/components/schemas/UUID"
         defeat_normal_count:
           type: integer
           minimum: 0
@@ -810,127 +982,367 @@ components:
           type: number
           format: double
           default: 1
+
     CompleteStudyResponse:
       type: object
       required: [session_id, rewards, updated_user]
       properties:
         session_id:
-          $ref: "#/components/schemas/UUID"
+          type: string
+          format: uuid
         rewards:
           type: array
           items:
             $ref: "#/components/schemas/StudyReward"
         updated_user:
           $ref: "#/components/schemas/User"
-    EquipWeaponRequest:
+
+    StudySessionsResponse:
       type: object
+      required: [sessions]
       properties:
-        user_weapon_id:
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/UUID"
-        weapon_id:
-          nullable: true
-          deprecated: true
-          allOf:
-            - $ref: "#/components/schemas/UUID"
-    UpdatePartySlotRequest:
-      type: object
-      required: [user_character_id]
-      properties:
-        user_character_id:
-          $ref: "#/components/schemas/UUID"
-    GachaPullRequest:
-      type: object
-      required: [banner_id, count]
-      properties:
-        banner_id:
-          $ref: "#/components/schemas/UUID"
-        count:
-          type: integer
-          enum: [1, 10]
-    CreateStudyGenreRequest:
-      type: object
-      required: [slug, label]
-      properties:
-        slug:
-          type: string
-        label:
-          type: string
-        emoji:
-          type: string
-        color_hex:
-          type: string
-          example: "#6B7280"
-    User:
-      type: object
-      properties:
-        id:
-          $ref: "#/components/schemas/UUID"
-        display_name:
-          type: string
-        total_study_seconds:
-          type: integer
-          format: int64
-        stones:
-          type: integer
-        gold:
-          type: integer
-        selected_dungeon_id:
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/UUID"
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-        updated_at:
-          $ref: "#/components/schemas/Timestamp"
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudySession"
+
     StudySession:
       type: object
+      required:
+        - id
+        - user_id
+        - started_at
+        - ended_at
+        - duration_seconds
+        - is_completed
+        - created_at
       properties:
         id:
-          $ref: "#/components/schemas/UUID"
+          type: string
+          format: uuid
         user_id:
-          $ref: "#/components/schemas/UUID"
+          type: string
+          format: uuid
         category:
           type: string
           nullable: true
         started_at:
-          $ref: "#/components/schemas/Timestamp"
+          type: string
+          format: date-time
         ended_at:
-          $ref: "#/components/schemas/Timestamp"
+          type: string
+          format: date-time
         duration_seconds:
           type: integer
         is_completed:
           type: boolean
         created_at:
-          $ref: "#/components/schemas/Timestamp"
+          type: string
+          format: date-time
         rewards:
           type: array
           items:
             $ref: "#/components/schemas/StudyReward"
+
     StudyReward:
       type: object
+      required: [id, session_id, reward_type, amount, created_at]
       properties:
         id:
-          $ref: "#/components/schemas/UUID"
+          type: string
+          format: uuid
         session_id:
-          $ref: "#/components/schemas/UUID"
+          type: string
+          format: uuid
         reward_type:
           type: string
           enum: [stones, gold, xp, item_drop]
         amount:
           type: integer
         item_id:
+          type: string
+          format: uuid
           nullable: true
-          allOf:
-            - $ref: "#/components/schemas/UUID"
         created_at:
-          $ref: "#/components/schemas/Timestamp"
-    MasterCharacter:
+          type: string
+          format: date-time
+
+    UserCharactersResponse:
       type: object
+      required: [characters]
+      properties:
+        characters:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserCharacter"
+
+    UserCharacter:
+      type: object
+      required:
+        - id
+        - user_id
+        - character_id
+        - level
+        - current_xp
+        - obtained_at
       properties:
         id:
-          $ref: "#/components/schemas/UUID"
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        character_id:
+          type: string
+          format: uuid
+        level:
+          type: integer
+        current_xp:
+          type: integer
+        equipped_weapon_id:
+          type: string
+          format: uuid
+          nullable: true
+        obtained_at:
+          type: string
+          format: date-time
+        character:
+          $ref: "#/components/schemas/MasterCharacter"
+        weapon:
+          $ref: "#/components/schemas/UserWeapon"
+
+    EquipWeaponRequest:
+      type: object
+      properties:
+        user_weapon_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: user_weapons.id. Null unequips the weapon.
+        weapon_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Backward-compatible alias for user_weapon_id.
+
+    UserWeaponsResponse:
+      type: object
+      required: [weapons]
+      properties:
+        weapons:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserWeapon"
+
+    UserWeapon:
+      type: object
+      required:
+        - id
+        - user_id
+        - weapon_id
+        - level
+        - obtained_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        weapon_id:
+          type: string
+          format: uuid
+        level:
+          type: integer
+        obtained_at:
+          type: string
+          format: date-time
+        weapon:
+          $ref: "#/components/schemas/MasterWeapon"
+
+    PartyResponse:
+      type: object
+      required: [slots]
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserPartySlot"
+
+    UpdatePartySlotRequest:
+      type: object
+      required: [user_character_id]
+      properties:
+        user_character_id:
+          type: string
+          format: uuid
+
+    UserPartySlot:
+      type: object
+      required: [id, user_id, slot_position, user_character_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        slot_position:
+          type: integer
+          minimum: 1
+          maximum: 4
+        user_character_id:
+          type: string
+          format: uuid
+        user_character:
+          $ref: "#/components/schemas/UserCharacter"
+
+    DungeonProgressResponse:
+      type: object
+      required: [progress]
+      properties:
+        progress:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserDungeonProgress"
+
+    UserDungeonProgress:
+      type: object
+      required:
+        - id
+        - user_id
+        - dungeon_id
+        - current_stage
+        - max_cleared_stage
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        dungeon_id:
+          type: string
+          format: uuid
+        current_stage:
+          type: integer
+        max_cleared_stage:
+          type: integer
+        updated_at:
+          type: string
+          format: date-time
+        dungeon:
+          $ref: "#/components/schemas/MasterDungeon"
+
+    GachaPullRequest:
+      type: object
+      required: [banner_id, count]
+      properties:
+        banner_id:
+          type: string
+          format: uuid
+        count:
+          type: integer
+          enum: [1, 10]
+
+    GachaPullResponse:
+      type: object
+      required: [results, stones_spent, remaining_stones]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/GachaPullResult"
+        stones_spent:
+          type: integer
+        remaining_stones:
+          type: integer
+        updated_user:
+          allOf:
+            - $ref: "#/components/schemas/User"
+          nullable: true
+
+    GachaPullResult:
+      type: object
+      required: [result_type, item_id, name, rarity, is_new, pity_count]
+      properties:
+        result_type:
+          type: string
+          enum: [character, weapon, costume]
+        item_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        rarity:
+          type: integer
+        is_new:
+          type: boolean
+        pity_count:
+          type: integer
+
+    GachaHistoryResponse:
+      type: object
+      required: [history, limit, offset]
+      properties:
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/GachaHistory"
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    GachaHistory:
+      type: object
+      required:
+        - id
+        - user_id
+        - banner_id
+        - result_type
+        - result_item_id
+        - pity_count
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        banner_id:
+          type: string
+          format: uuid
+        result_type:
+          type: string
+          enum: [character, weapon, costume]
+        result_item_id:
+          type: string
+          format: uuid
+        pity_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    MasterCharactersResponse:
+      type: object
+      required: [characters]
+      properties:
+        characters:
+          type: array
+          items:
+            $ref: "#/components/schemas/MasterCharacter"
+
+    MasterCharacter:
+      type: object
+      required: [id, name, rarity, base_hp, base_atk, base_def, image_url, is_active, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
         name:
           type: string
         rarity:
@@ -943,18 +1355,33 @@ components:
           type: integer
         image_url:
           type: string
+          format: uri
         idle_animation_url:
           type: string
+          format: uri
           nullable: true
         is_active:
           type: boolean
         created_at:
-          $ref: "#/components/schemas/Timestamp"
+          type: string
+          format: date-time
+
+    MasterWeaponsResponse:
+      type: object
+      required: [weapons]
+      properties:
+        weapons:
+          type: array
+          items:
+            $ref: "#/components/schemas/MasterWeapon"
+
     MasterWeapon:
       type: object
+      required: [id, name, rarity, base_atk, image_url, is_active, created_at]
       properties:
         id:
-          $ref: "#/components/schemas/UUID"
+          type: string
+          format: uuid
         name:
           type: string
         rarity:
@@ -963,15 +1390,103 @@ components:
           type: integer
         image_url:
           type: string
+          format: uri
         is_active:
           type: boolean
         created_at:
-          $ref: "#/components/schemas/Timestamp"
-    MasterMonster:
+          type: string
+          format: date-time
+
+    MasterDungeonsResponse:
       type: object
+      required: [dungeons]
+      properties:
+        dungeons:
+          type: array
+          items:
+            $ref: "#/components/schemas/MasterDungeon"
+
+    MasterDungeon:
+      type: object
+      required: [id, name, sort_order, image_url, is_active, created_at]
       properties:
         id:
-          $ref: "#/components/schemas/UUID"
+          type: string
+          format: uuid
+        name:
+          type: string
+        sort_order:
+          type: integer
+        unlock_condition:
+          type: string
+          nullable: true
+        image_url:
+          type: string
+          format: uri
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        stages:
+          type: array
+          items:
+            $ref: "#/components/schemas/MasterDungeonStage"
+
+    MasterDungeonStage:
+      type: object
+      required: [id, dungeon_id, stage_number, recommended_power, enemy_composition, drop_table]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dungeon_id:
+          type: string
+          format: uuid
+        stage_number:
+          type: integer
+        recommended_power:
+          type: integer
+        enemy_composition:
+          type: array
+          items:
+            type: object
+        drop_table:
+          type: array
+          items:
+            type: object
+        enemies:
+          type: array
+          items:
+            $ref: "#/components/schemas/MasterDungeonStageEnemy"
+
+    MasterDungeonStageEnemy:
+      type: object
+      required: [id, stage_id, monster_id, sort_order, count]
+      properties:
+        id:
+          type: string
+          format: uuid
+        stage_id:
+          type: string
+          format: uuid
+        monster_id:
+          type: string
+          format: uuid
+        sort_order:
+          type: integer
+        count:
+          type: integer
+        monster:
+          $ref: "#/components/schemas/MasterMonster"
+
+    MasterMonster:
+      type: object
+      required: [id, slug, name, emoji, hp, atk, def, image_url, is_active, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
         slug:
           type: string
         name:
@@ -989,65 +1504,21 @@ components:
         is_active:
           type: boolean
         created_at:
-          $ref: "#/components/schemas/Timestamp"
-    MasterDungeon:
+          type: string
+          format: date-time
+
+    GachaBannersResponse:
       type: object
+      required: [banners]
       properties:
-        id:
-          $ref: "#/components/schemas/UUID"
-        name:
-          type: string
-        sort_order:
-          type: integer
-        unlock_condition:
-          type: string
-          nullable: true
-        image_url:
-          type: string
-        is_active:
-          type: boolean
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-        stages:
+        banners:
           type: array
           items:
-            $ref: "#/components/schemas/MasterDungeonStage"
-    MasterDungeonStage:
+            $ref: "#/components/schemas/MasterGachaBanner"
+
+    MasterGachaBanner:
       type: object
-      properties:
-        id:
-          $ref: "#/components/schemas/UUID"
-        dungeon_id:
-          $ref: "#/components/schemas/UUID"
-        stage_number:
-          type: integer
-        recommended_power:
-          type: integer
-        enemy_composition:
-          $ref: "#/components/schemas/JSONValue"
-        drop_table:
-          $ref: "#/components/schemas/JSONValue"
-        enemies:
-          type: array
-          items:
-            $ref: "#/components/schemas/MasterDungeonStageEnemy"
-    MasterDungeonStageEnemy:
-      type: object
-      properties:
-        id:
-          $ref: "#/components/schemas/UUID"
-        stage_id:
-          $ref: "#/components/schemas/UUID"
-        monster_id:
-          $ref: "#/components/schemas/UUID"
-        sort_order:
-          type: integer
-        count:
-          type: integer
-        monster:
-          $ref: "#/components/schemas/MasterMonster"
-    GachaBanner:
-      type: object
+      required: [id, name, banner_type, start_at, end_at, rate_table, is_active, featured]
       properties:
         id:
           type: string
@@ -1056,24 +1527,46 @@ components:
           type: string
         banner_type:
           type: string
-          enum: [character, weapon, mixed]
+          enum: [character, weapon, costume, mixed]
         start_at:
-          $ref: "#/components/schemas/Timestamp"
+          type: string
+          format: date-time
         end_at:
-          $ref: "#/components/schemas/Timestamp"
+          type: string
+          format: date-time
         pity_threshold:
           type: integer
           nullable: true
         rate_table:
-          $ref: "#/components/schemas/JSONValue"
+          type: array
+          items:
+            $ref: "#/components/schemas/RateTableEntry"
         is_active:
           type: boolean
         featured:
           type: array
           items:
             $ref: "#/components/schemas/GachaBannerFeatured"
+
+    RateTableEntry:
+      type: object
+      required: [item_id, result_type, rarity, rate]
+      properties:
+        item_id:
+          type: string
+          format: uuid
+        result_type:
+          type: string
+          enum: [character, weapon, costume]
+        rarity:
+          type: integer
+        rate:
+          type: number
+          format: double
+
     GachaBannerFeatured:
       type: object
+      required: [id, banner_id, item_id, item_type, rate_up]
       properties:
         id:
           type: string
@@ -1096,11 +1589,43 @@ components:
           type: integer
         image_url:
           type: string
+          format: uri
+
+    StudyGenresResponse:
+      type: object
+      required: [genres]
+      properties:
+        genres:
+          type: array
+          items:
+            $ref: "#/components/schemas/MasterStudyGenre"
+
+    CreateStudyGenreRequest:
+      type: object
+      required: [slug, label]
+      properties:
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 30
+        label:
+          type: string
+          minLength: 1
+          maxLength: 50
+        emoji:
+          type: string
+          default: "\U0001F4D6"
+        color_hex:
+          type: string
+          default: "#6B7280"
+
     MasterStudyGenre:
       type: object
+      required: [id, slug, label, emoji, color_hex, sort_order, is_default, is_active]
       properties:
         id:
-          $ref: "#/components/schemas/UUID"
+          type: string
+          format: uuid
         slug:
           type: string
         label:
@@ -1115,118 +1640,3 @@ components:
           type: boolean
         is_active:
           type: boolean
-    UserCharacter:
-      type: object
-      properties:
-        id:
-          $ref: "#/components/schemas/UUID"
-        user_id:
-          $ref: "#/components/schemas/UUID"
-        character_id:
-          $ref: "#/components/schemas/UUID"
-        level:
-          type: integer
-        current_xp:
-          type: integer
-        equipped_weapon_id:
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/UUID"
-        obtained_at:
-          $ref: "#/components/schemas/Timestamp"
-        character:
-          $ref: "#/components/schemas/MasterCharacter"
-        weapon:
-          $ref: "#/components/schemas/UserWeapon"
-    UserWeapon:
-      type: object
-      properties:
-        id:
-          $ref: "#/components/schemas/UUID"
-        user_id:
-          $ref: "#/components/schemas/UUID"
-        weapon_id:
-          $ref: "#/components/schemas/UUID"
-        level:
-          type: integer
-        obtained_at:
-          $ref: "#/components/schemas/Timestamp"
-        weapon:
-          $ref: "#/components/schemas/MasterWeapon"
-    UserPartySlot:
-      type: object
-      properties:
-        id:
-          $ref: "#/components/schemas/UUID"
-        user_id:
-          $ref: "#/components/schemas/UUID"
-        slot_position:
-          type: integer
-        user_character_id:
-          $ref: "#/components/schemas/UUID"
-        user_character:
-          $ref: "#/components/schemas/UserCharacter"
-    UserDungeonProgress:
-      type: object
-      properties:
-        id:
-          $ref: "#/components/schemas/UUID"
-        user_id:
-          $ref: "#/components/schemas/UUID"
-        dungeon_id:
-          $ref: "#/components/schemas/UUID"
-        current_stage:
-          type: integer
-        max_cleared_stage:
-          type: integer
-        updated_at:
-          $ref: "#/components/schemas/Timestamp"
-        dungeon:
-          $ref: "#/components/schemas/MasterDungeon"
-    GachaPullResult:
-      type: object
-      properties:
-        result_type:
-          type: string
-          enum: [character, weapon]
-        item_id:
-          $ref: "#/components/schemas/UUID"
-        name:
-          type: string
-        rarity:
-          type: integer
-        is_new:
-          type: boolean
-        pity_count:
-          type: integer
-    GachaPullResponse:
-      type: object
-      properties:
-        results:
-          type: array
-          items:
-            $ref: "#/components/schemas/GachaPullResult"
-        stones_spent:
-          type: integer
-        remaining_stones:
-          type: integer
-        updated_user:
-          $ref: "#/components/schemas/User"
-    GachaHistory:
-      type: object
-      properties:
-        id:
-          $ref: "#/components/schemas/UUID"
-        user_id:
-          $ref: "#/components/schemas/UUID"
-        banner_id:
-          $ref: "#/components/schemas/UUID"
-        result_type:
-          type: string
-          enum: [character, weapon]
-        result_item_id:
-          $ref: "#/components/schemas/UUID"
-        pity_count:
-          type: integer
-        created_at:
-          $ref: "#/components/schemas/Timestamp"

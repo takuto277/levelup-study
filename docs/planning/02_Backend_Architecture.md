@@ -2,7 +2,7 @@
 
 このドキュメントでは、アプリの拡張性（新キャラ/新ダンジョンの追加、データ永続化、チート防止）を考慮したバックエンド構成をまとめます。
 
-**最終更新:** 2026-05-23
+**最終更新:** 2026-06-04
 
 ---
 
@@ -44,10 +44,11 @@ backend/
 │   └── router/router.go     # ルート定義（正本）
 ├── db/migrations/           # golang-migrate（baseline）
 ├── db/seed.sql              # マスタ・開発用 seed
+├── api/openapi.yaml         # OpenAPI 3.0 API contract
 └── Dockerfile               # Render ビルド用
 ```
 
-OpenAPI 定義（`backend/api/`）は **未作成** — Issue #28 で対応予定。
+OpenAPI 定義: [`backend/api/openapi.yaml`](../../backend/api/openapi.yaml)
 
 ---
 
@@ -55,7 +56,7 @@ OpenAPI 定義（`backend/api/`）は **未作成** — Issue #28 で対応予�
 
 ベース URL（本番）: `https://levelup-study-api.onrender.com`
 
-認証凡例: 🔓 不要 / 🔑 API Key のみ / 🔐 JWT + Owner Guard
+認証凡例: 🔓 不要 / 🔑 API Key のみ / 🔐 API Key + JWT（`/users/{userID}` 配下は Owner Guard も適用）
 
 | メソッド | パス | 認証 | 説明 |
 |---------|------|------|------|
@@ -66,21 +67,27 @@ OpenAPI 定義（`backend/api/`）は **未作成** — Issue #28 で対応予�
 | `POST` | `/api/v1/users/{userID}/study/complete` | 🔐 | 勉強完了・報酬確定 |
 | `GET` | `/api/v1/users/{userID}/study/sessions` | 🔐 | 勉強履歴一覧 |
 | `GET` | `/api/v1/users/{userID}/characters` | 🔐 | 所持キャラ一覧 |
-| `GET` | `/api/v1/users/{userID}/characters/{id}` | 🔐 | 所持キャラ詳細 |
-| `PUT` | `/api/v1/users/{userID}/characters/{id}/equip` | 🔐 | 武器装備 |
+| `GET` | `/api/v1/users/{userID}/characters/{characterID}` | 🔐 | 所持キャラ詳細 |
+| `PUT` | `/api/v1/users/{userID}/characters/{characterID}/equip` | 🔐 | 武器装備 |
+| `POST` | `/api/v1/users/{userID}/characters/{characterID}/level-up` | 🔐 | キャラ LvUP |
 | `GET` | `/api/v1/users/{userID}/weapons` | 🔐 | 所持武器一覧 |
+| `POST` | `/api/v1/users/{userID}/weapons/{weaponID}/level-up` | 🔐 | 武器 LvUP |
 | `GET` | `/api/v1/users/{userID}/party` | 🔐 | パーティ取得 |
-| `PUT/DELETE` | `/api/v1/users/{userID}/party/{slot}` | 🔐 | スロット更新・解除 |
+| `PUT/DELETE` | `/api/v1/users/{userID}/party/{slotPosition}` | 🔐 | スロット更新・解除 |
 | `GET` | `/api/v1/users/{userID}/dungeons` | 🔐 | ダンジョン進行 |
 | `POST` | `/api/v1/users/{userID}/gacha/pull` | 🔐 | ガチャ実行 |
+| `GET` | `/api/v1/users/{userID}/gacha/history` | 🔐 | ガチャ履歴 |
 | `GET` | `/api/v1/master/characters` | 🔑 | キャラマスタ |
 | `GET` | `/api/v1/master/weapons` | 🔑 | 武器マスタ |
 | `GET` | `/api/v1/master/dungeons` | 🔑 | ダンジョンマスタ |
-| `GET` | `/api/v1/master/dungeons/{id}` | 🔑 | ダンジョン詳細（ステージ・敵） |
+| `GET` | `/api/v1/master/dungeons/{dungeonID}` | 🔑 | ダンジョン詳細（ステージ・敵） |
 | `GET` | `/api/v1/master/gacha/banners` | 🔑 | 開催中ガチャバナー |
-| `GET/POST/DELETE` | `/api/v1/master/genres` | 🔑 | 勉強ジャンルマスタ |
+| `GET` | `/api/v1/master/genres` | 🔑 | 勉強ジャンルマスタ |
+| `POST` | `/api/v1/master/genres` | 🔐 | ジャンル追加 |
+| `DELETE` | `/api/v1/master/genres/{genreID}` | 🔐 | ジャンル論理削除 |
 
 ルート定義の正本: [`backend/internal/router/router.go`](../../backend/internal/router/router.go)
+API 契約: [`backend/api/openapi.yaml`](../../backend/api/openapi.yaml)
 
 ---
 
