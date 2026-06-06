@@ -87,8 +87,8 @@ struct AnalyticsScreenView: View {
             Spacer().frame(height: 120)
             }
         }
-        .background(...)
-        .onReceive(...) { ... }
+        .background(LinearGradient(colors: [bgDark, Color(hex: 0x0F172A)], startPoint: .top, endPoint: .bottom).ignoresSafeArea())
+        .onReceive(Timer.publish(every: 0.3, on: .main, in: .common).autoconnect()) { _ in self.uiState = viewModel.uiState.value as! RecordUiState }
     }
 
     // MARK: - Pending Sync Banner
