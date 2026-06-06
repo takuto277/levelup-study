@@ -12,7 +12,9 @@ import org.example.project.features.settings.SettingsScreenDialog
 import org.example.project.features.study.StudyQuestScreenView
 
 @Composable
-fun HomeScreenView() {
+fun HomeScreenView(
+    onOpenOnboarding: () -> Unit = {},
+) {
     var selectedTab by remember { mutableStateOf(2) }
     var showStudySheet by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
@@ -85,6 +87,7 @@ fun HomeScreenView() {
                             homeViewModel.onIntent(HomeIntent.Refresh)
                         },
                         homeViewModel = homeViewModel,
+                        onShowOnboarding = onOpenOnboarding,
                     )
                 }
             }

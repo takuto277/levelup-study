@@ -8,6 +8,8 @@ private let accentCyan = Color(red: 0.13, green: 0.83, blue: 0.93)
 
 struct MainTabView: View {
     @State private var selectedTab: Tab = .home
+    @AppStorage("onboarding_done") private var onboardingDone = false
+    @State private var showOnboardingAgain = false
 
     enum Tab: Int, CaseIterable {
         case quest = 0, party = 1, home = 2, gacha = 3, analytics = 4
@@ -20,6 +22,12 @@ struct MainTabView: View {
             Color(red: 0.04, green: 0.05, blue: 0.12)
                 .ignoresSafeArea()
 
+            if !onboardingDone || showOnboardingAgain {
+                OnboardingView {
+                    onboardingDone = true
+                    showOnboardingAgain = false
+                }
+            } else {
             Group {
                 switch selectedTab {
                 case .quest: QuestScreenView()
@@ -32,6 +40,7 @@ struct MainTabView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             customTabBar
+            }
         }
         .ignoresSafeArea(.all, edges: .bottom)
         .ignoresSafeArea(.keyboard)

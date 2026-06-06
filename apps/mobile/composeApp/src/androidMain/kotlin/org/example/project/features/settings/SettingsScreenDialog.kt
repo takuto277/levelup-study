@@ -39,6 +39,7 @@ import org.example.project.features.home.HomeViewModel
 fun SettingsScreenDialog(
     onDismiss: () -> Unit,
     homeViewModel: HomeViewModel,
+    onShowOnboarding: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val isDebug = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -124,6 +125,21 @@ fun SettingsScreenDialog(
                 state.toast?.let { msg ->
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(msg, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+
+                if (onShowOnboarding != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = {
+                            onShowOnboarding()
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("オンボーディングを再表示")
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
