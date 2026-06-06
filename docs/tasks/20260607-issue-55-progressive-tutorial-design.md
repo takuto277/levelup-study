@@ -4,7 +4,7 @@
 
 - Issue: #55 段階的チュートリアルと再表示導線の設計・実装
 - URL: https://github.com/takuto277/levelup-study/issues/55
-- 現在ステータス: `status:要件定義済み`
+- 着手時ステータス: `status:要件定義済み`
 - この設計 PR での更新: `status:設計済み`
 
 ## 背景
@@ -94,7 +94,7 @@ data class TutorialTopicProgress(
 )
 ```
 
-`Snoozed` は「あとで」を表す。初期値は 24 時間後、または次回アプリ起動後のどちらか短い方で再判定する。自動表示は `Completed` と `Skipped` を除外し、設定からの再表示は状態に関係なく手動起動できる。
+`Snoozed` は「あとで」を表す。初期値は 24 時間後とし、同一アプリセッション中は再表示しない。自動表示は `Completed` と `Skipped` を除外し、設定からの再表示は状態に関係なく手動起動できる。
 
 ## 進捗ストア
 
