@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-manifest.yaml の monster_slug_to_sprite_key から EnemySpriteAssets.kt の fallbackByLogical を生成する。
+manifest.yaml の enemy_sprite_keys と monster_slug_to_sprite_key から
+EnemySpriteAssets.kt の bundledKeys と fallbackByLogical を生成する。
 
 Usage:
   python3 scripts/assets/generate_enemy_sprite_assets.py
@@ -18,8 +19,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib.manifest import ENEMY_SPRITE_KT, load_manifest  # noqa: E402
 
+BUNDLED_START = "    private val bundledKeys: Set<String> = buildSet {"
+BUNDLED_END = "    }"
 MAP_START = "    private val fallbackByLogical: Map<String, String> = mapOf("
 MAP_END = "    )"
+
+
+def build_bundled_block(keys: list[str]) -> str:
+    lines = [BUNDLED_START]
+    lines.append("        addAll(")
+    lines.append("            listOf(")
+    for i, key in enumerate(sorted(keys)):
+        comma = "," if i < len(keys) - 1 else ""
+        lines.append(f'                "{key}"{comma}')
+    lines.append("            )")
+    lines.append("        )")
+    lines.append(BUNDLED_END)
+    return "\n".join(lines)
 
 
 def build_map_block(slug_map: dict[str, str]) -> str:
@@ -31,14 +47,11 @@ def build_map_block(slug_map: dict[str, str]) -> str:
     return "\n".join(lines)
 
 
-def replace_fallback_map(content: str, new_block: str) -> str:
-    pattern = re.compile(
-        r"    private val fallbackByLogical: Map<String, String> = (?:mapOf\([\s\S]*?\)|emptyMap\(\))",
-        re.MULTILINE,
-    )
-    if not pattern.search(content):
-        raise ValueError("Could not find fallbackByLogical in EnemySpriteAssets.kt")
-    return pattern.sub(new_block, content, count=1)
+def replace_block(content: str, pattern: str, new_block: str, label: str) -> str:
+    compiled = re.compile(pattern, re.MULTILINE)
+    if not compiled.search(content):
+        raise ValueError(f"Could not find {label} in EnemySpriteAssets.kt")
+    return compiled.sub(new_block, content, count=1)
 
 
 def main() -> int:
@@ -47,11 +60,30 @@ def main() -> int:
     args = parser.parse_args()
 
     manifest = load_manifest()
+    enemy_keys: list[str] = manifest.get("enemy_sprite_keys") or []
     slug_map: dict[str, str] = manifest.get("monster_slug_to_sprite_key") or {}
-    new_block = build_map_block(slug_map)
+
+    if not enemy_keys:
+        print("No enemy_sprite_keys in manifest.", file=sys.stderr)
+        return 1
+
+    new_bundled = build_bundled_block(enemy_keys)
+    new_map = build_map_block(slug_map)
 
     original = ENEMY_SPRITE_KT.read_text(encoding="utf-8")
-    updated = replace_fallback_map(original, new_block)
+
+    updated = replace_block(
+        original,
+        r"    private val bundledKeys: Set<String> = buildSet \{[\s\S]*?\n    \}",
+        new_bundled,
+        "bundledKeys",
+    )
+    updated = replace_block(
+        updated,
+        r"    private val fallbackByLogical: Map<String, String> = (?:mapOf\([\s\S]*?\)|emptyMap\(\))",
+        new_map,
+        "fallbackByLogical",
+    )
 
     if args.check:
         if updated != original:
