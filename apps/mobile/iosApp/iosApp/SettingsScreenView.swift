@@ -37,6 +37,16 @@ struct SettingsScreenView: View {
                             .font(.footnote)
                             .foregroundStyle(.red)
                     }
+
+                    Divider()
+
+                    Button("オンボーディングを再表示") {
+                        UserDefaults.standard.set(false, forKey: "onboarding_done")
+                        vm.clearToastFromPlatform()
+                        onClosedRefreshHome()
+                        onDismiss()
+                    }
+                    .font(.subheadline)
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
