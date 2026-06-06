@@ -8,6 +8,7 @@ description: LevelUp Study の標準機能開発フロー（Issue 起票 → ブ
 **Issue / PR / レビューはすべて `gh` CLI + スキル。** GitHub Actions は lint/test のみ（push 後セーフティネット）。
 
 LevelUp 固有設定: [LEVELUP.md](../LEVELUP.md)
+Issue Driven Development: [docs/ai/ISSUE_DRIVEN_DEVELOPMENT.md](../../../docs/ai/ISSUE_DRIVEN_DEVELOPMENT.md)
 
 ## フロー概要
 
@@ -40,7 +41,10 @@ Plan（必要なら grill-me / grill-with-docs）
 ## 2. 実装
 
 - [project-context](../project-context/SKILL.md) で制約確認
-- 3 ステップ以上 → `docs/tasks/` に実行計画書（`task-init` 相当）
+- Issue を要件定義の正本として読み、背景・スコープ・受け入れ条件を実装前に整理する
+- 3 ステップ以上、または API / DB / UI をまたぐ変更 → **コード変更前に** `docs/tasks/{YYYYMMDD}-{slug}.md` に実行計画書・設計を作る
+- 計画書には、対象 Issue、今回のスコープ / スコープ外、既存コード調査、実装手順、検証計画、互換性リスクを含める
+- 実装中に Issue の範囲を超える変更が必要になった場合は、計画書を更新するか別 Issue に分ける
 - 大きい Issue は [git-worktree-create](../git-worktree-create/SKILL.md) を検討
 - 画面/API 変更時は [qa-test-design](../qa-test-design/SKILL.md) で手動確認項目も列挙
 
@@ -85,6 +89,8 @@ Plan（必要なら grill-me / grill-with-docs）
 
 ## 禁止事項
 
+- Issue なしで大きな機能実装を始める
+- 3 ステップ以上、または API / DB / UI 横断変更を実行計画書なしで始める
 - validate 未実行で PR 完了報告
 - **セルフレビュー未実施で PR 完了報告**
 - GitHub Actions で Issue / PR を自動作成する（廃止済み）

@@ -5,6 +5,7 @@ AI コーディングエージェント（Cursor 等）が **PR 前の品質確�
 - **GitHub Actions**: push / PR 時の **lint / test セーフティネット**（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）
 - **Issue / PR / レビュー**: **`gh` CLI + `.cursor/skills/`**（Actions workflow は使わない）
 - **PR 本文テンプレ**: [`.cursor/skills/github-pr-create/SKILL.md`](.cursor/skills/github-pr-create/SKILL.md)（`.github/pull_request_template.md` は廃止）
+- **開発フェーズ**: Issue を要件定義の正本として扱い、実装前に [Issue Driven Development](docs/ai/ISSUE_DRIVEN_DEVELOPMENT.md) に沿って `docs/tasks/{YYYYMMDD}-{slug}.md` の実行計画書・設計を作る
 
 ## 検証（PR 前必須）
 
@@ -63,6 +64,14 @@ AI コーディングエージェント（Cursor 等）が **PR 前の品質確�
 - レビュー: `gh pr review`, `gh api`（[github-pr-review](.cursor/skills/github-pr-review/SKILL.md)）
 - **GitHub コネクタは使わない**（403 になりやすい）
 - 本文は **`--body-file`** または `gh api --field body=@file`（シェル直埋め込み禁止）
+
+## Issue Driven Development
+
+- 新機能・仕様変更・API / DB / UI をまたぐ変更は、原則として Issue から開始する
+- Issue は要件定義として扱い、背景・目的・スコープ・受け入れ条件・参照ファイルを明記する
+- 3ステップ以上の実装や横断変更では、コード変更前に `docs/tasks/{YYYYMMDD}-{slug}.md` に実行計画書・設計を作る
+- 実装中に Issue の範囲を超える変更が必要になった場合は、計画書を更新するか別 Issue に分ける
+- 詳細: [docs/ai/ISSUE_DRIVEN_DEVELOPMENT.md](docs/ai/ISSUE_DRIVEN_DEVELOPMENT.md)
 
 ## モノレポ構成
 
