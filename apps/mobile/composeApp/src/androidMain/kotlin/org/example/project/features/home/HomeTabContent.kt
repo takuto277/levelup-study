@@ -110,6 +110,8 @@ fun HomeTabContent(
     ) {
         HomeHeader(homeState = homeState, onOpenSettings = onOpenSettings)
 
+        TutorialHintRow(TutorialTopics.HOME_START_STUDY, "\uD83C\uDFAF", "ジャンルを選んで「勉強開始」をタップ！")
+
         HomeAdventureContextRow(
             dungeonDisplayName = homeState.adventureDungeonDisplayName,
             dungeonChipHint = homeState.adventureDungeonChipHint,
@@ -367,10 +369,21 @@ private fun StudyDurationStepper(
                         Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = "増やす",
                         tint = if (studyMinutes < 60) HomeTheme.AccentBlue else HomeTheme.TextSecondary.copy(alpha = 0.35f)
-                    )
-                }
-            }
+            )
         }
+    }
+}
+
+@Composable
+private fun TutorialHintRow(topic: String, emoji: String, message: String) {
+    val store = remember { org.example.project.data.local.TutorialProgressStore() }
+    if (store.isCompleted(topic)) return
+    org.example.project.components.TutorialHintBanner(
+        emoji = emoji,
+        message = message,
+        onDismiss = { store.markCompleted(topic) },
+    )
+}
     }
 }
 

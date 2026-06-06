@@ -142,6 +142,18 @@ fun SettingsScreenDialog(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        org.example.project.data.local.TutorialProgressStore().resetAll()
+                        homeViewModel.onIntent(HomeIntent.Refresh)
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("チュートリアルをリセット")
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Button(
