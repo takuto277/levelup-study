@@ -36,6 +36,11 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import java.time.DayOfWeek as JavaDayOfWeek
 import java.time.LocalDate as JavaLocalDate
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import org.example.project.components.PlayerSprite
 import org.example.project.components.PlayerSpriteMode
 import org.example.project.components.hasPartyPlayerSprite
@@ -113,6 +118,11 @@ fun RecordScreenView() {
             .verticalScroll(rememberScrollState())
     ) {
         RecordHeader(uiState)
+
+        if (uiState.pendingCount > 0) {
+            Spacer(modifier = Modifier.height(8.dp))
+            PendingSyncBanner(uiState, onRetry = { viewModel.onIntent(RecordIntent.RetryPending) })
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -929,6 +939,64 @@ private fun MonthSelector(uiState: RecordUiState, onSelect: (Int, Int) -> Unit) 
                 .padding(8.dp)
         ) {
             Text("▶", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (currentIdx > 0) AccentBlue else TextTertiary)
+        }
+    }
+}
+
+@Composable
+private fun PendingSyncBanner(uiState: RecordUiState, onRetry: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (uiState.hasFailedPending) Color(0xFF3B1A1A) else Color(0xFF1A2744)
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (uiState.hasFailedPending) "\u26A0\uFE0F 同期に失敗したセッションがあります"
+                    else "\uD83D\uDCE1 未同期の勉強セッション",
+                    color = if (uiState.hasFailedPending) Color(0xFFFCA5A5) else AccentCyan,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = if (uiState.hasFailedPending) "タップして再試行"
+                    else "${uiState.pendingCount}件のセッションがまだサーバーに送信されていません",
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                )
+            }
+            if (uiState.isSyncingPending) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = AccentCyan,
+                )
+            } else {
+                Button(
+                    onClick = onRetry,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (uiState.hasFailedPending) Color(0xFFEF4444) else AccentBlue
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                ) {
+                    Text(
+                        text = if (uiState.hasFailedPending) "再試行" else "同期",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
         }
     }
 }

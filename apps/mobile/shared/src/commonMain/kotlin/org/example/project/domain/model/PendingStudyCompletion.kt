@@ -2,9 +2,6 @@ package org.example.project.domain.model
 
 import kotlinx.serialization.Serializable
 
-/**
- * オフラインまたは送信失敗時にローカルへ溜め、オンライン復帰後に [StudyRepository.completeSession] 相当で送信するペイロード。
- */
 @Serializable
 data class PendingStudyCompletion(
     val localId: String,
@@ -17,6 +14,16 @@ data class PendingStudyCompletion(
     val defeatNormalCount: Int = 0,
     val defeatBossCount: Int = 0,
     val difficultyMultiplier: Double = 1.0,
-    /** 訓練場（敵討伐なし・経験値はサーバーで時間分のみ） */
-    val isTrainingGround: Boolean = false
+    val isTrainingGround: Boolean = false,
+    val syncStatus: String = SyncStatus.PENDING,
+    val retryCount: Int = 0,
+    val lastError: String? = null,
+    val lastAttemptAt: String? = null,
 )
+
+object SyncStatus {
+    const val PENDING = "pending"
+    const val SYNCING = "syncing"
+    const val FAILED = "failed"
+    const val MAX_RETRIES = 3
+}

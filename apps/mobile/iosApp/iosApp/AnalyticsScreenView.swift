@@ -72,6 +72,9 @@ struct AnalyticsScreenView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
                 header
+                if uiState.pendingCount > 0 {
+                    pendingSyncBanner
+                }
                 totalCard
                 periodTabs
                 if uiState.selectedPeriod == .monthly { monthSelector }
@@ -81,11 +84,43 @@ struct AnalyticsScreenView: View {
                 chartCard
                 Spacer().frame(height: 4)
                 genreCard
-                Spacer().frame(height: 120)
+            Spacer().frame(height: 120)
             }
         }
         .background(LinearGradient(colors: [bgDark, Color(hex: 0x0F172A)], startPoint: .top, endPoint: .bottom).ignoresSafeArea())
         .onReceive(Timer.publish(every: 0.3, on: .main, in: .common).autoconnect()) { _ in self.uiState = viewModel.uiState.value as! RecordUiState }
+    }
+
+    // MARK: - Pending Sync Banner
+    private var pendingSyncBanner: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(uiState.hasFailedPending ? "\u{26A0}\u{FE0F} 同期に失敗したセッションがあります" : "\u{1F4E1} 未同期の勉強セッション")
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(uiState.hasFailedPending ? Color(hex: 0xFCA5A5) : accentCyan)
+                Text(uiState.hasFailedPending ? "タップして再試行" : "\(uiState.pendingCount)件のセッションがまだサーバーに送信されていません")
+                    .font(.caption2)
+                    .foregroundColor(textSub)
+            }
+            Spacer()
+            if uiState.isSyncingPending {
+                ProgressView()
+            } else {
+                Button(uiState.hasFailedPending ? "再試行" : "同期") {
+                    viewModel.onIntent(intent: RecordIntentRetryPending())
+                }
+                .font(.caption.weight(.bold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(uiState.hasFailedPending ? Color.red : accentBlue)
+                .foregroundColor(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .padding(12)
+        .background(uiState.hasFailedPending ? Color(hex: 0x3B1A1A) : bgSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
     }
 
     // MARK: - Header

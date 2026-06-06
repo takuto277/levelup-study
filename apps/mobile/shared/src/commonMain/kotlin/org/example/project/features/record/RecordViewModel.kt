@@ -49,6 +49,22 @@ class RecordViewModel(
                 recalculate()
             }
             is RecordIntent.Refresh -> refreshData()
+            is RecordIntent.RetryPending -> retryPending()
+        }
+    }
+
+    private fun retryPending() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncingPending = true, error = null) }
+            try {
+                try {
+                    studyRepository.syncPendingSessions()
+                } catch (_: Exception) { }
+                studyRepository.retryFailedSessions()
+                refreshData()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isSyncingPending = false, error = e.message) }
+            }
         }
     }
 
@@ -91,7 +107,10 @@ class RecordViewModel(
                         selectedMonth = now.monthNumber,
                         todayStudyMinutes = todayMin,
                         weekStudyMinutes = weekMin,
-                        monthStudyMinutes = monthMin
+                        monthStudyMinutes = monthMin,
+                        pendingCount = studyRepository.getPendingCount(),
+                        hasFailedPending = studyRepository.hasFailedPendingSessions(),
+                        isSyncingPending = false,
                     )
                 }
                 recalculate()
