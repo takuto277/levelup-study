@@ -47,27 +47,27 @@ description: Use when asked to create or open a GitHub PR, including casual requ
 - Close {IssueId}  <!-- Issue をクローズする場合 -->
 - Refs {IssueId}   <!-- 関連付けのみでクローズしない場合 -->
 
-## Why
+## 背景
 
 この変更が必要な背景・目的・モチベーション。
 
-## Summary
+## 概要
 
 この PR で行う変更の簡潔な説明。
 
-## Changes
+## 変更内容
 
 - 変更 1
 - 変更 2
 
-## Checklist
+## 確認項目
 
 - [ ] フォーマット
 - [ ] リント / 型チェック
 - [ ] テスト
 - [ ] 項目（必要に応じて追加）
 
-## Details（任意）
+## 詳細（任意）
 
 技術的な詳細、実装メモなど
 ````
@@ -77,9 +77,9 @@ description: Use when asked to create or open a GitHub PR, including casual requ
   - *何を* と *なぜ* に焦点を当てる
   - Issue をクローズする場合、`Issues` セクションは `- Close {IssueId}` の形式にする
   - Issue をクローズしない場合、`Issues` セクションは `- Refs {IssueId}` の形式にする
-  - `Summary` は 2〜3 文以内に収める
-  - `Checklist` は手順 1 で実施した品質チェックの結果を反映させる（実施済みなら `[x]`、未実施なら `[ ]`）
-  - `Details` は必要な場合のみ追加する
+  - `概要` は 2〜3 文以内に収める
+  - `確認項目` は手順 1 で実施した品質チェックの結果を反映させる（実施済みなら `[x]`、未実施なら `[ ]`）
+  - `詳細` は必要な場合のみ追加する
 
 ### 3. gh で PR を作成する
 
@@ -153,3 +153,4 @@ gh pr view "$BRANCH" --json title,body,url
 - PR 前の品質確認は `./scripts/validate-pr.sh`（[AGENTS.md](../../../AGENTS.md)）。結果を `Verification` に記載
 - `docs/tasks/pr-body-{slug}.md` を生成してから `gh pr create --body-file` する
 - Auto open PR workflow は廃止。push 後も PR は必ず `gh pr create` で作成
+- **PR タイトルは日本語で**（`feat(scope): 日本語タイトル`）。本文の見出しも日本語（`## 概要`, `## 変更内容`, `## 確認項目`）。英語の Conventional Commit prefix（`feat:`, `fix:`, `docs:` など）は prefix として残す
