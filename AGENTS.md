@@ -64,6 +64,7 @@ AI コーディングエージェント（Cursor 等）が **PR 前の品質確�
 - レビュー: `gh pr review`, `gh api`（[github-pr-review](.cursor/skills/github-pr-review/SKILL.md)）
 - **GitHub コネクタは使わない**（403 になりやすい）
 - 本文は **`--body-file`** または `gh api --field body=@file`（シェル直埋め込み禁止）
+- **PR タイトルは日本語**（`feat(scope): 日本語タイトル`形式）。本文見出しも日本語
 
 ## Issue Driven Development
 
