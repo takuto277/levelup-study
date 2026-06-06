@@ -11,12 +11,13 @@
 
 ## AI ワークフロー
 1. `docs/` を読み、仕様を理解する。
-2. **実行計画書の作成**: 3ステップ以上の変更を伴う場合、`task-init` コマンドを使用して `docs/tasks/` に実行計画書を作成する。
+2. **Issue Driven Development**: 新機能・仕様変更・API / DB / UI をまたぐ変更は、Issue を要件定義の正本として扱い、[docs/ai/ISSUE_DRIVEN_DEVELOPMENT.md](../../docs/ai/ISSUE_DRIVEN_DEVELOPMENT.md) に従う。
+3. **実行計画書の作成**: 3ステップ以上の変更を伴う場合、コード変更前に `docs/tasks/{YYYYMMDD}-{slug}.md` へ実行計画書・設計を作成する。
    - 実装詳細セクションには、具体的なコードの変更内容と、その実装を選択する「理由」を詳しく記述すること。
-3. **機能開発（Issue → PR）**: ユーザーが実装〜PR まで依頼した場合、`.cursor/skills/feature-delivery` に従う。Issue / PR / レビューは **`gh` CLI + スキル**（[AGENTS.md](../../AGENTS.md)）。**PR 作成後は `github-pr-self-review` を必ず実行**してから完了報告する。
-4. **アセット入稿**: 画像追加・変更時は `assets` ルールと `docs/assets/01_Asset_Ingestion_Workflow.md` に従う。
-5. 最小差分で実装し、ビルド・テストを確認する。
-6. 完了後、変更内容を簡潔に報告する。
+4. **機能開発（Issue → PR）**: ユーザーが実装〜PR まで依頼した場合、`.cursor/skills/feature-delivery` に従う。Issue / PR / レビューは **`gh` CLI + スキル**（[AGENTS.md](../../AGENTS.md)）。**PR 作成後は `github-pr-self-review` を必ず実行**してから完了報告する。
+5. **アセット入稿**: 画像追加・変更時は `assets` ルールと `docs/assets/01_Asset_Ingestion_Workflow.md` に従う。
+6. 最小差分で実装し、ビルド・テストを確認する。
+7. 完了後、変更内容を簡潔に報告する。
 
 ## 優先順位
 1. `always.md` (このファイル)
