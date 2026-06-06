@@ -72,6 +72,7 @@ battle_assets:
 
 # 敵スプライト: sprite_enemy_{key}_{frame}.png
 # key はバンドル内のスプライトキー。monster_slug_to_sprite_key で DB slug と対応付け。
+# この一覧が EnemySpriteAssets.kt の bundledKeys の正本。追加時は generate で Kotlin へ反映。
 enemy_sprite_keys:
   - slime
   - goblin
@@ -80,24 +81,59 @@ enemy_sprite_keys:
   - dragon
   - orc
   - golem
-  - treant
-  - mimic
-  - phoenix
-  - cerberus
-  - dark_knight
-  - crimson_demon
-  - rust_monster
-  - specter
-  - nightmare
-  - corrupted_paladin
-  - wisp
-  - thunderbird
   - lich
+  - wyvern
+  - minotaur
+  - mandrake
+  - griffin
+  - basilisk
+  - cerberus
+  - kraken
+  - hydra
+  - leviathan
+  - banshee
+  - wisp
+  - imp
+  - succubus
+  - dullahan
   - gargoyle
-  - abyssal_serpent
-  - lizardman
+  - specter
+  - mummy
+  - troll
+  - kobold
+  - lamia
+  - crimson_demon
+  - shadow_knight
+  - harpy
+  - centaur
+  - dryad
+  - naga
+  - ogre
+  - cyclops
+  - ghoul
+  - wraith
+  - frost_giant
+  - sand_worm
+  - cockatrice
   - werewolf
+  - vampire
+  - zombie
+  - lizardman
+  - dark_knight
+  - rust_monster
+  - bone_dragon
+  - nightmare
+  - pirate_wraith
   - stone_sentinel
+  - thunderbird
+  - phoenix
+  - giant_spider
+  - ice_witch
+  - corrupted_paladin
+  - abyssal_serpent
+  - treant
+  - chimera
+  - mimic
 
 # backend/db/seed.sql の m_monsters.slug → バンドル sprite key
 monster_slug_to_sprite_key:
@@ -151,3 +187,20 @@ master_images:
     recommended_px: "800x400"
     local_dir: master/dungeons
     fallback: "空ならクライアントは bg_dungeon_{dungeon_key} 同梱画像を使用"
+
+# OS 固有アセット（source/manifest 管理外）
+# これらは sync の入出力対象外。validate の orphan 検出からも除外。
+os_specific_assets:
+  note: "OS 固有またはビルドシステムが管理するアセット。source/manifest の管理対象外。"
+  android:
+    - "ic_launcher_background.xml"
+    - "ic_launcher_foreground.xml"
+    - "ic_launcher.png"
+    - "ic_launcher_round.png"
+    - "ic_launcher.xml"
+    - "ic_launcher_round.xml"
+    - "Contents.json"
+  ios:
+    - "AppIcon.appiconset"
+    - "AccentColor.colorset"
+    - "Contents.json"
