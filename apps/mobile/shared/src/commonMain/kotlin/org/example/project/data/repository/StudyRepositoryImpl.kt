@@ -10,6 +10,7 @@ import org.example.project.data.remote.gateway.StudyGateway
 import org.example.project.domain.model.PendingStudyCompletion
 import org.example.project.domain.model.StudyCompleteResult
 import org.example.project.domain.model.StudySession
+import org.example.project.domain.model.SyncStatus
 import org.example.project.domain.repository.StudyRepository
 import org.example.project.domain.repository.UserRepository
 
@@ -89,7 +90,11 @@ class StudyRepositoryImpl(
         val userId = runCatching { UserSessionStore.requireUserId() }.getOrNull() ?: return
         val queue = pendingQueue.readAll()
         if (queue.isEmpty()) return
+
         for (p in queue) {
+            if (p.syncStatus == SyncStatus.FAILED) continue
+            pendingQueue.updateStatus(p.localId, SyncStatus.SYNCING)
+
             try {
                 val request = StudyCompleteRequest(
                     category = p.category,
@@ -105,8 +110,46 @@ class StudyRepositoryImpl(
                 val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
                 userRepository.updateCachedUser(result.updatedUser)
                 pendingQueue.remove(p.localId)
-            } catch (_: Exception) {
-                break
+            } catch (e: Exception) {
+                val newRetryCount = p.retryCount + 1
+                if (newRetryCount >= SyncStatus.MAX_RETRIES) {
+                    pendingQueue.updateStatus(p.localId, SyncStatus.FAILED, e.message)
+                } else {
+                    pendingQueue.updateStatus(p.localId, SyncStatus.PENDING, e.message)
+                }
+            }
+        }
+    }
+
+    override suspend fun getPendingCount(): Int = pendingQueue.count()
+
+    override suspend fun hasFailedPendingSessions(): Boolean = pendingQueue.hasFailedItems()
+
+    override suspend fun retryFailedSessions() {
+        if (!isDeviceOnline()) return
+        val userId = runCatching { UserSessionStore.requireUserId() }.getOrNull() ?: return
+        val items = pendingQueue.readAll().filter { it.syncStatus == SyncStatus.FAILED }
+
+        for (p in items) {
+            pendingQueue.updateStatus(p.localId, SyncStatus.SYNCING)
+
+            try {
+                val request = StudyCompleteRequest(
+                    category = p.category,
+                    startedAt = p.startedAt,
+                    endedAt = p.endedAt,
+                    durationSeconds = p.durationSeconds,
+                    isCompleted = p.isCompleted,
+                    userCharacterId = p.userCharacterId,
+                    defeatNormalCount = p.defeatNormalCount,
+                    defeatBossCount = p.defeatBossCount,
+                    difficultyMultiplier = p.difficultyMultiplier
+                )
+                val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
+                userRepository.updateCachedUser(result.updatedUser)
+                pendingQueue.remove(p.localId)
+            } catch (e: Exception) {
+                pendingQueue.updateStatus(p.localId, SyncStatus.FAILED, e.message)
             }
         }
     }

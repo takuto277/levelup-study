@@ -4,11 +4,8 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import org.example.project.core.storage.KeyValueStore
 import org.example.project.domain.model.PendingStudyCompletion
+import org.example.project.domain.model.SyncStatus
 
-/**
- * 未送信の勉強完了を端末ローカルに永続化（Key-Value・JSON 配列）。
- * 同期成功後に該当レコードを削除する。
- */
 class PendingStudyQueueStore(
     private val kv: KeyValueStore = KeyValueStore()
 ) {
@@ -28,6 +25,12 @@ class PendingStudyQueueStore(
         }
     }
 
+    fun count(): Int = readAll().size
+
+    fun countByStatus(status: String): Int = readAll().count { it.syncStatus == status }
+
+    fun hasFailedItems(): Boolean = readAll().any { it.syncStatus == SyncStatus.FAILED }
+
     fun append(item: PendingStudyCompletion) {
         val next = readAll() + item
         kv.putString(key, json.encodeToString(ListSerializer(PendingStudyCompletion.serializer()), next))
@@ -37,6 +40,22 @@ class PendingStudyQueueStore(
         val next = readAll().filterNot { it.localId == localId }
         if (next.isEmpty()) kv.remove(key)
         else kv.putString(key, json.encodeToString(ListSerializer(PendingStudyCompletion.serializer()), next))
+    }
+
+    fun updateStatus(localId: String, status: String, error: String? = null) {
+        val items = readAll().toMutableList()
+        val idx = items.indexOfFirst { it.localId == localId }
+        if (idx == -1) return
+        val old = items[idx]
+        val attemptAt = kotlinx.datetime.Clock.System.now().toString()
+        val retries = if (status == SyncStatus.FAILED) old.retryCount + 1 else old.retryCount
+        items[idx] = old.copy(
+            syncStatus = status,
+            retryCount = retries,
+            lastError = error,
+            lastAttemptAt = attemptAt,
+        )
+        replaceAll(items)
     }
 
     fun replaceAll(items: List<PendingStudyCompletion>) {

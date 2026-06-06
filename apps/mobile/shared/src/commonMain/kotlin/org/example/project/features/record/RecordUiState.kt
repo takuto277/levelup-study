@@ -11,20 +11,20 @@ data class RecordUiState(
     val selectedGenre: GenreInfo? = null,
     val streakDays: Int = 0,
     val todaySessions: Int = 0,
-    /** 編成のメインキャラ（立ち絵URLなど） */
     val mainCharacter: UserCharacter? = null,
     val characterMessage: String = "",
     val characterEmoji: String = "🧙‍♂️",
     val isLoading: Boolean = false,
     val error: String? = null,
-    // 月間セレクター用
     val selectedYear: Int = 2026,
     val selectedMonth: Int = 4,
     val availableMonths: List<YearMonth> = emptyList(),
-    // 勉強時間サマリー（キャラ吹き出し用）
     val todayStudyMinutes: Int = 0,
     val weekStudyMinutes: Int = 0,
-    val monthStudyMinutes: Int = 0
+    val monthStudyMinutes: Int = 0,
+    val pendingCount: Int = 0,
+    val hasFailedPending: Boolean = false,
+    val isSyncingPending: Boolean = false,
 )
 
 data class YearMonth(val year: Int, val month: Int) {

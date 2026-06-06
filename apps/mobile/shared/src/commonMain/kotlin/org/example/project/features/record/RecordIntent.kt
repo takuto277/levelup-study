@@ -5,4 +5,5 @@ sealed interface RecordIntent {
     data class SelectGenre(val genre: GenreInfo?) : RecordIntent
     data class SelectMonth(val year: Int, val month: Int) : RecordIntent
     data object Refresh : RecordIntent
+    data object RetryPending : RecordIntent
 }
