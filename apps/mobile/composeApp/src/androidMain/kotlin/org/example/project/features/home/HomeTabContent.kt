@@ -37,6 +37,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlin.math.roundToInt
 import org.example.project.domain.model.MasterStudyGenre
+import org.example.project.data.local.TutorialTopics
+import org.example.project.components.TutorialHintBanner
+import org.example.project.data.local.TutorialProgressStore
 @Composable
 fun HomeTabContent(
     studyMinutes: Int,

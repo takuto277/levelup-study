@@ -391,6 +391,11 @@ private fun BannerCard(
                                     modifier = Modifier.size(heroH * 0.45f),
                                     tint = Color.White.copy(alpha = 0.35f)
                                 )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -401,9 +406,6 @@ private fun TutorialHintRow(topic: String, emoji: String, message: String) {
     if (store.isCompleted(topic)) return
     TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
 }
-                }
-            }
-        }
 
         Box(
             modifier = Modifier
