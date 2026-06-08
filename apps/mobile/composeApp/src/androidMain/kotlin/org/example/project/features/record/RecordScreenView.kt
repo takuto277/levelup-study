@@ -715,16 +715,9 @@ private fun BarItem(
                                 .height(segmentHeight.dp)
                                 .background(genreColor(genre))
                         )
-        }
-    }
-}
-
-@Composable
-private fun TutorialHintRow(topic: String, emoji: String, message: String) {
-    val store = remember { TutorialProgressStore() }
-    if (store.isCompleted(topic)) return
-    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
-}
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -1011,4 +1004,11 @@ private fun PendingSyncBanner(uiState: RecordUiState, onRetry: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun TutorialHintRow(topic: String, emoji: String, message: String) {
+    val store = remember { TutorialProgressStore() }
+    if (store.isCompleted(topic)) return
+    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
 }

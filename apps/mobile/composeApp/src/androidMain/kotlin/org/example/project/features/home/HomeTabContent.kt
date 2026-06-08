@@ -269,16 +269,9 @@ private fun HomeCharacterHero(
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text("Lv.$lv", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = HomeTheme.AccentBlue)
-        }
-    }
-}
-
-@Composable
-private fun TutorialHintRow(topic: String, emoji: String, message: String) {
-    val store = remember { TutorialProgressStore() }
-    if (store.isCompleted(topic)) return
-    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
-}
+                }
+            }
+            }
         }
     }
 }
@@ -630,4 +623,11 @@ private fun GenreManageSwipeRow(
             )
         }
     }
+}
+
+@Composable
+private fun TutorialHintRow(topic: String, emoji: String, message: String) {
+    val store = remember { TutorialProgressStore() }
+    if (store.isCompleted(topic)) return
+    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
 }
