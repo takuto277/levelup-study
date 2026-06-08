@@ -726,13 +726,12 @@ private fun TutorialHintRow(topic: String, emoji: String, message: String) {
     TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
 }
         }
-    }
 
-    Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
-    if (bar.isoDate.isNotEmpty()) {
-        val wd = weekdayJpFromIso(bar.isoDate)
-        val axisColor = weekdayRecordAxisColor(bar.isoDate)
+        if (bar.isoDate.isNotEmpty()) {
+            val wd = weekdayJpFromIso(bar.isoDate)
+            val axisColor = weekdayRecordAxisColor(bar.isoDate)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     wd,

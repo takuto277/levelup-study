@@ -152,6 +152,13 @@ fun GachaScreenView() {
     }
 }
 
+@Composable
+private fun TutorialHintRow(topic: String, emoji: String, message: String) {
+    val store = remember { TutorialProgressStore() }
+    if (store.isCompleted(topic)) return
+    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
+}
+
 // ══════════════════════════════════════════════════════════════
 // Background Particles
 // ══════════════════════════════════════════════════════════════
@@ -397,15 +404,6 @@ private fun BannerCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun TutorialHintRow(topic: String, emoji: String, message: String) {
-    val store = remember { TutorialProgressStore() }
-    if (store.isCompleted(topic)) return
-    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
-}
 
         Box(
             modifier = Modifier
