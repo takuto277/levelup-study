@@ -31,6 +31,7 @@ LevelUp Study は、勉強完了・冒険進行・報酬・ガチャ・編成・
 - 設定画面で現在の通知状態を確認できる
 - 通知 OFF 時に予約済み通知をキャンセルする
 - 文言と頻度制限を docs に残す
+- 端末再起動後の通知再スケジュール（Android `RECEIVE_BOOT_COMPLETED`）
 
 ### できれば含める
 
@@ -132,7 +133,17 @@ enum class ReminderPermissionStatus {
 | `study_reminder_minute` | `0` | 通知分 |
 | `study_reminder_last_prompted_at` | `2026-06-07T10:00:00Z` | 許可依頼の出しすぎ防止 |
 
-`permissionStatus` は OS の現在状態を都度問い合わせるため、原則永続化しない。
+`permissionStatus` は OS の現在状態を都度問い合わせる。ただし Android 13+ では初回未要求と拒否済みを OS API だけで安定して区別できないため、以下の補助ルールで判定する:
+
+| 状態 | 判定ルール |
+|------|------------|
+| `NOT_DETERMINED` | `study_reminder_permission_requested` が未設定かつ OS が未許可 |
+| `GRANTED` | OS が許可 |
+| `DENIED` | `study_reminder_permission_requested` が `true` かつ OS が未許可 |
+
+| key | 例 | 用途 |
+|-----|----|------|
+| `study_reminder_permission_requested` | `true` | 初回リクエスト済みフラグ。未要求と拒否済みを区別する |
 
 ## アーキテクチャ
 
@@ -151,14 +162,21 @@ enum class ReminderPermissionStatus {
 `ReminderScheduler` は expect / actual ではなく interface として common に置き、DI で platform 実装を差し込む。
 
 ```kotlin
+// commonMain interface — OS 通知操作の抽象
 interface ReminderScheduler {
     suspend fun permissionStatus(): ReminderPermissionStatus
-    suspend fun requestPermission(): ReminderPermissionStatus
     suspend fun scheduleDaily(hour: Int, minute: Int)
     suspend fun cancelAll()
     suspend fun openSystemNotificationSettings()
 }
 ```
+
+**権限リクエストの責務境界**: `requestPermission()` は common の `ReminderScheduler` に含めない。理由:
+- Android の runtime permission は Activity / `ActivityResultLauncher` のライフサイクルに強く依存し、singleton や ViewModel が直接 Activity 参照を持つとリーク・未表示リスクがある
+- 代わりに、権限リクエストは **platform UI 層（Android Compose / iOS SwiftUI）が責任を持つ**
+- common には `permissionStatus()`（現在状態の取得）と `openSystemNotificationSettings()`（OS 設定誘導）のみを置く
+- Android: `rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission())` で Compose UI から OS ダイアログを表示し、結果を `KeyValueStore` の `study_reminder_permission_requested` に保存する
+- iOS: `UNUserNotificationCenter.current().requestAuthorization()` は SwiftUI の `.onAppear` またはユーザー操作契機で呼ぶ
 
 ### Android
 
@@ -175,7 +193,7 @@ MVP の通知方式:
 - `AlarmManager` + `BroadcastReceiver` + `NotificationManager`
 - channel id: `study_reminder`
 - request code は固定
-- アプリ更新 / 端末再起動後の再スケジュールは第1実装で含めるか判断する
+- 端末再起動後は `RECEIVE_BOOT_COMPLETED` + `BootReceiver` で再スケジュールする（MVP 必須）
 
 Android 注意点:
 
@@ -236,6 +254,7 @@ iOS 注意点:
 - 拒否後、設定画面に拒否状態が出る
 - OFF にすると通知が届かない
 - 時刻変更後、古い時刻では届かず新しい時刻で届く
+- 端末再起動後も通知予約が復元される（BootReceiver 経由）
 
 ### iOS
 
