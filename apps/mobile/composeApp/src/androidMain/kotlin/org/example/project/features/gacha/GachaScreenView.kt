@@ -47,6 +47,9 @@ import org.example.project.domain.model.primaryFeaturedForHero
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
+import org.example.project.data.local.TutorialTopics
+import org.example.project.components.TutorialHintBanner
+import org.example.project.data.local.TutorialProgressStore
 
 // ══════════════════════════════════════════════════════════════
 // Color Palette
@@ -109,6 +112,8 @@ fun GachaScreenView() {
         // 背景パーティクル
         BackgroundParticles()
 
+        TutorialHintRow(TutorialTopics.GACHA_FIRST_PULL, "\uD83C\uDFB0", "石を使って召喚！キャラや武器が手に入るよ")
+
         Crossfade(
             targetState = uiState.phase,
             modifier = Modifier
@@ -145,6 +150,13 @@ fun GachaScreenView() {
             }
         }
     }
+}
+
+@Composable
+private fun TutorialHintRow(topic: String, emoji: String, message: String) {
+    val store = remember { TutorialProgressStore() }
+    if (store.isCompleted(topic)) return
+    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
 }
 
 // ══════════════════════════════════════════════════════════════

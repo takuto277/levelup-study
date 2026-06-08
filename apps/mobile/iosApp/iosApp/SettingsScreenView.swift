@@ -47,6 +47,14 @@ struct SettingsScreenView: View {
                         onDismiss()
                     }
                     .font(.subheadline)
+
+                    Button("チュートリアルをリセット") {
+                        TutorialHelper.shared.resetAllTutorials()
+                        vm.clearToastFromPlatform()
+                        onClosedRefreshHome()
+                        onDismiss()
+                    }
+                    .font(.subheadline)
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)

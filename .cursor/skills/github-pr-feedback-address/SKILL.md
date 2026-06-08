@@ -127,6 +127,7 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 - 対応した review comment には threaded reply を投稿する。
 - 対応した top-level PR conversation comment には follow-up comment を投稿する。
 - 返信本文には、対応内容、関連 commit、検証結果を簡潔に含める。
+- **必ず具体的な修正内容を記載する**（「修正しました」だけではなく、何をどう変えたか、どの commit で対応したかを明記する）。
 - 未対応、判断不能、質問が必要な feedback には、必要に応じて理由や確認事項を返信する。
 - 返信対象と投稿方法は `github-pr-comment-reply/SKILL.md` の方針に従う。
 - review thread の Resolve と Approve は行わない。

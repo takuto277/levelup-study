@@ -44,6 +44,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import org.example.project.components.PlayerSprite
 import org.example.project.components.PlayerSpriteMode
 import org.example.project.components.hasPartyPlayerSprite
+import org.example.project.data.local.TutorialTopics
+import org.example.project.components.TutorialHintBanner
+import org.example.project.data.local.TutorialProgressStore
 
 // ── カラーパレット（青テーマ）──────────────────────
 private val BgColor = Color(0xFF0B1120)
@@ -123,6 +126,8 @@ fun RecordScreenView() {
             Spacer(modifier = Modifier.height(8.dp))
             PendingSyncBanner(uiState, onRetry = { viewModel.onIntent(RecordIntent.RetryPending) })
         }
+
+        TutorialHintRow(TutorialTopics.RECORD_REVIEW, "\uD83D\uDCCA", "勉強の記録を確認しよう。継続が力になる！")
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -999,4 +1004,11 @@ private fun PendingSyncBanner(uiState: RecordUiState, onRetry: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun TutorialHintRow(topic: String, emoji: String, message: String) {
+    val store = remember { TutorialProgressStore() }
+    if (store.isCompleted(topic)) return
+    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
 }

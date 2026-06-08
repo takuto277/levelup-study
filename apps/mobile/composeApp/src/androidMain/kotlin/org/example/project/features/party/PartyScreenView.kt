@@ -33,6 +33,9 @@ import androidx.compose.ui.window.DialogProperties
 import org.example.project.components.PlayerSprite
 import org.example.project.components.PlayerSpriteMode
 import org.example.project.components.hasPartyPlayerSprite
+import org.example.project.data.local.TutorialTopics
+import org.example.project.components.TutorialHintBanner
+import org.example.project.data.local.TutorialProgressStore
 import org.example.project.domain.model.UserCharacter
 
 // ── カラー（青テーマ）─────────────────────────────────
@@ -111,6 +114,8 @@ fun PartyScreenView() {
 
     Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(BgColor, Color(0xFF0F172A))))) {
         Column(modifier = Modifier.fillMaxSize()) {
+            TutorialHintRow(TutorialTopics.PARTY_SETUP, "\uD83E\uDDE0", "キャラや武器を編成して冒険の戦力をアップ！")
+
             // ヘッダー + 変更ボタン
             Row(
                 modifier = Modifier
@@ -1094,4 +1099,11 @@ private fun StatBar(label: String, value: Int, maxValue: Int, color: Color) {
             trackColor = Color(0xFF334155)
         )
     }
+}
+
+@Composable
+private fun TutorialHintRow(topic: String, emoji: String, message: String) {
+    val store = remember { TutorialProgressStore() }
+    if (store.isCompleted(topic)) return
+    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
 }

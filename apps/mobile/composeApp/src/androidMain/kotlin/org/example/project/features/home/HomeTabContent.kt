@@ -37,6 +37,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlin.math.roundToInt
 import org.example.project.domain.model.MasterStudyGenre
+import org.example.project.data.local.TutorialTopics
+import org.example.project.components.TutorialHintBanner
+import org.example.project.data.local.TutorialProgressStore
 @Composable
 fun HomeTabContent(
     studyMinutes: Int,
@@ -109,6 +112,8 @@ fun HomeTabContent(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         HomeHeader(homeState = homeState, onOpenSettings = onOpenSettings)
+
+        TutorialHintRow(TutorialTopics.HOME_START_STUDY, "\uD83C\uDFAF", "ジャンルを選んで「勉強開始」をタップ！")
 
         HomeAdventureContextRow(
             dungeonDisplayName = homeState.adventureDungeonDisplayName,
@@ -618,4 +623,11 @@ private fun GenreManageSwipeRow(
             )
         }
     }
+}
+
+@Composable
+private fun TutorialHintRow(topic: String, emoji: String, message: String) {
+    val store = remember { TutorialProgressStore() }
+    if (store.isCompleted(topic)) return
+    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
 }
