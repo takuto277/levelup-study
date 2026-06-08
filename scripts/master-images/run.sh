@@ -3,10 +3,23 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 VENV="$ROOT/scripts/master-images/.venv"
+REQ="$ROOT/scripts/master-images/requirements.txt"
+STAMP="$VENV/.requirements_installed"
 
-if [[ ! -d "$VENV" ]]; then
+_venv_install() {
+  rm -rf "$VENV"
   python3 -m venv "$VENV"
-  "$VENV/bin/pip" install -q -r "$ROOT/scripts/master-images/requirements.txt"
+  "$VENV/bin/pip" install -q -r "$REQ"
+  touch "$STAMP"
+}
+
+_venv_ok() {
+  [[ -f "$STAMP" ]] && "$VENV/bin/python" -c "import yaml, requests, psycopg2" 2>/dev/null
+}
+
+if ! _venv_ok; then
+  echo "[run.sh] .venv が不完全なため再作成します ..." >&2
+  _venv_install
 fi
 
 # backend/.env があれば export（upload 用）
