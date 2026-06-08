@@ -38,8 +38,7 @@ import androidx.compose.ui.window.DialogProperties
 import kotlin.math.roundToInt
 import org.example.project.domain.model.MasterStudyGenre
 import org.example.project.data.local.TutorialTopics
-import org.example.project.components.TutorialHintBanner
-import org.example.project.data.local.TutorialProgressStore
+import org.example.project.components.TutorialHintRow
 @Composable
 fun HomeTabContent(
     studyMinutes: Int,
@@ -625,9 +624,3 @@ private fun GenreManageSwipeRow(
     }
 }
 
-@Composable
-private fun TutorialHintRow(topic: String, emoji: String, message: String) {
-    val store = remember { TutorialProgressStore() }
-    if (store.isCompleted(topic)) return
-    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
-}
