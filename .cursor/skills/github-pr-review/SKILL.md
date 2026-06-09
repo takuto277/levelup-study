@@ -2,7 +2,7 @@
 name: github-pr-review
 description: >
   Use this when asked to review a specific GitHub Pull Request and leave review comments on the PR itself.
-  Trigger this skill when the user provides a PR number, PR URL, owner/repo#number, or branch-like target and says casual review requests like "@codex #123 のPRレビューして", "@codex owner/repo#123 をレビューして", "feature/foo のPRレビューして", "レビューして", "PRレビューして", or "このPR見て"; when the user explicitly asks you to review and comment on a GitHub PR instead of only summarizing findings in chat; or when the user asks to recheck feedback previously posted by this skill.
+  Trigger this skill when the user provides a PR number, PR URL, owner/repo#number, or branch-like target and says casual review requests like "@codex #123 のPRレビューして", "@codex owner/repo#123 をレビューして", "feature/foo のPRレビューして", "レビューして", "PRレビューして", or "このPR見て"; when the user explicitly asks you to review and comment on a GitHub PR instead of only summarizing findings in chat; or when the user asks to recheck feedback previously posted by this skill. Also manages the `review:まーじOK` label when AI review feedback is clear.
 ---
 
 # 概要
@@ -10,6 +10,7 @@ description: >
 指定された GitHub Pull Request をレビューし、可能な限り差分上の適切な位置へレビューコメントを付けるためのスキル。
 チャット上の総評ではなく、GitHub PR 上へ実際にコメントを残す運用を前提にする。
 レビュー結果として指摘がない場合も、`APPROVE` ではなく `COMMENT` review として、PR 上へ指摘なしの review comment を残す。
+通常レビューで指摘がない時、または再チェックでこのスキルの未解決指摘がすべて解消済みになった時は、`review:まーじOK` ラベルで状態を見える化する。
 
 # 使用タイミング
 
@@ -46,6 +47,7 @@ description: >
 - GitHub PR 上の inline review comments
 - 差分箇所に紐づけられない指摘がある場合のみ、代替としての overall review comment
 - 指摘がない場合は、指摘なしを伝える overall review comment
+- 指摘なし、または再チェックOKを示す `review:まーじOK` ラベルの更新
 - ユーザーへの簡潔な報告
 
 # Agentが行うこと
@@ -56,15 +58,17 @@ description: >
 4. 各指摘を原則として差分上の行へ inline comment として紐づける。
 5. コメント文を簡潔に整え、重要度ラベルと AI 識別メタ情報を付ける。
 6. 重複投稿を避けたうえで GitHub PR にコメントを投稿する。指摘がない場合も、指摘なしの review comment を投稿する。
-7. 投稿結果と未解決事項をユーザーへ報告する。
-8. ユーザーが再チェックを促した場合は、元の指摘が改善されたか確認する。
+7. 投稿結果に応じて `review:まーじOK` ラベルを付与または除去する。
+8. 投稿結果と未解決事項をユーザーへ報告する。
+9. ユーザーが再チェックを促した場合は、元の指摘が改善されたか確認する。
 
 参照マップ:
 
 - Step 3, コメント分類: `references/review-criteria.md`
 - Step 5, 6, 本文フォーマット: `references/posting-rules.md`
 - Step 6, API 例: `references/posting-api.md`
-- Step 8, 再チェックと Resolve: `references/recheck.md`
+- Step 7, OK ラベル運用: `references/review-ok-label.md`
+- Step 9, 再チェックと Resolve: `references/recheck.md`
 
 # ステップの詳細
 
@@ -132,16 +136,22 @@ description: >
 - 指摘がない場合は、`event: "COMMENT"` と `body` だけを指定した review comment を投稿する。`APPROVE` は使わない。
 - 投稿後は `gh api` または `gh pr view --comments` で、意図した本文が実際に投稿されていることを確認する。
 
-## 7. ユーザーへ報告する
+## 7. OK ラベルを更新する
+
+- `references/review-ok-label.md` を読み、レビュー投稿結果に応じて `review:まーじOK` を付与・除去・未更新のいずれにするか決める。
+- ラベル操作に失敗してもレビュー投稿は巻き戻さず、失敗理由を最終報告に残す。
+
+## 8. ユーザーへ報告する
 
 - 投稿したコメント件数を伝える。
 - 指摘がない場合は、指摘なしの review comment を投稿したことを伝える。
 - `[must]` がある場合は、その有無だけ簡潔に伝える。
+- `review:まーじOK` ラベルを付与・除去・未更新のどれにしたかを伝える。
 - 権限不足、`gh` 未認証、差分取得失敗などで未実施部分があれば明記する。
 - 対象 PR の URL または番号、投稿した指摘の要約を簡潔に残す。
 - overall review comment を使った場合は、inline comment にできなかった理由を伝える。
 
-## 8. FB対応後に再チェックする
+## 9. FB対応後に再チェックする
 
 - 詳細手順は `references/recheck.md` を読む。
 - この会話でこのスキルが以前に投稿したレビュー指摘だけを再チェック対象にする。
@@ -151,6 +161,7 @@ description: >
 - `resolved` は返信して Resolve、`partial` / `unresolved` は該当スレッドへ追加コメント、`unknown` は理由を報告して Resolve しない。
 - 必要なら `git fetch` する。ローカル checkout が古く判断に影響する場合は、その旨を報告する。ユーザーの未コミット変更は上書きしない。
 - 再チェックコメントにも AI エージェント識別メタ情報を必ず付け、PR approval 相当の操作は実行しない。
+- 再チェック完了後のラベル更新は `references/review-ok-label.md` に従う。
 
 # 品質チェック
 
@@ -160,6 +171,7 @@ description: >
 - コメント本文の言語を PR 説明文またはタイトルから決める手順が含まれている
 - コメント重複の回避と、指摘ありの overall review comment を差分箇所に紐づけられない指摘の代替に限定する手順が含まれている
 - 指摘がない場合に、PR approval ではなく `COMMENT` review として指摘なしの review comment を投稿する手順が含まれている
+- 指摘なしまたは再チェックOK時に `review:まーじOK` ラベルを更新する手順が含まれている
 - FB対応後の再チェックで、未改善の指摘へ再コメントし、改善済みの指摘へ返信して Resolve する手順が含まれている
 - PR approval に相当する操作を決して実行しないルールが含まれている
 - AI エージェント識別メタ情報と現行形式ラベル、実改行とファイル/JSON 入力のルールが含まれている
