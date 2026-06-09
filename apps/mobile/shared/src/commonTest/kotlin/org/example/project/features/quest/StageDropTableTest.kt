@@ -32,8 +32,7 @@ class StageDropTableTest {
     fun probabilisticStoneDropsBecomeBonusDisplay() {
         val reward = stageDropsToReward(
             listOf(
-                StageDrop(itemType = "stones", amount = 1, rate = 0.5),
-                StageDrop(itemType = "stones", amount = 3, rate = 0.25),
+                StageDrop(itemType = "stones", amount = 3, rate = 0.5),
             )
         )
 
