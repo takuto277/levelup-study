@@ -54,7 +54,8 @@ class StudyRepositoryImpl(
             userCharacterId = userCharacterId,
             defeatNormalCount = defeatNormalCount,
             defeatBossCount = defeatBossCount,
-            difficultyMultiplier = difficultyMultiplier
+            difficultyMultiplier = difficultyMultiplier,
+            clientSessionId = "${kotlinx.datetime.Clock.System.now().toEpochMilliseconds()}_d${kotlin.random.Random.nextInt(1_000_000)}"
         )
         val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
         userRepository.updateCachedUser(result.updatedUser)
@@ -105,7 +106,8 @@ class StudyRepositoryImpl(
                     userCharacterId = p.userCharacterId,
                     defeatNormalCount = p.defeatNormalCount,
                     defeatBossCount = p.defeatBossCount,
-                    difficultyMultiplier = p.difficultyMultiplier
+                    difficultyMultiplier = p.difficultyMultiplier,
+                    clientSessionId = p.localId
                 )
                 val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
                 userRepository.updateCachedUser(result.updatedUser)
@@ -143,7 +145,8 @@ class StudyRepositoryImpl(
                     userCharacterId = p.userCharacterId,
                     defeatNormalCount = p.defeatNormalCount,
                     defeatBossCount = p.defeatBossCount,
-                    difficultyMultiplier = p.difficultyMultiplier
+                    difficultyMultiplier = p.difficultyMultiplier,
+                    clientSessionId = p.localId
                 )
                 val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
                 userRepository.updateCachedUser(result.updatedUser)
