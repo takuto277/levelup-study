@@ -15,7 +15,8 @@ fun TutorialHintRow(
 ) {
     val store = remember { TutorialProgressStore() }
     val completed = store.isCompleted(topic)
-    var dismissed by remember(topic, completed) { mutableStateOf(false) }
+    val resetRev = TutorialResetObserver.revision
+    var dismissed by remember(topic, completed, resetRev) { mutableStateOf(false) }
     if (completed || dismissed) return
     TutorialHintBanner(
         emoji = emoji,
