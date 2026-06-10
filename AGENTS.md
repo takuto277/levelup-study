@@ -24,6 +24,7 @@ AI コーディングエージェント（Cursor 等）が **PR 前の品質確�
 |------|----------|------|
 | Backend | `cd backend && CGO_ENABLED=1 go test ./... -count=1 && go vet ./...` | CI と同等 |
 | Mobile (KMP Android) | `cd apps/mobile && ./gradlew :shared:compileDebugKotlinAndroid` | CI と同等 |
+| Mobile (KMP tests) | `cd apps/mobile && ./gradlew :shared:testDebugUnitTest :composeApp:testDebugUnitTest` | KMP commonTest / Android unit test |
 | Mobile (KMP iOS link) | `cd apps/mobile && ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` | CI ios job 前半 |
 | iOS (Swift) | `cd apps/mobile && xcodebuild ...` | **ローカル macOS のみ**。CI は macos-15 + Xcode 26.3（`CI` workflow の iOS job） |
 | Assets | `./scripts/assets/run.sh scripts/assets/validate_assets.py` | assets 変更時 |
