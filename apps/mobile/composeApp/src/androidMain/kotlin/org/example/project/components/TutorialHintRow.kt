@@ -14,14 +14,15 @@ fun TutorialHintRow(
     message: String,
 ) {
     val store = remember { TutorialProgressStore() }
-    var visible by remember(topic) { mutableStateOf(!store.isCompleted(topic)) }
-    if (!visible) return
+    val completed = store.isCompleted(topic)
+    var dismissed by remember(topic, completed) { mutableStateOf(false) }
+    if (completed || dismissed) return
     TutorialHintBanner(
         emoji = emoji,
         message = message,
         onDismiss = {
             store.markCompleted(topic)
-            visible = false
+            dismissed = true
         },
     )
 }
