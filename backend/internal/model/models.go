@@ -260,6 +260,7 @@ type UserCharacter struct {
 	CharacterID      uuid.UUID  `gorm:"type:uuid;not null"                             json:"character_id"` // → m_characters
 	Level            int        `gorm:"not null;default:1"                              json:"level"`
 	CurrentXP        int        `gorm:"not null;default:0"                              json:"current_xp"`       // 次レベルまでの進捗XP（レベル帯ごとに必要量が増える）
+	BreakthroughLevel int       `gorm:"not null;default:0"                              json:"breakthrough_level"` // 凸数（最大6）
 	EquippedWeaponID *uuid.UUID `gorm:"type:uuid"                                     json:"equipped_weapon_id"` // → user_weapons（null = なし）
 	ObtainedAt       time.Time  `gorm:"not null"                                       json:"obtained_at"`
 
@@ -275,11 +276,12 @@ func (uc *UserCharacter) BeforeCreate(tx *gorm.DB) error { ensureUUID(&uc.ID); r
 // ============================================================
 
 type UserWeapon struct {
-	ID         uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	UserID     uuid.UUID `gorm:"type:uuid;not null;index"                       json:"user_id"`
-	WeaponID   uuid.UUID `gorm:"type:uuid;not null"                             json:"weapon_id"` // → m_weapons
-	Level      int       `gorm:"not null;default:1"                              json:"level"`
-	ObtainedAt time.Time `gorm:"not null"                                       json:"obtained_at"`
+	ID             uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	UserID         uuid.UUID `gorm:"type:uuid;not null;index"                       json:"user_id"`
+	WeaponID       uuid.UUID `gorm:"type:uuid;not null"                             json:"weapon_id"` // → m_weapons
+	Level          int       `gorm:"not null;default:1"                              json:"level"`
+	RefinementLevel int      `gorm:"not null;default:0"                              json:"refinement_level"` // 精錬数（最大4）
+	ObtainedAt     time.Time `gorm:"not null"                                       json:"obtained_at"`
 
 	// リレーション
 	Weapon *MasterWeapon `gorm:"foreignKey:WeaponID" json:"weapon,omitempty"`

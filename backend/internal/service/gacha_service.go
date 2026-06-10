@@ -144,19 +144,24 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 			return fmt.Errorf("石の消費に失敗: %w", err)
 		}
 
-		// 所持キャラ一覧（新規判定用）
+		// 所持キャラ一覧（新規/凸判定用）
 		existingChars, _ := s.charRepo.ListByUser(userID)
-		charSet := make(map[uuid.UUID]bool)
-		for _, ec := range existingChars {
-			charSet[ec.CharacterID] = true
+		charMap := make(map[uuid.UUID]*model.UserCharacter)
+		for i := range existingChars {
+			charMap[existingChars[i].CharacterID] = &existingChars[i]
 		}
 
-		// 所持武器一覧（新規判定用）
+		// 所持武器一覧
 		existingWeapons, _ := s.weaponRepo.ListByUser(userID)
-		weaponSet := make(map[uuid.UUID]bool)
-		for _, ew := range existingWeapons {
-			weaponSet[ew.WeaponID] = true
+		weaponMap := make(map[uuid.UUID]*model.UserWeapon)
+		for i := range existingWeapons {
+			weaponMap[existingWeapons[i].WeaponID] = &existingWeapons[i]
 		}
+
+		const maxBreakthrough = 6
+		const maxRefinement = 4
+		const breakthroughComp = 10
+		const refinementComp = 5
 
 		for i := 0; i < req.Count; i++ {
 			currentPity++
@@ -175,19 +180,34 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 					name = mc.Name
 					rarity = mc.Rarity
 				}
-				isNew = !charSet[entry.ItemID]
-				if isNew {
-					charSet[entry.ItemID] = true
+				if existing, ok := charMap[entry.ItemID]; ok {
+					if existing.BreakthroughLevel < maxBreakthrough {
+						if err := tx.Model(existing).
+							Update("breakthrough_level", existing.BreakthroughLevel+1).Error; err != nil {
+							return fmt.Errorf("凸更新に失敗: %w", err)
+						}
+						existing.BreakthroughLevel++
+					} else {
+						if err := tx.Model(&model.User{}).
+							Where("id = ?", userID).
+							Update("stones", gorm.Expr("stones + ?", breakthroughComp)).Error; err != nil {
+							return fmt.Errorf("代償石付与に失敗: %w", err)
+						}
+					}
+				} else {
+					isNew = true
 					uc := model.UserCharacter{
-						UserID:      userID,
-						CharacterID: entry.ItemID,
-						Level:       1,
-						CurrentXP:   0,
-						ObtainedAt:  time.Now().UTC(),
+						UserID:           userID,
+						CharacterID:      entry.ItemID,
+						Level:            1,
+						CurrentXP:        0,
+						ObtainedAt:       time.Now().UTC(),
+						BreakthroughLevel: 0,
 					}
 					if err := s.charRepo.Create(tx, &uc); err != nil {
 						return fmt.Errorf("キャラ付与に失敗: %w", err)
 					}
+					charMap[entry.ItemID] = &uc
 				}
 			} else {
 				mw, _ := s.masterRepo.GetWeapon(entry.ItemID)
@@ -195,17 +215,33 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 					name = mw.Name
 					rarity = mw.Rarity
 				}
-				// 武器は重複可（同じ武器を複数所持できる）
-				isNew = !weaponSet[entry.ItemID]
-				weaponSet[entry.ItemID] = true
-				uw := model.UserWeapon{
-					UserID:     userID,
-					WeaponID:   entry.ItemID,
-					Level:      1,
-					ObtainedAt: time.Now().UTC(),
-				}
-				if err := s.weaponRepo.Create(tx, &uw); err != nil {
-					return fmt.Errorf("武器付与に失敗: %w", err)
+				if existing, ok := weaponMap[entry.ItemID]; ok {
+					if existing.RefinementLevel < maxRefinement {
+						if err := tx.Model(existing).
+							Update("refinement_level", existing.RefinementLevel+1).Error; err != nil {
+							return fmt.Errorf("精錬更新に失敗: %w", err)
+						}
+						existing.RefinementLevel++
+					} else {
+						if err := tx.Model(&model.User{}).
+							Where("id = ?", userID).
+							Update("stones", gorm.Expr("stones + ?", refinementComp)).Error; err != nil {
+							return fmt.Errorf("代償石付与に失敗: %w", err)
+						}
+					}
+				} else {
+					isNew = true
+					uw := model.UserWeapon{
+						UserID:          userID,
+						WeaponID:        entry.ItemID,
+						Level:           1,
+						ObtainedAt:      time.Now().UTC(),
+						RefinementLevel: 0,
+					}
+					if err := s.weaponRepo.Create(tx, &uw); err != nil {
+						return fmt.Errorf("武器付与に失敗: %w", err)
+					}
+					weaponMap[entry.ItemID] = &uw
 				}
 			}
 
