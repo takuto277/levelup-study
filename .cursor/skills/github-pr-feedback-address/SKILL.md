@@ -30,6 +30,7 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 - 必要な検証結果
 - 対応コミットと push 済みブランチ
 - 対応した feedback コメントへの返信
+- **PR への修正サマリコメント**（指示がなくても必須）
 - ユーザーへの簡潔な報告
   - 対応した指摘
   - 対応しなかった指摘と理由
@@ -55,7 +56,8 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 6. 変更を確認し、対応内容だけを commit する。
 7. ブランチを push する。
 8. 対応した feedback コメントへ返信する。
-9. 対応結果を報告する。
+9. PR に修正サマリを投稿する（必須、指示がなくても実施）。
+10. 対応結果を報告する。
 
 # ステップの詳細
 
@@ -131,6 +133,16 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 - 未対応、判断不能、質問が必要な feedback には、必要に応じて理由や確認事項を返信する。
 - 返信対象と投稿方法は `github-pr-comment-reply/SKILL.md` の方針に従う。
 - review thread の Resolve と Approve は行わない。
+
+## 8b. PR に修正サマリを投稿する（必須）
+
+- 全ての feedback 対応が完了した後、**必ず** PR に修正内容のサマリコメントを投稿する。
+- この手順はユーザーから明示的な指示がなくても必ず実施する。
+- サマリコメントには以下を含める:
+  - 対応した commit hash
+  - 各指摘に対する修正内容の概要（何をどう変えたか）
+  - 対応する review comment へのリンク
+- 投稿には `gh api repos/{owner}/{repo}/issues/{number}/comments` を使う（review comment の threaded reply とは別の、PR 全体に対するコメント）。
 
 ## 9. 報告する
 
