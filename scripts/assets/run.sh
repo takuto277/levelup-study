@@ -11,12 +11,13 @@ _venv_install() {
   rm -rf "$VENV"
   python3 -m venv "$VENV"
   "$VENV/bin/pip" install -q -r "$REQ"
-  touch "$STAMP"
+  shasum -a 256 "$REQ" > "$STAMP"
 }
 
 _venv_ok() {
-  # stamp が存在し、最低限の import が通るか確認
-  [[ -f "$STAMP" ]] && "$VENV/bin/python" -c "import yaml, PIL" 2>/dev/null
+  [[ -f "$STAMP" ]] \
+    && [[ "$(cat "$STAMP")" == "$(shasum -a 256 "$REQ")" ]] \
+    && "$VENV/bin/python" -c "import yaml, PIL" 2>/dev/null
 }
 
 if ! _venv_ok; then
