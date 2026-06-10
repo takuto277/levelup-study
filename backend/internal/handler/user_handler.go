@@ -15,11 +15,12 @@ import (
 // ============================================================
 
 type UserHandler struct {
-	repo *repository.UserRepository
+	repo      *repository.UserRepository
+	masterRepo *repository.MasterRepository
 }
 
-func NewUserHandler(repo *repository.UserRepository) *UserHandler {
-	return &UserHandler{repo: repo}
+func NewUserHandler(repo *repository.UserRepository, masterRepo *repository.MasterRepository) *UserHandler {
+	return &UserHandler{repo: repo, masterRepo: masterRepo}
 }
 
 // CreateUser — POST /api/v1/users
@@ -95,9 +96,17 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 			user.SelectedDungeonID = nil
 		} else {
 			parsed, err := uuid.Parse(*req.SelectedDungeonID)
-			if err == nil {
-				user.SelectedDungeonID = &parsed
+			if err != nil {
+				respondError(w, http.StatusBadRequest, "不正な selected_dungeon_id です")
+				return
 			}
+			if h.masterRepo != nil {
+				if _, err := h.masterRepo.GetDungeon(parsed); err != nil {
+					respondError(w, http.StatusBadRequest, "指定されたダンジョンが見つかりません")
+					return
+				}
+			}
+			user.SelectedDungeonID = &parsed
 		}
 	}
 

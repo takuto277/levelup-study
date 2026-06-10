@@ -77,7 +77,7 @@ func main() {
 	gachaService := service.NewGachaService(db, userRepo, gachaRepo, masterRepo, charRepo, weaponRepo)
 
 	// --- Handler 初期化 ---
-	userH := handler.NewUserHandler(userRepo)
+	userH := handler.NewUserHandler(userRepo, masterRepo)
 	studyH := handler.NewStudyHandler(studyService)
 	gameH := handler.NewGameHandler(db, userRepo, charRepo, weaponRepo, partyRepo, dungeonRepo)
 	gachaH := handler.NewGachaHandler(gachaService, gachaRepo)
