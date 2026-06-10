@@ -88,7 +88,7 @@ if $need_mobile; then
     fi
   fi
   run_step "Mobile KMP Android compile" bash -c \
-    'cd apps/mobile && ./gradlew :shared:compileDebugKotlinAndroid --no-daemon -q'
+    'cd apps/mobile && ./gradlew :shared:compileDebugKotlinAndroid :composeApp:compileDebugKotlinAndroid --no-daemon -q'
   run_step "Mobile KMP unit tests" bash -c \
     'cd apps/mobile && ./gradlew :shared:testDebugUnitTest :composeApp:testDebugUnitTest --no-daemon -q'
   run_step "Mobile KMP iOS framework link" bash -c \
