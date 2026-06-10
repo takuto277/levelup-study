@@ -85,6 +85,7 @@ struct HomeScreenView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            TutorialHintBanner(topic: "home_start_study", emoji: "\u{1F3AF}", message: "ジャンルを選んで「勉強開始」をタップ！")
             homeHeader
             adventureContextRow
             Spacer()
