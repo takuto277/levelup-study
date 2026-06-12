@@ -160,8 +160,6 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 
 		const maxBreakthrough = 6
 		const maxRefinement = 4
-		const breakthroughComp = 10
-		const refinementComp = 5
 
 		for i := 0; i < req.Count; i++ {
 			currentPity++
@@ -188,10 +186,21 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 						}
 						existing.BreakthroughLevel++
 					} else {
-						if err := tx.Model(&model.User{}).
-							Where("id = ?", userID).
-							Update("stones", gorm.Expr("stones + ?", breakthroughComp)).Error; err != nil {
-							return fmt.Errorf("代償石付与に失敗: %w", err)
+						// 重複 → 代償通貨（レアリティに応じて増減）
+						compStones, compGold := breakthroughCompensation(rarity)
+						if compStones > 0 {
+							if err := tx.Model(&model.User{}).
+								Where("id = ?", userID).
+								Update("stones", gorm.Expr("stones + ?", compStones)).Error; err != nil {
+								return fmt.Errorf("代償石付与に失敗: %w", err)
+							}
+						}
+						if compGold > 0 {
+							if err := tx.Model(&model.User{}).
+								Where("id = ?", userID).
+								Update("gold", gorm.Expr("gold + ?", compGold)).Error; err != nil {
+								return fmt.Errorf("代償ゴールド付与に失敗: %w", err)
+							}
 						}
 					}
 				} else {
@@ -223,10 +232,21 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 						}
 						existing.RefinementLevel++
 					} else {
-						if err := tx.Model(&model.User{}).
-							Where("id = ?", userID).
-							Update("stones", gorm.Expr("stones + ?", refinementComp)).Error; err != nil {
-							return fmt.Errorf("代償石付与に失敗: %w", err)
+						// 重複 → 精錬代償通貨
+						compStones, compGold := refinementCompensation(rarity)
+						if compStones > 0 {
+							if err := tx.Model(&model.User{}).
+								Where("id = ?", userID).
+								Update("stones", gorm.Expr("stones + ?", compStones)).Error; err != nil {
+								return fmt.Errorf("代償石付与に失敗: %w", err)
+							}
+						}
+						if compGold > 0 {
+							if err := tx.Model(&model.User{}).
+								Where("id = ?", userID).
+								Update("gold", gorm.Expr("gold + ?", compGold)).Error; err != nil {
+								return fmt.Errorf("代償ゴールド付与に失敗: %w", err)
+							}
 						}
 					}
 				} else {
@@ -350,4 +370,30 @@ func (s *GachaService) rollGacha(table []RateTableEntry, pity int, threshold *in
 
 	// フォールバック（確率の合計が1未満の場合、最後のエントリを返す）
 	return table[len(table)-1]
+}
+
+func breakthroughCompensation(rarity int) (stones int, gold int) {
+	switch rarity {
+	case 5:
+		return 25, 0
+	case 4:
+		return 0, 500
+	case 3:
+		return 0, 100
+	default:
+		return 0, 100
+	}
+}
+
+func refinementCompensation(rarity int) (stones int, gold int) {
+	switch rarity {
+	case 5:
+		return 15, 0
+	case 4:
+		return 0, 300
+	case 3:
+		return 0, 50
+	default:
+		return 0, 50
+	}
 }
