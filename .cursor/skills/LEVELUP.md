@@ -39,7 +39,7 @@ GitHub Actions は push 後のセーフティネット。**PR 作成前**にロ�
 
 - **PR 作成直後（必須）**: [github-pr-self-review](./github-pr-self-review/SKILL.md)
 - 指摘対応: [github-pr-feedback-address](./github-pr-feedback-address/SKILL.md)
-- レビュー実施: [github-pr-review](./github-pr-review/SKILL.md)（指摘なし / 再チェックOK時は `review:まーじOK` ラベルを更新）
+- レビュー実施: [github-pr-review](./github-pr-review/SKILL.md)（指摘あり / 再チェック待ち / OK の PRレビュー状態ラベルを更新）
 - コメント返信: [github-pr-comment-reply](./github-pr-comment-reply/SKILL.md)
 
 ## スキルメンテ

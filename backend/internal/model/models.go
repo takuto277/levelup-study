@@ -290,12 +290,19 @@ func (uw *UserWeapon) BeforeCreate(tx *gorm.DB) error { ensureUUID(&uw.ID); retu
 // ============================================================
 // user_party_slots — パーティ編成（スロット1〜4）
 // ============================================================
+// user_party_slots — パーティ編成スロット
+//
+// 移行: idx_user_char 追加時は既存重複を先に解消すること
+//   DELETE FROM user_party_slots WHERE id NOT IN (
+//     SELECT MIN(id) FROM user_party_slots GROUP BY user_id, user_character_id
+//   )
+// ============================================================
 
 type UserPartySlot struct {
 	ID              uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	UserID          uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_slot"   json:"user_id"`
+	UserID          uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_slot;uniqueIndex:idx_user_char" json:"user_id"`
 	SlotPosition    int       `gorm:"not null;uniqueIndex:idx_user_slot"             json:"slot_position"`     // 1〜4
-	UserCharacterID uuid.UUID `gorm:"type:uuid;not null"                             json:"user_character_id"` // → user_characters
+	UserCharacterID uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_char"   json:"user_character_id"` // → user_characters
 
 	// リレーション
 	UserCharacter *UserCharacter `gorm:"foreignKey:UserCharacterID" json:"user_character,omitempty"`

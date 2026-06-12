@@ -31,6 +31,7 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 - 対応コミットと push 済みブランチ
 - 対応した feedback コメントへの返信
 - **PR への修正サマリコメント**（指示がなくても必須）
+- 対応完了後の `PRレビュー/再レビュー待ち` ラベル更新
 - ユーザーへの簡潔な報告
   - 対応した指摘
   - 対応しなかった指摘と理由
@@ -57,7 +58,8 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 7. ブランチを push する。
 8. 対応した feedback コメントへ返信する。
 9. PR に修正サマリを投稿する（必須、指示がなくても実施）。
-10. 対応結果を報告する。
+10. PR ラベルを「PRレビュー/再レビュー待ち」に更新する。
+11. 対応結果を報告する。
 
 # ステップの詳細
 
@@ -144,13 +146,22 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
   - 対応する review comment へのリンク
 - 投稿には `gh api repos/{owner}/{repo}/issues/{number}/comments` を使う（review comment の threaded reply とは別の、PR 全体に対するコメント）。
 
-## 9. 報告する
+## 9. PRレビュー状態ラベルを更新する
+
+- actionable な feedback へ commit / push / 返信まで完了した場合は、`PRレビュー/再レビュー待ち` を付ける。
+- 同時に `PRレビュー修正待ち` と `review:まーじOK` は外す。
+- 対応できない feedback が残る場合は `PRレビュー修正待ち` を維持する。
+- ラベル操作に失敗しても feedback 対応は巻き戻さず、最終報告でラベル未更新と理由を伝える。
+- ラベル更新コマンド: `gh pr edit $PR --remove-label "PRレビュー修正待ち" --add-label "PRレビュー/再レビュー待ち"`
+
+## 10. 報告する
 
 - 対応した feedback を簡潔に列挙する。
 - 未対応、判断不能、質問が必要な feedback があれば理由を添える。
 - 実行した検証と結果を伝える。
 - commit hash と PR URL を伝える。
 - 返信したコメントを伝える。
+- PRレビュー状態ラベルをどう更新したかを伝える。
 - このスキル自身では review thread の Resolve と Approve を行わない。
 
 # 品質チェック
@@ -160,6 +171,7 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 - review feedback の収集、分類、実装、検証、commit、push、返信、報告までの流れがある
 - 無関係な変更を commit しないルールがある
 - 対応した feedback コメントへ返信するルールがある
+- feedback 対応後に `PRレビュー/再レビュー待ち` へ戻すラベル更新ルールがある
 - Resolve / Approve をこのスキルで行わないルールがある
 - GitHub コネクタに依存せず `gh` / `gh api` の認証で進めるルールがある
 
