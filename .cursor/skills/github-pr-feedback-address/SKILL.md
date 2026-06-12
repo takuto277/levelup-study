@@ -55,7 +55,8 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 6. 変更を確認し、対応内容だけを commit する。
 7. ブランチを push する。
 8. 対応した feedback コメントへ返信する。
-9. 対応結果を報告する。
+9. PR ラベルを「PRレビュー修正待ち」→「PRレビュー/再レビュー待ち」に切り替える。
+10. 対応結果を報告する。
 
 # ステップの詳細
 
@@ -132,7 +133,13 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 - 返信対象と投稿方法は `github-pr-comment-reply/SKILL.md` の方針に従う。
 - review thread の Resolve と Approve は行わない。
 
-## 9. 報告する
+## 9. PR ラベルを切り替える（必須）
+
+- 全ての feedback 対応が完了したら、**必ず** PR ラベルを更新する。
+- `gh pr edit $PR --remove-label "PRレビュー修正待ち" --add-label "PRレビュー/再レビュー待ち"`
+- この手順はユーザーからの指示がなくても必ず実施する。
+
+## 10. 報告する
 
 - 対応した feedback を簡潔に列挙する。
 - 未対応、判断不能、質問が必要な feedback があれば理由を添える。
