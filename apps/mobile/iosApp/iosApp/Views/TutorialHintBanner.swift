@@ -35,6 +35,9 @@ struct TutorialHintBanner: View {
             .buttonStyle(.plain)
             .padding(.horizontal, 16)
         }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TutorialDidReset"))) { _ in
+            dismissed = TutorialHelper.shared.isTutorialCompleted(topic: topic)
+        }
     }
 }
 
