@@ -30,8 +30,7 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 - 必要な検証結果
 - 対応コミットと push 済みブランチ
 - 対応した feedback コメントへの返信
-- **PR への修正サマリコメント**（指示がなくても必須）
-- 対応完了後の `PRレビュー/再レビュー待ち` ラベル更新
+- **PR への修正サマリコメント** と ラベル更新（指示がなくても必須）
 - ユーザーへの簡潔な報告
   - 対応した指摘
   - 対応しなかった指摘と理由
@@ -166,14 +165,11 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 
 # 品質チェック
 
-- `description` を読むだけで、「PRのFBおねがい」「PRのコメントみて」で発火すべきことが分かる
-- PR URL/番号がなくても現在ブランチから PR を特定する手順がある
-- review feedback の収集、分類、実装、検証、commit、push、返信、報告までの流れがある
-- 無関係な変更を commit しないルールがある
-- 対応した feedback コメントへ返信するルールがある
-- feedback 対応後に `PRレビュー/再レビュー待ち` へ戻すラベル更新ルールがある
-- Resolve / Approve をこのスキルで行わないルールがある
-- GitHub コネクタに依存せず `gh` / `gh api` の認証で進めるルールがある
+- `description` だけで発火条件が分かる
+- PR URL/番号がなくてもブランチから PR 特定可能
+- feedback の収集〜返信・ラベル更新までの全フローがある
+- 無関係変更の commit 禁止 / Resolve・Approve 禁止
+- `gh` CLI 優先、GitHub コネクタ非依存
 
 # 参考資料
 
