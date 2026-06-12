@@ -9,31 +9,33 @@ struct TutorialHintBanner: View {
     @State private var dismissed = false
 
     var body: some View {
-        if dismissed || TutorialHelper.shared.isTutorialCompleted(topic: topic) {
-            EmptyView()
-        } else {
-            Button(action: {
-                TutorialHelper.shared.markTutorialCompleted(topic: topic)
-                dismissed = true
-            }) {
-                HStack(spacing: 8) {
-                    Text(emoji)
-                        .font(.system(size: 16))
-                    Text(message)
-                        .foregroundColor(Color(hex: "#22D3EE"))
-                        .font(.system(size: 12, weight: .medium))
-                    Spacer()
-                    Text("✕")
-                        .foregroundColor(Color(hex: "#64748B"))
-                        .font(.system(size: 12))
+        Group {
+            if dismissed || TutorialHelper.shared.isTutorialCompleted(topic: topic) {
+                EmptyView()
+            } else {
+                Button(action: {
+                    TutorialHelper.shared.markTutorialCompleted(topic: topic)
+                    dismissed = true
+                }) {
+                    HStack(spacing: 8) {
+                        Text(emoji)
+                            .font(.system(size: 16))
+                        Text(message)
+                            .foregroundColor(Color(hex: "#22D3EE"))
+                            .font(.system(size: 12, weight: .medium))
+                        Spacer()
+                        Text("✕")
+                            .foregroundColor(Color(hex: "#64748B"))
+                            .font(.system(size: 12))
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity)
+                    .background(Color(hex: "#1A2744"))
+                    .cornerRadius(12)
                 }
-                .padding(10)
-                .frame(maxWidth: .infinity)
-                .background(Color(hex: "#1A2744"))
-                .cornerRadius(12)
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
             }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 16)
         }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("TutorialDidReset"))) { _ in
             dismissed = TutorialHelper.shared.isTutorialCompleted(topic: topic)
