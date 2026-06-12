@@ -118,6 +118,12 @@ jobs:
           LEVELUP_API_KEY: ci-placeholder-not-for-production
         run: ./gradlew :shared:compileDebugKotlinAndroid --no-daemon --stacktrace
 
+      - name: Gradle unit tests (:shared + :composeApp)
+        env:
+          GRADLE_OPTS: -Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.configuration-cache=false
+          LEVELUP_API_KEY: ci-placeholder-not-for-production
+        run: ./gradlew :shared:testDebugUnitTest :composeApp:testDebugUnitTest --no-daemon --stacktrace
+
   ios:
     name: iOS — SwiftLint + Simulator build
     needs: changes

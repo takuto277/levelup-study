@@ -245,8 +245,19 @@ func (h *GameHandler) RemovePartySlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	n, _ := json.Number(chi.URLParam(r, "slotPosition")).Int64()
-	slotPos := int(n)
+	slotStr := chi.URLParam(r, "slotPosition")
+	var slotPos int
+	n, err := json.Number(slotStr).Int64()
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なスロット番号です")
+		return
+	}
+	slotPos = int(n)
+
+	if slotPos < 1 || slotPos > 4 {
+		respondError(w, http.StatusBadRequest, "スロットは 1〜4 です")
+		return
+	}
 
 	if err := h.partyRepo.RemoveSlot(userID, slotPos); err != nil {
 		respondError(w, http.StatusInternalServerError, "スロット解除に失敗しました")

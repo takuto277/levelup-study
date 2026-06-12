@@ -24,6 +24,7 @@ AI コーディングエージェント（Cursor 等）が **PR 前の品質確�
 |------|----------|------|
 | Backend | `cd backend && CGO_ENABLED=1 go test ./... -count=1 && go vet ./...` | CI と同等 |
 | Mobile (KMP Android) | `cd apps/mobile && ./gradlew :shared:compileDebugKotlinAndroid` | CI と同等 |
+| Mobile (KMP tests) | `cd apps/mobile && ./gradlew :shared:testDebugUnitTest :composeApp:testDebugUnitTest` | KMP commonTest / Android unit test |
 | Mobile (KMP iOS link) | `cd apps/mobile && ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` | CI ios job 前半 |
 | iOS (Swift) | `cd apps/mobile && xcodebuild ...` | **ローカル macOS のみ**。CI は macos-15 + Xcode 26.3（`CI` workflow の iOS job） |
 | Assets | `./scripts/assets/run.sh scripts/assets/validate_assets.py` | assets 変更時 |
@@ -40,7 +41,7 @@ AI コーディングエージェント（Cursor 等）が **PR 前の品質確�
 | `github-issue-create-from-plan` | 設計合意後の Issue 起票 |
 | `github-pr-create` | PR 本文テンプレ + `gh pr create --body-file` |
 | `github-pr-self-review` | **PR 作成直後の必須セルフレビュー**（完了報告前） |
-| `github-pr-review` | PR レビュー（`@codex #123 のPRレビューして` 形式の依頼に対応） |
+| `github-pr-review` | PR レビュー（`@codex #123 のPRレビューして` 形式の依頼、指摘なし/再チェックOK時の `review:まーじOK` ラベル更新に対応） |
 | `github-pr-feedback-address` | レビュー指摘の実装対応 |
 | `github-pr-comment-reply` | PR コメント返信 |
 | `qa-test-design` | 手動 UI 確認含むテスト観点 |

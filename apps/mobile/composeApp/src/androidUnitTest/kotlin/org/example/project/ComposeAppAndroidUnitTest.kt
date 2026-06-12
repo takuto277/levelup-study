@@ -1,12 +1,12 @@
 package org.example.project
 
 import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class ComposeAppAndroidUnitTest {
 
     @Test
-    fun example() {
-        assertEquals(3, 1 + 2)
+    fun androidUnitTestTaskIsWired() {
+        assertTrue(true)
     }
 }
