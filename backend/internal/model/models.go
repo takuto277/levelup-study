@@ -256,8 +256,8 @@ func (g *MasterStudyGenre) BeforeCreate(tx *gorm.DB) error { ensureUUID(&g.ID); 
 
 type UserCharacter struct {
 	ID               uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	UserID           uuid.UUID  `gorm:"type:uuid;not null;index;uniqueIndex:idx_user_char" json:"user_id"`
-	CharacterID      uuid.UUID  `gorm:"type:uuid;not null;uniqueIndex:idx_user_char"      json:"character_id"` // → m_characters
+	UserID           uuid.UUID  `gorm:"type:uuid;not null;index;uniqueIndex:idx_user_character_owned" json:"user_id"`
+	CharacterID      uuid.UUID  `gorm:"type:uuid;not null;uniqueIndex:idx_user_character_owned"      json:"character_id"` // → m_characters
 	Level            int        `gorm:"not null;default:1"                              json:"level"`
 	CurrentXP        int        `gorm:"not null;default:0"                              json:"current_xp"`       // 次レベルまでの進捗XP（レベル帯ごとに必要量が増える）
 	BreakthroughLevel int       `gorm:"not null;default:0"                              json:"breakthrough_level"` // 凸数（最大6）
@@ -277,8 +277,8 @@ func (uc *UserCharacter) BeforeCreate(tx *gorm.DB) error { ensureUUID(&uc.ID); r
 
 type UserWeapon struct {
 	ID             uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	UserID         uuid.UUID `gorm:"type:uuid;not null;index;uniqueIndex:idx_user_weapon" json:"user_id"`
-	WeaponID       uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_weapon"      json:"weapon_id"` // → m_weapons
+	UserID         uuid.UUID `gorm:"type:uuid;not null;index;uniqueIndex:idx_user_weapon_owned" json:"user_id"`
+	WeaponID       uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_weapon_owned"      json:"weapon_id"` // → m_weapons
 	Level          int       `gorm:"not null;default:1"                              json:"level"`
 	RefinementLevel int      `gorm:"not null;default:0"                              json:"refinement_level"` // 精錬数（最大4）
 	ObtainedAt     time.Time `gorm:"not null"                                       json:"obtained_at"`
