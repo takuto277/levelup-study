@@ -1,20 +1,49 @@
 package handler_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/takuto277/levelup-study/backend/internal/handler"
+	"github.com/takuto277/levelup-study/backend/internal/model"
 	"github.com/takuto277/levelup-study/backend/internal/repository"
 	"github.com/takuto277/levelup-study/backend/internal/testutil"
+	"gorm.io/gorm"
 )
 
-func TestRemovePartySlot_InvalidSlotPosition(t *testing.T) {
-	db := testutil.SetupTestDB(t)
+func createTestUserWithChar(t *testing.T, db *gorm.DB, userRepo *repository.UserRepository, charRepo *repository.CharacterRepository) (uuid.UUID, uuid.UUID) {
+	t.Helper()
+	user := &model.User{DisplayName: "テスト"}
+	if err := userRepo.Create(user); err != nil {
+		t.Fatalf("ユーザー作成失敗: %v", err)
+	}
+	masterChar := &model.MasterCharacter{
+		ID:       uuid.New(),
+		Name:     "テストキャラ",
+		Rarity:   5,
+		ImageURL: "https://example.com/char.png",
+	}
+	if err := db.Create(masterChar).Error; err != nil {
+		t.Fatalf("マスターキャラ作成失敗: %v", err)
+	}
+	userChar := &model.UserCharacter{
+		UserID:      user.ID,
+		CharacterID: masterChar.ID,
+		Level:       1,
+	}
+	if err := charRepo.Create(db, userChar); err != nil {
+		t.Fatalf("所持キャラ作成失敗: %v", err)
+	}
+	return user.ID, userChar.ID
+}
 
+func TestUpdatePartySlot_DuplicateCharacter(t *testing.T) {
+	db := testutil.SetupTestDB(t)
 	userRepo := repository.NewUserRepository(db)
 	charRepo := repository.NewCharacterRepository(db)
 	weaponRepo := repository.NewWeaponRepository(db)
@@ -22,32 +51,30 @@ func TestRemovePartySlot_InvalidSlotPosition(t *testing.T) {
 	dungeonRepo := repository.NewDungeonProgressRepository(db)
 	h := handler.NewGameHandler(db, userRepo, charRepo, weaponRepo, partyRepo, dungeonRepo)
 
-	userID := uuid.New().String()
+	userID, userCharID := createTestUserWithChar(t, db, userRepo, charRepo)
 
-	tests := []struct {
-		name         string
-		slotPosition string
-		wantStatus   int
-	}{
-		{"non-numeric", "abc", http.StatusBadRequest},
-		{"zero", "0", http.StatusBadRequest},
-		{"negative", "-1", http.StatusBadRequest},
-		{"out-of-range-upper", "5", http.StatusBadRequest},
-		{"valid", "2", http.StatusOK},
+	body := func(charID string) string {
+		b, _ := json.Marshal(map[string]string{"user_character_id": charID})
+		return string(b)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := chi.NewRouter()
-			r.Delete("/users/{userID}/party/{slotPosition}", h.RemovePartySlot)
+	// 1st put: slot 1 with this character → should succeed
+	r := chi.NewRouter()
+	r.Put("/users/{userID}/party/{slotPosition}", h.UpdatePartySlot)
+	req := httptest.NewRequest(http.MethodPut, "/users/"+userID.String()+"/party/1", strings.NewReader(body(userCharID.String())))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("1st put: status = %d, want 200", rr.Code)
+	}
 
-			req := httptest.NewRequest(http.MethodDelete, "/users/"+userID+"/party/"+tt.slotPosition, nil)
-			rr := httptest.NewRecorder()
-			r.ServeHTTP(rr, req)
-
-			if rr.Code != tt.wantStatus {
-				t.Errorf("status = %d, want %d (slotPosition=%q)", rr.Code, tt.wantStatus, tt.slotPosition)
-			}
-		})
+	// 2nd put: same character in slot 2 → should fail with 400
+	req2 := httptest.NewRequest(http.MethodPut, "/users/"+userID.String()+"/party/2", strings.NewReader(body(userCharID.String())))
+	req2.Header.Set("Content-Type", "application/json")
+	rr2 := httptest.NewRecorder()
+	r.ServeHTTP(rr2, req2)
+	if rr2.Code != http.StatusBadRequest {
+		t.Errorf("duplicate put: status = %d, want 400", rr2.Code)
 	}
 }

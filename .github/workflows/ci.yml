@@ -36,20 +36,30 @@ jobs:
             backend:
               - 'backend/**'
               - 'render.yaml'
+              - '.github/workflows/ci.yml'
+              - 'scripts/validate-pr.sh'
             mobile:
               - 'apps/mobile/**'
+              - '.github/workflows/ci.yml'
+              - 'scripts/validate-pr.sh'
             assets:
               - 'apps/mobile/assets/**'
               - 'scripts/assets/**'
               - 'apps/mobile/composeApp/src/androidMain/res/drawable/**'
               - 'apps/mobile/iosApp/iosApp/Assets.xcassets/**'
               - 'apps/mobile/shared/**/EnemySpriteAssets.kt'
+              - '.github/workflows/ci.yml'
+              - 'scripts/validate-pr.sh'
             master_images:
               - 'backend/assets/master/**'
               - 'scripts/master-images/**'
+              - '.github/workflows/ci.yml'
+              - 'scripts/validate-pr.sh'
             skills:
               - '.cursor/skills/**'
               - 'scripts/validate-skills.sh'
+              - '.github/workflows/ci.yml'
+              - 'scripts/validate-pr.sh'
             any_code:
               - 'backend/**'
               - 'render.yaml'
@@ -58,6 +68,7 @@ jobs:
               - 'scripts/master-images/**'
               - '.cursor/skills/**'
               - 'scripts/validate-skills.sh'
+              - 'scripts/validate-pr.sh'
               - '.github/workflows/**'
 
   backend:
@@ -116,7 +127,7 @@ jobs:
         env:
           GRADLE_OPTS: -Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.configuration-cache=false
           LEVELUP_API_KEY: ci-placeholder-not-for-production
-        run: ./gradlew :shared:compileDebugKotlinAndroid --no-daemon --stacktrace
+        run: ./gradlew :shared:compileDebugKotlinAndroid :composeApp:compileDebugKotlinAndroid --no-daemon --stacktrace
 
       - name: Gradle unit tests (:shared + :composeApp)
         env:

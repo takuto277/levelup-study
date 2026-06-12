@@ -212,6 +212,14 @@ func (h *GameHandler) UpdatePartySlot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	existingSlots, _ := h.partyRepo.GetByUser(userID)
+	for _, s := range existingSlots {
+		if s.SlotPosition != slotPos && s.UserCharacterID == req.UserCharacterID {
+			respondError(w, http.StatusBadRequest, "このキャラはすでに別のスロットに編成されています")
+			return
+		}
+	}
+
 	partySlot := &model.UserPartySlot{
 		UserID:          userID,
 		SlotPosition:    slotPos,
