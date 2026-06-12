@@ -42,7 +42,8 @@ class StudyRepositoryImpl(
         userCharacterId: String?,
         defeatNormalCount: Int,
         defeatBossCount: Int,
-        difficultyMultiplier: Double
+        difficultyMultiplier: Double,
+        clientSessionId: String?
     ): StudyCompleteResult {
         val userId = UserSessionStore.requireUserId()
         val request = StudyCompleteRequest(
@@ -55,7 +56,7 @@ class StudyRepositoryImpl(
             defeatNormalCount = defeatNormalCount,
             defeatBossCount = defeatBossCount,
             difficultyMultiplier = difficultyMultiplier,
-            clientSessionId = "${kotlinx.datetime.Clock.System.now().toEpochMilliseconds()}_d${kotlin.random.Random.nextInt(1_000_000)}"
+            clientSessionId = clientSessionId
         )
         val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
         userRepository.updateCachedUser(result.updatedUser)

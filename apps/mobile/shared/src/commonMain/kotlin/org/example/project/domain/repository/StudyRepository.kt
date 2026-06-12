@@ -15,7 +15,8 @@ interface StudyRepository {
         userCharacterId: String? = null,
         defeatNormalCount: Int = 0,
         defeatBossCount: Int = 0,
-        difficultyMultiplier: Double = 1.0
+        difficultyMultiplier: Double = 1.0,
+        clientSessionId: String? = null
     ): StudyCompleteResult
 
     suspend fun getSessionHistory(limit: Int = 20, offset: Int = 0): List<StudySession>

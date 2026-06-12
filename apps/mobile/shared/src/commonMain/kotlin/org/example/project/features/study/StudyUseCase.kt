@@ -14,8 +14,7 @@ class StudyUseCase(
     private val studyRepository: StudyRepository
 ) {
     /**
-     * 勉強セッション完了処理
-     * サーバーに送信し、報酬計算結果を受け取る
+     * 勉強セッション完了処理。クライアント生成IDで冪等性を担保。
      */
     suspend fun completeSession(
         category: String?,
@@ -26,7 +25,8 @@ class StudyUseCase(
         userCharacterId: String? = null,
         defeatNormalCount: Int = 0,
         defeatBossCount: Int = 0,
-        difficultyMultiplier: Double = 1.0
+        difficultyMultiplier: Double = 1.0,
+        clientSessionId: String = "${Clock.System.now().toEpochMilliseconds()}_d${Random.nextInt(1_000_000)}"
     ): StudyCompleteResult {
         return studyRepository.completeSession(
             category = category,
@@ -37,7 +37,8 @@ class StudyUseCase(
             userCharacterId = userCharacterId,
             defeatNormalCount = defeatNormalCount,
             defeatBossCount = defeatBossCount,
-            difficultyMultiplier = difficultyMultiplier
+            difficultyMultiplier = difficultyMultiplier,
+            clientSessionId = clientSessionId
         )
     }
 
