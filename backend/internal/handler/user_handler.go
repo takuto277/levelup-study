@@ -101,8 +101,13 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if h.masterRepo != nil {
-				if _, err := h.masterRepo.GetDungeon(parsed); err != nil {
+				d, err := h.masterRepo.GetDungeon(parsed)
+				if err != nil {
 					respondError(w, http.StatusBadRequest, "指定されたダンジョンが見つかりません")
+					return
+				}
+				if !d.IsActive {
+					respondError(w, http.StatusBadRequest, "このダンジョンは現在利用できません")
 					return
 				}
 			}
