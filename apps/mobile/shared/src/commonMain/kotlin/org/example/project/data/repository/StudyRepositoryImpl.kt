@@ -60,7 +60,7 @@ class StudyRepositoryImpl(
         )
         val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
             .copy(clientSessionId = clientSessionId)
-        userRepository.updateCachedUser(result.updatedUser)
+        result.updatedUser?.let { userRepository.updateCachedUser(it) }
         return result
     }
 
@@ -112,7 +112,7 @@ class StudyRepositoryImpl(
                     clientSessionId = p.localId
                 )
                 val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
-                userRepository.updateCachedUser(result.updatedUser)
+                result.updatedUser?.let { userRepository.updateCachedUser(it) }
                 pendingQueue.remove(p.localId)
             } catch (e: Exception) {
                 val newRetryCount = p.retryCount + 1
@@ -151,7 +151,7 @@ class StudyRepositoryImpl(
                     clientSessionId = p.localId
                 )
                 val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
-                userRepository.updateCachedUser(result.updatedUser)
+                result.updatedUser?.let { userRepository.updateCachedUser(it) }
                 pendingQueue.remove(p.localId)
             } catch (e: Exception) {
                 pendingQueue.updateStatus(p.localId, SyncStatus.FAILED, e.message)
