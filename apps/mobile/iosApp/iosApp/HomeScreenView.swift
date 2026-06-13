@@ -105,6 +105,7 @@ struct HomeScreenView: View {
             StudyQuestScreenView(
                 initialStudyMinutes: studyMinutes,
                 genreId: selectedGenreSlug,
+                dungeonId: homeState?.selectedDungeonId,
                 dungeonName: homeState?.adventureDungeonDisplayName,
                 dungeonImageUrl: (homeState?.isTrainingStudySession == true) ? nil : homeState?.selectedDungeonImageUrl,
                 isTrainingGround: homeState?.isTrainingStudySession == true
