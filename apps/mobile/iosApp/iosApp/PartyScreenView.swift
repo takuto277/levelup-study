@@ -95,6 +95,7 @@ struct PartyScreenView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
+                    TutorialHintBanner(topic: "party_setup", emoji: "\u{1F9E0}", message: "キャラや武器を編成して冒険の戦力をアップ！")
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("編 成").font(.system(size: 28, weight: .black)).foregroundColor(textW)
