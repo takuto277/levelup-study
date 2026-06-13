@@ -6,3 +6,4 @@ data class ReminderSettings(
     val minute: Int = 0,
     val permissionStatus: ReminderPermissionStatus = ReminderPermissionStatus.NOT_DETERMINED,
 )
+// Default: 20:00 JST
