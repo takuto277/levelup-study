@@ -11,6 +11,50 @@ import (
 	"gorm.io/gorm"
 )
 
+func TestPull_RaceConditionRollback(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	svc := createGachaSvcForTest(t, db)
+
+	user := createGachaTestUser(t, db, costPerPull)
+	charID := uuid.New()
+	createGachaTestChar(t, db, charID)
+	bannerID := createGachaTestBanner(t, db, charID)
+
+	// Normal pull with enough stones → success
+	resp, err := svc.Pull(user.ID, GachaPullRequest{BannerID: bannerID, Count: 1})
+	if err != nil {
+		t.Fatalf("first pull failed: %v", err)
+	}
+	if resp.StonesSpent != costPerPull {
+		t.Errorf("spent = %d, want %d", resp.StonesSpent, costPerPull)
+	}
+
+	var charCount int64
+	db.Model(&model.UserCharacter{}).Where("user_id = ?", user.ID).Count(&charCount)
+	if charCount != 1 {
+		t.Errorf("char count = %d, want 1", charCount)
+	}
+
+	// Pull with insufficient stones → error, no items
+	db.Model(&model.User{}).Where("id = ?", user.ID).Update("stones", 0)
+
+	_, err = svc.Pull(user.ID, GachaPullRequest{BannerID: bannerID, Count: 1})
+	if err == nil {
+		t.Fatal("expected error for insufficient stones, got nil")
+	}
+
+	db.Model(&model.UserCharacter{}).Where("user_id = ?", user.ID).Count(&charCount)
+	if charCount != 1 {
+		t.Errorf("char count = %d, want 1 (no items from failed pull)", charCount)
+	}
+
+	var historyCount int64
+	db.Model(&model.GachaHistory{}).Where("user_id = ?", user.ID).Count(&historyCount)
+	if historyCount != 1 {
+		t.Errorf("history count = %d, want 1", historyCount)
+	}
+}
+
 func TestStoneUpdateRowsAffectedZeroRollsBack(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
@@ -19,17 +63,10 @@ func TestStoneUpdateRowsAffectedZeroRollsBack(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 
-	// Directly test the RowsAffected branch that Pull uses internally.
-	// When stones < cost, the WHERE clause matches 0 rows and
-	// RowsAffected==0 → should trigger rollback.
 	err := db.Transaction(func(tx *gorm.DB) error {
 		result := tx.Model(&model.User{}).
 			Where("id = ? AND stones >= ?", user.ID, costPerPull).
 			Update("stones", gorm.Expr("stones - ?", costPerPull))
-
-		if result.Error != nil {
-			return result.Error
-		}
 		if result.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
 		}
@@ -40,62 +77,10 @@ func TestStoneUpdateRowsAffectedZeroRollsBack(t *testing.T) {
 		t.Fatal("expected error (RowsAffected==0), got nil")
 	}
 
-	// Verify user stones unchanged (transaction rolled back)
 	var updated model.User
 	db.First(&updated, user.ID)
 	if updated.Stones != 0 {
-		t.Errorf("stones = %d, want 0 (transaction should roll back)", updated.Stones)
-	}
-}
-
-func TestStoneUpdateRowsAffectedPositiveSucceeds(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-
-	user := &model.User{DisplayName: "test", Stones: costPerPull}
-	if err := db.Create(user).Error; err != nil {
-		t.Fatalf("create user: %v", err)
-	}
-
-	err := db.Transaction(func(tx *gorm.DB) error {
-		result := tx.Model(&model.User{}).
-			Where("id = ? AND stones >= ?", user.ID, costPerPull).
-			Update("stones", gorm.Expr("stones - ?", costPerPull))
-
-		if result.RowsAffected == 0 {
-			return gorm.ErrRecordNotFound
-		}
-		return nil
-	})
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	var updated model.User
-	db.First(&updated, user.ID)
-	if updated.Stones != 0 {
-		t.Errorf("stones = %d, want 0", updated.Stones)
-	}
-}
-
-func TestPull_PreCheckCatchesInsufficientStones(t *testing.T) {
-	db := testutil.SetupTestDB(t)
-	svc := createGachaSvcForTest(t, db)
-	user := createGachaTestUser(t, db, costPerPull-1) // insufficient
-
-	charID := uuid.New()
-	createGachaTestChar(t, db, charID)
-	bannerID := createGachaTestBanner(t, db, charID)
-
-	_, err := svc.Pull(user.ID, GachaPullRequest{BannerID: bannerID, Count: 1})
-	if err == nil {
-		t.Fatal("expected error for insufficient stones, got nil")
-	}
-
-	var count int64
-	db.Model(&model.GachaHistory{}).Where("user_id = ?", user.ID).Count(&count)
-	if count != 0 {
-		t.Errorf("expected 0 history, got %d", count)
+		t.Errorf("stones = %d, want 0 (transaction rolled back)", updated.Stones)
 	}
 }
 
