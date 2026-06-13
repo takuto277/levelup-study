@@ -48,7 +48,7 @@ class PendingStudyQueueStore(
         if (idx == -1) return
         val old = items[idx]
         val attemptAt = kotlinx.datetime.Clock.System.now().toString()
-        val retries = if (status == SyncStatus.FAILED) old.retryCount + 1 else old.retryCount
+        val retries = old.retryCount + 1
         items[idx] = old.copy(
             syncStatus = status,
             retryCount = retries,
