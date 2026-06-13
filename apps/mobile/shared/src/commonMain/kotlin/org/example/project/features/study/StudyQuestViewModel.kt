@@ -315,8 +315,8 @@ class StudyQuestViewModel(
                     currentFloor = 1,
                     totalFloors = 1,
                     floorClearCount = 0,
-                    playerHp = 100,
-                    playerMaxHp = 100,
+                    playerHp = _uiState.value.playerMaxHp,
+                    playerMaxHp = _uiState.value.playerMaxHp,
                     earnedXp = 0,
                     earnedStones = 0,
                     completedStudyElapsedSeconds = 0L
@@ -358,8 +358,8 @@ class StudyQuestViewModel(
                     currentFloor = 1,
                     totalFloors = 10,
                     floorClearCount = 0,
-                    playerHp = 100,
-                    playerMaxHp = 100,
+                    playerHp = _uiState.value.playerMaxHp,
+                    playerMaxHp = _uiState.value.playerMaxHp,
                     earnedXp = 0,
                     earnedStones = 0,
                     completedStudyElapsedSeconds = 0L
