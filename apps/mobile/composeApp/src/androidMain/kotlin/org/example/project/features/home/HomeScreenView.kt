@@ -18,10 +18,6 @@ fun HomeScreenView(
     var selectedTab by remember { mutableStateOf(2) }
     var showStudySheet by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
-
-    LaunchedEffect(selectedTab) {
-        homeViewModel.onIntent(HomeIntent.Refresh)
-    }
     val kvStore = remember { KeyValueStore() }
     var studyMinutes by remember {
         mutableStateOf(
@@ -35,6 +31,10 @@ fun HomeScreenView(
 
     val homeViewModel = remember { org.example.project.di.getHomeViewModel() }
     val homeState by homeViewModel.uiState.collectAsState()
+
+    LaunchedEffect(selectedTab) {
+        homeViewModel.onIntent(HomeIntent.Refresh)
+    }
 
     LaunchedEffect(studyMinutes) {
         kvStore.putString(HOME_STUDY_MINUTES_KEY, studyMinutes.toString())
