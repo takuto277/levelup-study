@@ -89,8 +89,8 @@ func JWTAuth(jwtSecret string) func(http.Handler) http.Handler {
 			}
 
 			// --- コンテキストに格納して次へ ---
-			ctx := context.WithValue(r.Context(), ContextKeyUserID, sub)
-			ctx = context.WithValue(ctx, jwtClaimsKey{}, claims)
+		ctx := context.WithValue(r.Context(), ContextKeyUserID, sub)
+		ctx = context.WithValue(ctx, JWTClaimsKey{}, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -102,12 +102,12 @@ func UserIDFromContext(ctx context.Context) (string, bool) {
 	return uid, ok
 }
 
-type jwtClaimsKey struct{}
+type JWTClaimsKey struct{}
 
 // RequireAdminRole — JWT に role: admin クレームがあることを要求
 func RequireAdminRole(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(jwtClaimsKey{}).(jwt.MapClaims)
+		claims, ok := r.Context().Value(JWTClaimsKey{}).(jwt.MapClaims)
 		if !ok {
 			http.Error(w, `{"error":"管理者権限が必要です"}`, http.StatusForbidden)
 			return
