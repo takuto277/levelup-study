@@ -676,7 +676,7 @@ struct StudyQuestScreenView: View {
         .onAppear {
             if !didStartQuest {
                 didStartQuest = true
-                holder.viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId, dungeonName: dungeonName, isTrainingGround: isTrainingGround, dungeonImageUrl: dungeonImageUrl))
+                holder.viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId, dungeonName: dungeonName, dungeonId: nil, isTrainingGround: isTrainingGround, dungeonImageUrl: dungeonImageUrl))
             }
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 pulsePhase = true
