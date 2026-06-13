@@ -48,8 +48,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 import org.example.project.data.local.TutorialTopics
-import org.example.project.components.TutorialHintBanner
-import org.example.project.data.local.TutorialProgressStore
+import org.example.project.components.TutorialHintRow
 
 // ══════════════════════════════════════════════════════════════
 // Color Palette
@@ -152,12 +151,6 @@ fun GachaScreenView() {
     }
 }
 
-@Composable
-private fun TutorialHintRow(topic: String, emoji: String, message: String) {
-    val store = remember { TutorialProgressStore() }
-    if (store.isCompleted(topic)) return
-    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
-}
 
 // ══════════════════════════════════════════════════════════════
 // Background Particles

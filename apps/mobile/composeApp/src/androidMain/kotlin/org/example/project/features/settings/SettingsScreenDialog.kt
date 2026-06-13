@@ -146,6 +146,7 @@ fun SettingsScreenDialog(
                 OutlinedButton(
                     onClick = {
                         org.example.project.data.local.TutorialProgressStore().resetAll()
+                        org.example.project.components.TutorialResetObserver.notifyReset()
                         homeViewModel.onIntent(HomeIntent.Refresh)
                         onDismiss()
                     },

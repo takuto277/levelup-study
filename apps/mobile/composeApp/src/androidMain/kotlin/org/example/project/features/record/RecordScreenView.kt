@@ -45,8 +45,7 @@ import org.example.project.components.PlayerSprite
 import org.example.project.components.PlayerSpriteMode
 import org.example.project.components.hasPartyPlayerSprite
 import org.example.project.data.local.TutorialTopics
-import org.example.project.components.TutorialHintBanner
-import org.example.project.data.local.TutorialProgressStore
+import org.example.project.components.TutorialHintRow
 
 // ── カラーパレット（青テーマ）──────────────────────
 private val BgColor = Color(0xFF0B1120)
@@ -1006,9 +1005,3 @@ private fun PendingSyncBanner(uiState: RecordUiState, onRetry: () -> Unit) {
     }
 }
 
-@Composable
-private fun TutorialHintRow(topic: String, emoji: String, message: String) {
-    val store = remember { TutorialProgressStore() }
-    if (store.isCompleted(topic)) return
-    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
-}
