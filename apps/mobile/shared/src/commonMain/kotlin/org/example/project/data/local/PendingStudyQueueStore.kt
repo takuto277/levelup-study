@@ -7,14 +7,15 @@ import org.example.project.domain.model.PendingStudyCompletion
 import org.example.project.domain.model.SyncStatus
 
 class PendingStudyQueueStore(
-    private val kv: KeyValueStore = KeyValueStore()
+    private val kv: KeyValueStore = KeyValueStore(),
+    private val userIdProvider: () -> String = { "" }
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
 
-    private val key = "pending_study_queue_v1"
+    private val key: String get() = "pending_study_queue_v2_${userIdProvider()}"
 
     fun readAll(): List<PendingStudyCompletion> {
         val raw = kv.getString(key) ?: return emptyList()

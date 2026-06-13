@@ -17,7 +17,9 @@ import org.example.project.domain.repository.UserRepository
 class StudyRepositoryImpl(
     private val gateway: StudyGateway,
     private val userRepository: UserRepository,
-    private val pendingQueue: PendingStudyQueueStore = PendingStudyQueueStore()
+    private val pendingQueue: PendingStudyQueueStore = PendingStudyQueueStore(
+        userIdProvider = { runCatching { UserSessionStore.requireUserId() }.getOrDefault("") }
+    )
 ) : StudyRepository {
 
     private fun pendingToSession(p: PendingStudyCompletion, userId: String): StudySession =
