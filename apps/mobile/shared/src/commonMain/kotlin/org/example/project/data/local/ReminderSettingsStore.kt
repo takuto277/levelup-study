@@ -2,6 +2,7 @@ package org.example.project.data.local
 
 import org.example.project.core.storage.KeyValueStore
 import org.example.project.features.reminder.ReminderPermissionStatus
+import org.example.project.features.reminder.ReminderSettings
 
 class ReminderSettingsStore(
     private val kv: KeyValueStore = KeyValueStore()
