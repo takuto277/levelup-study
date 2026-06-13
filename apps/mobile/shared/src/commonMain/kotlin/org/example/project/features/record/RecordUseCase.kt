@@ -26,7 +26,7 @@ class RecordUseCase(
 
     suspend fun loadRecordData(): RecordData {
         val user = userRepository.getCurrentUser()
-        val sessions = studyRepository.getSessionHistory(limit = 200)
+        val sessions = studyRepository.getSessionHistory(limit = 500)
         val genres = genreRepository.getGenres()
         val mainCharacter: UserCharacter? = try {
             val party = partyRepository.getParty()
