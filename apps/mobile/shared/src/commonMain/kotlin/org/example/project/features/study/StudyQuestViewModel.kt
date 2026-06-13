@@ -482,6 +482,7 @@ class StudyQuestViewModel(
         if (current.type != StudySessionType.BREAK) return
 
         sessionStartedAt = Clock.System.now().toString()
+        resetWallClock()
         val targetSec = current.targetStudyMinutes.toLong() * 60
         phaseElapsed = 0L
 
