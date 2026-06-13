@@ -170,23 +170,21 @@ class StudyQuestViewModel(
         )
     )
 
-    private fun loadEnemiesForDungeon(dungeonName: String?, dungeonId: String?): List<EnemyData> {
-        // Try server enemies first
-        if (dungeonId != null && dungeonGateway != null && isDeviceOnline()) {
-            val result = runBlocking {
-                dungeonGateway.getDungeonStages(dungeonId)
-            }
+    private fun loadServerEnemiesAsync(dungeonId: String?) {
+        if (dungeonId == null || dungeonGateway == null || !isDeviceOnline()) return
+        viewModelScope.launch {
+            val result = dungeonGateway.getDungeonStages(dungeonId)
             if (result is org.example.project.core.network.NetworkResult.Success) {
                 val enemies = result.data.stages.flatMap { stage ->
                     stage.enemies.mapNotNull { it.monster }.map {
                         EnemyData(it.name, it.emoji, it.hp, it.atk, it.slug)
                     }
                 }
-                if (enemies.isNotEmpty()) return enemies
+                if (enemies.isNotEmpty()) {
+                    currentEnemyTable = enemies
+                }
             }
         }
-        // Fallback to hardcoded catalog
-        return getEnemiesForDungeon(dungeonName)
     }
 
     private fun getEnemiesForDungeon(dungeonName: String?): List<EnemyData> {
@@ -346,7 +344,8 @@ class StudyQuestViewModel(
                 )
             }
         } else {
-            currentEnemyTable = loadEnemiesForDungeon(dungeonName, dungeonId)
+            currentEnemyTable = getEnemiesForDungeon(dungeonName)
+            loadServerEnemiesAsync(dungeonId)
             val firstEnemy = currentEnemyTable.random()
             _uiState.update {
                 it.copy(

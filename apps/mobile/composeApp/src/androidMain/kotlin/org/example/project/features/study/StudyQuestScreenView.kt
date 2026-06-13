@@ -71,6 +71,7 @@ private val BreakGlow = Color(0xFF10B981)
 fun StudyQuestScreenView(
     initialStudyMinutes: Int,
     genreId: String? = null,
+    dungeonId: String? = null,
     dungeonName: String? = null,
     dungeonImageUrl: String? = null,
     isTrainingGround: Boolean = false,
@@ -81,7 +82,7 @@ fun StudyQuestScreenView(
 
     LaunchedEffect(Unit) {
         viewModel.onIntent(
-            StudyQuestIntent.StartQuest(initialStudyMinutes, genreId, dungeonName, null, isTrainingGround, dungeonImageUrl)
+            StudyQuestIntent.StartQuest(initialStudyMinutes, genreId, dungeonName, dungeonId, isTrainingGround, dungeonImageUrl)
         )
     }
 
