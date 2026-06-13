@@ -31,6 +31,18 @@ func TestUpdateUser_SelectedDungeonID(t *testing.T) {
 		t.Fatalf("ダンジョン作成失敗: %v", err)
 	}
 
+	inactiveDungeon := &model.MasterDungeon{
+		ID:       uuid.New(),
+		Name:     "無効ダンジョン",
+		ImageURL: "https://example.com/inactive.png",
+	}
+	if err := masterRepo.CreateDungeon(inactiveDungeon); err != nil {
+		t.Fatalf("無効ダンジョン作成失敗: %v", err)
+	}
+	if err := masterRepo.DeactivateDungeon(inactiveDungeon.ID); err != nil {
+		t.Fatalf("ダンジョン無効化失敗: %v", err)
+	}
+
 	// テスト用ユーザー
 	user := &model.User{DisplayName: "テスト"}
 	if err := userRepo.Create(user); err != nil {
@@ -51,6 +63,11 @@ func TestUpdateUser_SelectedDungeonID(t *testing.T) {
 		{
 			name:       "non-existent dungeon",
 			body:       map[string]interface{}{"selected_dungeon_id": uuid.New().String()},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "inactive dungeon",
+			body:       map[string]interface{}{"selected_dungeon_id": inactiveDungeon.ID.String()},
 			wantStatus: http.StatusBadRequest,
 		},
 		{
