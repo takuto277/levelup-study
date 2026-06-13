@@ -177,8 +177,8 @@ func (s *StudyService) validateRequest(req CompleteStudyRequest) error {
 	if !req.EndedAt.After(req.StartedAt) {
 		return fmt.Errorf("終了時刻が開始時刻より前です")
 	}
-	// 勉強時間が妥当か（最大24時間=86400秒）
-	if req.DurationSeconds <= 0 || req.DurationSeconds > 86400 {
+	// 勉強時間が妥当か（最小1秒、最大6時間=21600秒）
+	if req.DurationSeconds <= 0 || req.DurationSeconds > 21600 {
 		return fmt.Errorf("勉強時間が不正です: %d秒", req.DurationSeconds)
 	}
 	return nil
