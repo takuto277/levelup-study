@@ -70,9 +70,11 @@ class StudyUseCase(
         defeatNormalCount: Int = 0,
         defeatBossCount: Int = 0,
         difficultyMultiplier: Double = 1.0,
-        isTrainingGround: Boolean = false
+        isTrainingGround: Boolean = false,
+        clientSessionId: String? = null
     ) {
-        val localId = "${Clock.System.now().toEpochMilliseconds()}_${Random.nextInt(1_000_000)}"
+        val localId = clientSessionId
+            ?: "${Clock.System.now().toEpochMilliseconds()}_${Random.nextInt(1_000_000)}"
         studyRepository.savePendingCompletion(
             PendingStudyCompletion(
                 localId = localId,
@@ -98,7 +100,8 @@ class StudyUseCase(
         startedAt: String,
         endedAt: String,
         durationSeconds: Int,
-        isCompleted: Boolean
+        isCompleted: Boolean,
+        clientSessionId: String? = null
     ) {
         savePendingStudyCompletion(
             category = category,
@@ -106,11 +109,7 @@ class StudyUseCase(
             endedAt = endedAt,
             durationSeconds = durationSeconds,
             isCompleted = isCompleted,
-            userCharacterId = null,
-            defeatNormalCount = 0,
-            defeatBossCount = 0,
-            difficultyMultiplier = 1.0,
-            isTrainingGround = false
+            clientSessionId = clientSessionId
         )
     }
 }

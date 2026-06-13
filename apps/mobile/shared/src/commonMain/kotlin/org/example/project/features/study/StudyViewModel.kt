@@ -102,13 +102,15 @@ class StudyViewModel(
                 )
                 _uiState.update { it.copy(completeResult = result, isShowingResult = true) }
             } catch (e: Exception) {
-                // オフライン時はローカルに保存
+                // オフライン/タイムアウト時: 同じ clientSessionId でローカル保存
+                val id = (e as? StudyCompletionException)?.clientSessionId
                 studyUseCase.saveOfflineSession(
                     category = state.genreId,
                     startedAt = sessionStartedAt ?: endedAt,
                     endedAt = endedAt,
                     durationSeconds = state.elapsedSeconds,
-                    isCompleted = state.elapsedSeconds >= state.targetSeconds
+                    isCompleted = state.elapsedSeconds >= state.targetSeconds,
+                    clientSessionId = id
                 )
                 _uiState.update { it.copy(error = "オフラインモード: 報酬は同期時に確定します") }
             }
