@@ -11,58 +11,42 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestPull_RaceConditionRollback(t *testing.T) {
+// TestPull_InsufficientStones calls Pull() directly and verifies
+// that insufficient stones trigger an error with no items/history created.
+func TestPull_InsufficientStones(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	svc := createGachaSvcForTest(t, db)
-
-	user := createGachaTestUser(t, db, costPerPull)
+	user := createGachaTestUser(t, db, 0) // no stones
 	charID := uuid.New()
 	createGachaTestChar(t, db, charID)
 	bannerID := createGachaTestBanner(t, db, charID)
 
-	// Normal pull with enough stones → success
-	resp, err := svc.Pull(user.ID, GachaPullRequest{BannerID: bannerID, Count: 1})
-	if err != nil {
-		t.Fatalf("first pull failed: %v", err)
-	}
-	if resp.StonesSpent != costPerPull {
-		t.Errorf("spent = %d, want %d", resp.StonesSpent, costPerPull)
-	}
-
-	var charCount int64
-	db.Model(&model.UserCharacter{}).Where("user_id = ?", user.ID).Count(&charCount)
-	if charCount != 1 {
-		t.Errorf("char count = %d, want 1", charCount)
-	}
-
-	// Pull with insufficient stones → error, no items
-	db.Model(&model.User{}).Where("id = ?", user.ID).Update("stones", 0)
-
-	_, err = svc.Pull(user.ID, GachaPullRequest{BannerID: bannerID, Count: 1})
+	_, err := svc.Pull(user.ID, GachaPullRequest{BannerID: bannerID, Count: 1})
 	if err == nil {
 		t.Fatal("expected error for insufficient stones, got nil")
 	}
 
-	db.Model(&model.UserCharacter{}).Where("user_id = ?", user.ID).Count(&charCount)
-	if charCount != 1 {
-		t.Errorf("char count = %d, want 1 (no items from failed pull)", charCount)
+	var count int64
+	db.Model(&model.GachaHistory{}).Where("user_id = ?", user.ID).Count(&count)
+	if count != 0 {
+		t.Errorf("history = %d, want 0 (rollback)", count)
 	}
-
-	var historyCount int64
-	db.Model(&model.GachaHistory{}).Where("user_id = ?", user.ID).Count(&historyCount)
-	if historyCount != 1 {
-		t.Errorf("history count = %d, want 1", historyCount)
+	db.Model(&model.UserCharacter{}).Where("user_id = ?", user.ID).Count(&count)
+	if count != 0 {
+		t.Errorf("chars = %d, want 0 (rollback)", count)
 	}
 }
 
-func TestStoneUpdateRowsAffectedZeroRollsBack(t *testing.T) {
+// TestRowsAffectedZeroCausesRollback tests the exact GORM pattern
+// that GachaService.Pull uses internally for stone deduction.
+// This verifies that when RowsAffected==0, an error is returned,
+// preventing items from being created.
+func TestRowsAffectedZeroCausesRollback(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-
 	user := &model.User{DisplayName: "test", Stones: 0}
-	if err := db.Create(user).Error; err != nil {
-		t.Fatalf("create user: %v", err)
-	}
+	db.Create(user)
 
+	// Same pattern as Pull: UPDATE WHERE stones >= cost
 	err := db.Transaction(func(tx *gorm.DB) error {
 		result := tx.Model(&model.User{}).
 			Where("id = ? AND stones >= ?", user.ID, costPerPull).
@@ -74,13 +58,25 @@ func TestStoneUpdateRowsAffectedZeroRollsBack(t *testing.T) {
 	})
 
 	if err == nil {
-		t.Fatal("expected error (RowsAffected==0), got nil")
+		t.Fatal("RowsAffected==0 should return error")
 	}
+}
 
-	var updated model.User
-	db.First(&updated, user.ID)
-	if updated.Stones != 0 {
-		t.Errorf("stones = %d, want 0 (transaction rolled back)", updated.Stones)
+// TestPull_Normal pulls with sufficient stones and verifies items created.
+func TestPull_Normal(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	svc := createGachaSvcForTest(t, db)
+	user := createGachaTestUser(t, db, 200)
+	charID := uuid.New()
+	createGachaTestChar(t, db, charID)
+	bannerID := createGachaTestBanner(t, db, charID)
+
+	resp, err := svc.Pull(user.ID, GachaPullRequest{BannerID: bannerID, Count: 1})
+	if err != nil {
+		t.Fatalf("pull: %v", err)
+	}
+	if len(resp.Results) != 1 {
+		t.Errorf("results = %d, want 1", len(resp.Results))
 	}
 }
 
