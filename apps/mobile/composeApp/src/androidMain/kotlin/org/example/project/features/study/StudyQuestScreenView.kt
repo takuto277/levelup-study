@@ -81,7 +81,7 @@ fun StudyQuestScreenView(
 
     LaunchedEffect(Unit) {
         viewModel.onIntent(
-            StudyQuestIntent.StartQuest(initialStudyMinutes, genreId, dungeonName, isTrainingGround, dungeonImageUrl)
+            StudyQuestIntent.StartQuest(initialStudyMinutes, genreId, dungeonName, null, isTrainingGround, dungeonImageUrl)
         )
     }
 
