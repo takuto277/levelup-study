@@ -27,7 +27,7 @@ class StudyGateway(private val client: HttpClient) {
             }.body()
             NetworkResult.Success(response)
         }.getOrElse { e ->
-            NetworkResult.Error(message = e.message ?: "勉強セッションの送信に失敗しました")
+            NetworkResult.Error(message = e.message ?: "通信に失敗しました。時間をおいて再度お試しください")
         }
 
     /** GET /api/v1/users/{userId}/study/sessions — セッション履歴一覧 */
