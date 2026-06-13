@@ -6,6 +6,12 @@ import org.example.project.domain.model.PendingStudyCompletion
 import org.example.project.domain.model.StudyCompleteResult
 import org.example.project.domain.repository.StudyRepository
 
+class StudyCompletionException(
+    message: String,
+    val clientSessionId: String?,
+    cause: Throwable? = null
+) : RuntimeException(message, cause)
+
 /**
  * 勉強タイマーのユースケース
  * セッション完了時の報酬リクエスト・オフライン対応
@@ -29,18 +35,26 @@ class StudyUseCase(
         clientSessionId: String = "${Clock.System.now().toEpochMilliseconds()}_d${Random.nextInt(1_000_000)}"
     ): StudyCompleteResult {
         val id = clientSessionId
-        return studyRepository.completeSession(
-            category = category,
-            startedAt = startedAt,
-            endedAt = endedAt,
-            durationSeconds = durationSeconds,
-            isCompleted = isCompleted,
-            userCharacterId = userCharacterId,
-            defeatNormalCount = defeatNormalCount,
-            defeatBossCount = defeatBossCount,
-            difficultyMultiplier = difficultyMultiplier,
-            clientSessionId = id
-        ).copy(clientSessionId = id)
+        return try {
+            studyRepository.completeSession(
+                category = category,
+                startedAt = startedAt,
+                endedAt = endedAt,
+                durationSeconds = durationSeconds,
+                isCompleted = isCompleted,
+                userCharacterId = userCharacterId,
+                defeatNormalCount = defeatNormalCount,
+                defeatBossCount = defeatBossCount,
+                difficultyMultiplier = difficultyMultiplier,
+                clientSessionId = id
+            ).copy(clientSessionId = id)
+        } catch (e: Exception) {
+            throw StudyCompletionException(
+                message = e.message ?: "study completion failed",
+                clientSessionId = id,
+                cause = e
+            )
+        }
     }
 
     /**
