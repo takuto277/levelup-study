@@ -59,6 +59,7 @@ class StudyRepositoryImpl(
             clientSessionId = clientSessionId
         )
         val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
+            .copy(clientSessionId = clientSessionId)
         userRepository.updateCachedUser(result.updatedUser)
         return result
     }

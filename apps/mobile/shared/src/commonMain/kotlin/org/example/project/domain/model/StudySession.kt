@@ -46,7 +46,8 @@ enum class RewardType {
  * サーバーが検証・報酬計算後に返す確定結果
  */
 data class StudyCompleteResult(
-    val sessionId: String,
-    val rewards: List<StudyReward>,
-    val updatedUser: User
+    val sessionId: String? = null,
+    val rewards: List<StudyReward> = emptyList(),
+    val updatedUser: User? = null,
+    val clientSessionId: String? = null,
 )

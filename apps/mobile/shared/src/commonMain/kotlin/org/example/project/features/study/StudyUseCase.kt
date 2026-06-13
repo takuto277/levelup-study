@@ -28,6 +28,7 @@ class StudyUseCase(
         difficultyMultiplier: Double = 1.0,
         clientSessionId: String = "${Clock.System.now().toEpochMilliseconds()}_d${Random.nextInt(1_000_000)}"
     ): StudyCompleteResult {
+        val id = clientSessionId
         return studyRepository.completeSession(
             category = category,
             startedAt = startedAt,
@@ -38,8 +39,8 @@ class StudyUseCase(
             defeatNormalCount = defeatNormalCount,
             defeatBossCount = defeatBossCount,
             difficultyMultiplier = difficultyMultiplier,
-            clientSessionId = clientSessionId
-        )
+            clientSessionId = id
+        ).copy(clientSessionId = id)
     }
 
     /**
