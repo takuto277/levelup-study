@@ -77,6 +77,7 @@ class GachaViewModel(
     }
 
     private fun pullGacha(bannerId: String, count: Int) {
+        if (_uiState.value.phase == GachaPhase.PULLING) return
         viewModelScope.launch {
             val cost = if (count == 1) GachaUiState.SINGLE_PULL_COST else GachaUiState.MULTI_PULL_COST
             if (_uiState.value.currentStones < cost) {
