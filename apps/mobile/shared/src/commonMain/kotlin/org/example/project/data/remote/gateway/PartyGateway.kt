@@ -25,7 +25,7 @@ class PartyGateway(private val client: HttpClient) {
         val response: PartyResponse = client.get(ApiRoutes.party(userId)).body()
         NetworkResult.Success(response)
     }.getOrElse { e ->
-        NetworkResult.Error(message = e.message ?: "パーティ情報の取得に失敗しました")
+        NetworkResult.Error(message = e.message ?: "通信エラー：時間をおいて再試行してください")
     }
 
     /** PUT /api/v1/users/{userId}/party/{slot} — スロット更新 */
@@ -38,7 +38,7 @@ class PartyGateway(private val client: HttpClient) {
                 }.body()
             NetworkResult.Success(response)
         }.getOrElse { e ->
-            NetworkResult.Error(message = e.message ?: "パーティスロットの更新に失敗しました")
+            NetworkResult.Error(message = e.message ?: "編成に失敗しました。通信環境を確認してください")
         }
 
     /** DELETE /api/v1/users/{userId}/party/{slot} — スロットからキャラ除外 */
@@ -48,6 +48,6 @@ class PartyGateway(private val client: HttpClient) {
             client.delete(ApiRoutes.partySlot(userId, slot))
             NetworkResult.Success(Unit)
         }.getOrElse { e ->
-            NetworkResult.Error(message = e.message ?: "パーティスロットの解除に失敗しました")
+            NetworkResult.Error(message = e.message ?: "解除に失敗しました。通信環境を確認してください")
         }
 }
