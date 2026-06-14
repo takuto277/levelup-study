@@ -673,6 +673,7 @@ class StudyQuestViewModel(
             AdventurePhase.WALKING -> {
                 if (phaseElapsed >= WALK_DURATION) {
                     phase = AdventurePhase.ENCOUNTER
+                        // SFX: enemy_appear
                     phaseElapsed = 0L
                     newLogs = (newLogs + "⚠️ ${currentFloor}F: ${enemyName}が現れた！").takeLast(5)
                 } else if (phaseElapsed % 3 == 0L) {
@@ -743,6 +744,7 @@ class StudyQuestViewModel(
                             }
                             lastPlayerDamage = 0
                             phase = AdventurePhase.ENEMY_DEFEATED
+            // SFX: enemy_defeat
                             outDefeatSec = 0
                         }
                     }
@@ -759,6 +761,7 @@ class StudyQuestViewModel(
 
                             if (playerHp <= 0) {
                                 phase = AdventurePhase.PLAYER_DEAD
+            // SFX: player_death
                                 phaseElapsed = 0L
                                 newLogs = (newLogs + "💀 力尽きた…1Fからやり直し！").takeLast(5)
                             }
