@@ -95,6 +95,7 @@ class PartyViewModel(
     }
 
     private fun equipWeapon(userCharacterId: String, userWeaponId: String?) {
+        if (_uiState.value.isLoading) return
         viewModelScope.launch {
             try {
                 partyUseCase.equipWeapon(userCharacterId, userWeaponId)
@@ -116,6 +117,7 @@ class PartyViewModel(
     }
 
     private fun levelUpCharacter(userCharacterId: String) {
+        if (_uiState.value.isLoading) return
         viewModelScope.launch {
             try {
                 partyUseCase.levelUpCharacter(userCharacterId)
@@ -127,6 +129,7 @@ class PartyViewModel(
     }
 
     private fun levelUpWeapon(userWeaponId: String) {
+        if (_uiState.value.isLoading) return
         val characterId = _uiState.value.selectedCharacter?.id
         viewModelScope.launch {
             try {
