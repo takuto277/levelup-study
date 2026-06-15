@@ -1,7 +1,15 @@
 package org.example.project.core.network
 
-/**
- * iOS では NWPathMonitor 等の本格実装が必要なため、現状は常に true。
- * オフライン時の未送信セッションは [StudyRepository] 側の送信失敗時にローカル保存される。
- */
-actual fun isDeviceOnline(): Boolean = true
+import kotlinx.cinterop.ExperimentalForeignApi
+import platform.Foundation.NSClassFromString
+
+@OptIn(ExperimentalForeignApi::class)
+actual fun isDeviceOnline(): Boolean {
+    return try {
+        val cls = NSClassFromString("NetworkMonitor")
+        val shared = cls?.valueForKey("shared") as? Any
+        (shared?.valueForKey("isOnline") as? Boolean) ?: true
+    } catch (e: Exception) {
+        true
+    }
+}
