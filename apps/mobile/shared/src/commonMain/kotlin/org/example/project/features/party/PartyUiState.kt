@@ -14,5 +14,6 @@ data class PartyUiState(
     val selectedSlot: Int? = null,
     val selectedCharacter: UserCharacter? = null,
     val isLoading: Boolean = false,
+    val isMutating: Boolean = false,
     val error: String? = null
 )
