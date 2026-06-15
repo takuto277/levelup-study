@@ -167,12 +167,9 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 
 # 品質チェック
 
-- `description` だけで発火条件が分かる
-- PR URL/番号がなくてもブランチから PR 特定可能
-- feedback の収集〜返信・ラベル更新までの全フローがある
-- 無関係変更の commit 禁止 / Resolve・Approve 禁止
-- コード修正 + 返信完了前のラベル切替禁止（赤字ルール）
-- `gh` CLI 優先、GitHub コネクタ非依存
+- `description` だけで発火条件が分かる / PR未特定時の手順がある
+- feedback 収集〜返信・ラベル更新までの全フロー、コード修正+返信前のラベル切替禁止
+- 無関係変更 commit / Resolve・Approve 禁止、`gh` CLI 優先
 
 # 参考資料
 

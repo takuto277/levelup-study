@@ -465,7 +465,8 @@ func (h *GameHandler) EquipCostume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.UserCostumeID != nil {
-		if _, err := h.costumeRepo.GetByID(*req.UserCostumeID); err != nil {
+		existing, err := h.costumeRepo.GetByID(*req.UserCostumeID)
+		if err != nil || existing.UserID != userID {
 			respondError(w, http.StatusBadRequest, "所持していない衣装です")
 			return
 		}
