@@ -1,17 +1,19 @@
-import Foundation
 import Network
+import Shared
 
-@objc final class NetworkMonitor: NSObject {
-    @objc static let shared = NetworkMonitor()
-    private let monitor = NWPathMonitor()
-    private let queue = DispatchQueue(label: "NetworkMonitor")
-    @objc var isOnline = true
+final class NetworkMonitor: ObservableObject {
+    @Published var isOnline = true
+    private var monitor: NWPathMonitor?
 
-    override private init() {
-        super.init()
-        monitor.pathUpdateHandler = { [weak self] path in
-            self?.isOnline = path.status == .satisfied
+    init() {
+        monitor = NWPathMonitor()
+        monitor?.pathUpdateHandler = { [weak self] path in
+            let online = path.status == .satisfied
+            DispatchQueue.main.async {
+                self?.isOnline = online
+                DeviceOnline_iosKt.iosNetworkMonitorOnline = online
+            }
         }
-        monitor.start(queue: queue)
+        monitor?.start(queue: DispatchQueue.global())
     }
 }

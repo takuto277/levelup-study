@@ -4,6 +4,8 @@ import Shared
 @main
 struct iOSApp: App {
 
+    private let networkMonitor = NetworkMonitor()
+
     init() {
         KoinHelperKt.doInitKoin()
         // DEBUG: seed.sql の user1 (00000000-...-001) を毎回セッションに固定（forceSeedUserId）。
