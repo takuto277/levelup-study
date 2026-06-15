@@ -32,6 +32,7 @@ type User struct {
 	Gold              int        `gorm:"not null;default:0"                              json:"gold"`
 	Level             int        `gorm:"not null;default:1"                              json:"level"`
 	CurrentXP         int        `gorm:"not null;default:0"                              json:"current_xp"`
+	StudyStreak       int        `gorm:"not null;default:0"                              json:"study_streak"`
 	SelectedDungeonID *uuid.UUID `gorm:"type:uuid"                                       json:"selected_dungeon_id"`
 	CreatedAt         time.Time  `gorm:"autoCreateTime"                                  json:"created_at"`
 	UpdatedAt         time.Time  `gorm:"autoUpdateTime"                                  json:"updated_at"`
