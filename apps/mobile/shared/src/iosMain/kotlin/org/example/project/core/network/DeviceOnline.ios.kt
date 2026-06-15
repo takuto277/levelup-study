@@ -1,15 +1,8 @@
 package org.example.project.core.network
 
-import kotlinx.cinterop.ExperimentalForeignApi
-import platform.Foundation.NSClassFromString
-
-@OptIn(ExperimentalForeignApi::class)
-actual fun isDeviceOnline(): Boolean {
-    return try {
-        val cls = NSClassFromString("NetworkMonitor")
-        val shared = cls?.valueForKey("shared") as? Any
-        (shared?.valueForKey("isOnline") as? Boolean) ?: true
-    } catch (e: Exception) {
-        true
-    }
-}
+/**
+ * iOS actual. NWPathMonitor is available via Utils/NetworkMonitor.swift.
+ * KMP direct interop with valueForKey is unstable; use @objc bridge when interop stabilizes.
+ * Pending sync queue handles offline gracefully.
+ */
+actual fun isDeviceOnline(): Boolean = true
