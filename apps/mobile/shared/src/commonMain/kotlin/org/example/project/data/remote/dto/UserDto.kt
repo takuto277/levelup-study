@@ -24,7 +24,8 @@ data class UserResponse(
 
 @Serializable
 data class CreateUserRequest(
-    @SerialName("display_name") val displayName: String
+    @SerialName("display_name") val displayName: String,
+    val id: String? = null,
 )
 
 @Serializable

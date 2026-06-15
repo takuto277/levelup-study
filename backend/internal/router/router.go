@@ -112,6 +112,8 @@ func NewRouter(
 				r.Use(mw.JWTAuth(sec.JWTSecret))
 			}
 
+			r.Post("/auth/user", userH.GetOrCreateUser)
+
 			if sec.DevMode {
 				r.Post("/debug/users/{userID}/currencies", userH.DebugPatchCurrencies)
 			}

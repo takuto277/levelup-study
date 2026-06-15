@@ -22,6 +22,10 @@ object ApiRoutes {
      */
     const val BASE_URL = "https://levelup-study-api.onrender.com"
 
+    // ── Auth ────────────────────────────────────
+    /** POST: 認証ユーザー取得／作成 */
+    const val AUTH_USER = "/api/v1/auth/user"
+
     // ── User ────────────────────────────────────
     /** POST: ユーザー作成 */
     const val USERS = "/api/v1/users"

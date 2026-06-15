@@ -27,6 +27,7 @@ func NewUserHandler(repo *repository.UserRepository, masterRepo *repository.Mast
 // 新規ユーザーを作成する
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req struct {
+		ID          string `json:"id"`
 		DisplayName string `json:"display_name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -39,6 +40,14 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := model.User{DisplayName: req.DisplayName}
+	if req.ID != "" {
+		parsedID, err := uuid.Parse(req.ID)
+		if err != nil {
+			respondError(w, http.StatusBadRequest, "id は有効なUUID形式で指定してください")
+			return
+		}
+		user.ID = parsedID
+	}
 	if err := h.repo.Create(&user); err != nil {
 		respondError(w, http.StatusInternalServerError, "ユーザー作成に失敗しました")
 		return
@@ -163,6 +172,30 @@ func (h *UserHandler) DebugPatchCurrencies(w http.ResponseWriter, r *http.Reques
 	user, err := h.repo.ApplyCurrencyDelta(id, req.StonesDelta, req.GoldDelta)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "ユーザーが見つかりません")
+		return
+	}
+	respondJSON(w, http.StatusOK, user)
+}
+
+// GetOrCreateUser — POST /api/v1/auth/user
+// 認証ユーザーを取得、なければ作成する
+func (h *UserHandler) GetOrCreateUser(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("userID").(uuid.UUID)
+	if !ok || userID == uuid.Nil {
+		respondError(w, http.StatusUnauthorized, "認証情報がありません")
+		return
+	}
+	user, err := h.repo.GetByID(userID)
+	if err != nil {
+		user = &model.User{
+			ID:          userID,
+			DisplayName: "New User",
+		}
+		if err := h.repo.Create(user); err != nil {
+			respondError(w, http.StatusInternalServerError, "ユーザー作成に失敗しました")
+			return
+		}
+		respondJSON(w, http.StatusCreated, user)
 		return
 	}
 	respondJSON(w, http.StatusOK, user)
