@@ -113,9 +113,9 @@ class StudyRepositoryImpl(
             } catch (e: Exception) {
                 val newRetryCount = p.retryCount + 1
                 if (newRetryCount >= SyncStatus.MAX_RETRIES) {
-                    pendingQueue.updateStatus(p.localId, SyncStatus.FAILED, e.message)
+                    pendingQueue.updateStatus(p.localId, SyncStatus.FAILED, e.message, newRetryCount)
                 } else {
-                    pendingQueue.updateStatus(p.localId, SyncStatus.PENDING, e.message)
+                    pendingQueue.updateStatus(p.localId, SyncStatus.PENDING, e.message, newRetryCount)
                 }
             }
         }
