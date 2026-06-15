@@ -13,14 +13,24 @@ package org.example.project.core.network
  */
 object ApiRoutes {
 
-    /**
-     * ベースURL
-     * - **本番（Render）**: ダッシュボードに表示される `https://....onrender.com`（末尾スラッシュなし）
-     * - **ローカル**: `http://127.0.0.1:8080`（`make run` 中のみ）。実機は Mac の LAN IP
-     * 本番 API は `DEV_MODE=false` のとき `X-API-Key` 必須。キーは `apps/mobile/local.properties` の `api.key`
-     *（または環境変数 `LEVELUP_API_KEY`）を `backend` の `API_KEY` と揃えること（Gradle が `ApiClient` 用ソースを生成）。
-     */
-    const val BASE_URL = "https://levelup-study-api.onrender.com"
+    private const val DEV_BASE_URL = "http://localhost:8080"
+    private const val STG_BASE_URL = "https://levelup-study-api-stg.onrender.com"
+    private const val PROD_BASE_URL = "https://levelup-study-api.onrender.com"
+
+    private val BASE_URL: String
+        get() = when (getEnv()) {
+            "dev" -> DEV_BASE_URL
+            "staging" -> STG_BASE_URL
+            else -> PROD_BASE_URL
+        }
+
+    private fun getEnv(): String {
+        return try {
+            GeneratedApiKey.ENV
+        } catch (_: Exception) {
+            "prod"
+        }
+    }
 
     // ── User ────────────────────────────────────
     /** POST: ユーザー作成 */
