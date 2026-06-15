@@ -57,12 +57,13 @@ const (
 )
 
 type GachaService struct {
-	db         *gorm.DB
-	userRepo   *repository.UserRepository
-	gachaRepo  *repository.GachaRepository
-	masterRepo *repository.MasterRepository
-	charRepo   *repository.CharacterRepository
-	weaponRepo *repository.WeaponRepository
+	db          *gorm.DB
+	userRepo    *repository.UserRepository
+	gachaRepo   *repository.GachaRepository
+	masterRepo  *repository.MasterRepository
+	charRepo    *repository.CharacterRepository
+	weaponRepo  *repository.WeaponRepository
+	costumeRepo *repository.CostumeRepository
 }
 
 func NewGachaService(
@@ -72,14 +73,16 @@ func NewGachaService(
 	masterRepo *repository.MasterRepository,
 	charRepo *repository.CharacterRepository,
 	weaponRepo *repository.WeaponRepository,
+	costumeRepo *repository.CostumeRepository,
 ) *GachaService {
 	return &GachaService{
-		db:         db,
-		userRepo:   userRepo,
-		gachaRepo:  gachaRepo,
-		masterRepo: masterRepo,
-		charRepo:   charRepo,
-		weaponRepo: weaponRepo,
+		db:          db,
+		userRepo:    userRepo,
+		gachaRepo:   gachaRepo,
+		masterRepo:  masterRepo,
+		charRepo:    charRepo,
+		weaponRepo:  weaponRepo,
+		costumeRepo: costumeRepo,
 	}
 }
 
@@ -138,14 +141,8 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		// 石を消費する（競合防止: WHERE stones >= totalCost で楽観ロック）
-		result := tx.Model(&model.User{}).
-			Where("id = ? AND stones >= ?", userID, totalCost).
-			Update("stones", gorm.Expr("stones - ?", totalCost))
-		if result.Error != nil {
-			return fmt.Errorf("石の消費に失敗: %w", result.Error)
-		}
-		if result.RowsAffected == 0 {
-			return fmt.Errorf("石が足りません（競合または残高不足。必要: %d）", totalCost)
+		if err := deductStonesTx(tx, userID, totalCost); err != nil {
+			return err
 		}
 
 		// 所持キャラ一覧（新規判定用）
@@ -160,6 +157,13 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 		weaponSet := make(map[uuid.UUID]bool)
 		for _, ew := range existingWeapons {
 			weaponSet[ew.WeaponID] = true
+		}
+
+		// 所持衣装一覧（重複判定用）
+		existingCostumes, _ := s.costumeRepo.ListByUser(userID)
+		costumeSet := make(map[uuid.UUID]bool)
+		for _, ec := range existingCostumes {
+			costumeSet[ec.CostumeID] = true
 		}
 
 		for i := 0; i < req.Count; i++ {
@@ -191,6 +195,31 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 					}
 					if err := s.charRepo.Create(tx, &uc); err != nil {
 						return fmt.Errorf("キャラ付与に失敗: %w", err)
+					}
+				}
+			} else if entry.ResultType == "costume" {
+				mc, _ := s.masterRepo.GetCostume(entry.ItemID)
+				if mc != nil {
+					name = mc.Name
+					rarity = mc.Rarity
+				}
+				if costumeSet[entry.ItemID] {
+					// 重複 → +15 石
+					if err := tx.Model(&model.User{}).
+						Where("id = ?", userID).
+						Update("stones", gorm.Expr("stones + ?", 15)).Error; err != nil {
+						return fmt.Errorf("代償石付与に失敗: %w", err)
+					}
+				} else {
+					isNew = true
+					costumeSet[entry.ItemID] = true
+					uc := model.UserCostume{
+						UserID:     userID,
+						CostumeID:  entry.ItemID,
+						ObtainedAt: time.Now().UTC(),
+					}
+					if err := s.costumeRepo.Create(tx, &uc); err != nil {
+						return fmt.Errorf("衣装付与に失敗: %w", err)
 					}
 				}
 			} else {
@@ -282,7 +311,13 @@ func (s *GachaService) validateRateTable(entries []RateTableEntry) error {
 				return fmt.Errorf("武器マスタが無効です: %s", e.ItemID)
 			}
 		case "costume":
-			// 衣装マスタ（m_costumes）導入後にここで検証する
+			c, err := s.masterRepo.GetCostume(e.ItemID)
+			if err != nil || c == nil {
+				return fmt.Errorf("衣装マスタが見つかりません: %s", e.ItemID)
+			}
+			if !c.IsActive {
+				return fmt.Errorf("衣装マスタが無効です: %s", e.ItemID)
+			}
 		default:
 			return fmt.Errorf("不明な result_type: %s", e.ResultType)
 		}
@@ -318,4 +353,19 @@ func (s *GachaService) rollGacha(table []RateTableEntry, pity int, threshold *in
 
 	// フォールバック（確率の合計が1未満の場合、最後のエントリを返す）
 	return table[len(table)-1]
+}
+
+// deductStonesTx — Pull とテストの両方から使う石減算ヘルパー。
+// RowsAffected == 0 ならエラーを返す。
+func deductStonesTx(tx *gorm.DB, userID uuid.UUID, cost int) error {
+	result := tx.Model(&model.User{}).
+		Where("id = ? AND stones >= ?", userID, cost).
+		Update("stones", gorm.Expr("stones - ?", cost))
+	if result.Error != nil {
+		return fmt.Errorf("石の消費に失敗: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("石が足りません（競合または残高不足。必要: %d）", cost)
+	}
+	return nil
 }

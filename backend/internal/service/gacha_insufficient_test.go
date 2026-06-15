@@ -37,28 +37,25 @@ func TestPull_InsufficientStones(t *testing.T) {
 	}
 }
 
-// TestRowsAffectedZeroCausesRollback tests the exact GORM pattern
-// that GachaService.Pull uses internally for stone deduction.
-// This verifies that when RowsAffected==0, an error is returned,
-// preventing items from being created.
+// TestRowsAffectedZeroCausesRollback calls the same deductStonesTx
+// helper that GachaService.Pull uses internally.
 func TestRowsAffectedZeroCausesRollback(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	user := &model.User{DisplayName: "test", Stones: 0}
 	db.Create(user)
 
-	// Same pattern as Pull: UPDATE WHERE stones >= cost
 	err := db.Transaction(func(tx *gorm.DB) error {
-		result := tx.Model(&model.User{}).
-			Where("id = ? AND stones >= ?", user.ID, costPerPull).
-			Update("stones", gorm.Expr("stones - ?", costPerPull))
-		if result.RowsAffected == 0 {
-			return gorm.ErrRecordNotFound
-		}
-		return nil
+		return deductStonesTx(tx, user.ID, costPerPull)
 	})
 
 	if err == nil {
 		t.Fatal("RowsAffected==0 should return error")
+	}
+
+	var u model.User
+	db.First(&u, user.ID)
+	if u.Stones != 0 {
+		t.Errorf("stones = %d, want 0 (rolled back)", u.Stones)
 	}
 }
 
