@@ -2,7 +2,9 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -22,6 +24,8 @@ type GameHandler struct {
 	weaponRepo  *repository.WeaponRepository
 	partyRepo   *repository.PartyRepository
 	dungeonRepo *repository.DungeonProgressRepository
+	costumeRepo *repository.CostumeRepository
+	masterRepo  *repository.MasterRepository
 }
 
 func NewGameHandler(
@@ -31,6 +35,8 @@ func NewGameHandler(
 	weaponRepo *repository.WeaponRepository,
 	partyRepo *repository.PartyRepository,
 	dungeonRepo *repository.DungeonProgressRepository,
+	costumeRepo *repository.CostumeRepository,
+	masterRepo *repository.MasterRepository,
 ) *GameHandler {
 	return &GameHandler{
 		db:          db,
@@ -39,6 +45,8 @@ func NewGameHandler(
 		weaponRepo:  weaponRepo,
 		partyRepo:   partyRepo,
 		dungeonRepo: dungeonRepo,
+		costumeRepo: costumeRepo,
+		masterRepo:  masterRepo,
 	}
 }
 
@@ -378,4 +386,93 @@ func (h *GameHandler) LevelUpWeapon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, updated)
+}
+
+func (h *GameHandler) ListCostumes(w http.ResponseWriter, r *http.Request) {
+	userID, err := parseUUID(chi.URLParam(r, "userID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なユーザーIDです")
+		return
+	}
+	list, err := h.costumeRepo.ListByUser(userID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "衣装取得に失敗しました")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]interface{}{"costumes": list})
+}
+
+func (h *GameHandler) BuyCostume(w http.ResponseWriter, r *http.Request) {
+	userID, err := parseUUID(chi.URLParam(r, "userID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なユーザーIDです")
+		return
+	}
+	var req struct {
+		CostumeID uuid.UUID `json:"costume_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "リクエストの形式が不正です")
+		return
+	}
+	mc, err := h.masterRepo.GetCostume(req.CostumeID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "衣装が見つかりません")
+		return
+	}
+	if mc.ShopPriceStones == nil {
+		respondError(w, http.StatusBadRequest, "この衣装は購入できません")
+		return
+	}
+	price := *mc.ShopPriceStones
+	err = h.db.Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&model.User{}).Where("id = ? AND stones >= ?", userID, price).Update("stones", gorm.Expr("stones - ?", price))
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return fmt.Errorf("石が足りません")
+		}
+		uc := &model.UserCostume{UserID: userID, CostumeID: req.CostumeID, ObtainedAt: time.Now().UTC()}
+		return h.costumeRepo.Create(tx, uc)
+	})
+	if err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"message": "衣装を購入しました"})
+}
+
+func (h *GameHandler) EquipCostume(w http.ResponseWriter, r *http.Request) {
+	userID, err := parseUUID(chi.URLParam(r, "userID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なユーザーIDです")
+		return
+	}
+	charID, err := parseUUID(chi.URLParam(r, "characterID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なキャラクターIDです")
+		return
+	}
+	if _, ok := h.ownedCharacter(w, userID, charID); !ok {
+		return
+	}
+	var req struct {
+		UserCostumeID *uuid.UUID `json:"user_costume_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "リクエストの形式が不正です")
+		return
+	}
+	if req.UserCostumeID != nil {
+		if _, err := h.costumeRepo.GetByID(*req.UserCostumeID); err != nil {
+			respondError(w, http.StatusBadRequest, "所持していない衣装です")
+			return
+		}
+	}
+	if err := h.charRepo.EquipCostume(charID, req.UserCostumeID); err != nil {
+		respondError(w, http.StatusInternalServerError, "衣装装備に失敗しました")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"message": "衣装を装備しました"})
 }

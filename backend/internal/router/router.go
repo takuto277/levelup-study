@@ -41,6 +41,7 @@ type SecurityConfig struct {
 //   GET    /api/v1/users/{userID}/characters           所持キャラ一覧
 //   GET    /api/v1/users/{userID}/characters/{id}      所持キャラ詳細
 //   PUT    /api/v1/users/{userID}/characters/{id}/equip 武器装備
+//   PUT    /api/v1/users/{userID}/characters/{id}/costume 衣装装備
 //   POST   /api/v1/users/{userID}/characters/{id}/level-up キャラ LvUP
 //   GET    /api/v1/users/{userID}/weapons              所持武器一覧
 //   POST   /api/v1/users/{userID}/weapons/{id}/level-up 武器 LvUP
@@ -56,6 +57,10 @@ type SecurityConfig struct {
 // [ガチャ]
 //   POST   /api/v1/users/{userID}/gacha/pull           ガチャ実行
 //   GET    /api/v1/users/{userID}/gacha/history        ガチャ履歴
+//
+// [衣装]
+//   GET    /api/v1/users/{userID}/costumes             所持衣装一覧
+//   POST   /api/v1/users/{userID}/costumes/buy         衣装購入
 //
 // [マスタデータ]
 //   GET    /api/v1/master/characters                   キャラマスタ
@@ -136,6 +141,7 @@ func NewRouter(
 					r.Route("/{characterID}", func(r chi.Router) {
 						r.Get("/", gameH.GetCharacter)
 						r.Put("/equip", gameH.EquipWeapon)
+						r.Put("/costume", gameH.EquipCostume)
 						r.Post("/level-up", gameH.LevelUpCharacter)
 					})
 				})
@@ -156,11 +162,15 @@ func NewRouter(
 				// ダンジョン進行
 				r.Get("/dungeons", gameH.ListDungeonProgress)
 
-				// ガチャ（専用レートリミット: 5 rps / burst 10）
-				r.Route("/gacha", func(r chi.Router) {
-					r.With(mw.RateLimiter(5, 10)).Post("/pull", gachaH.Pull)
-					r.Get("/history", gachaH.ListHistory)
-				})
+			// ガチャ（専用レートリミット: 5 rps / burst 10）
+			r.Route("/gacha", func(r chi.Router) {
+				r.With(mw.RateLimiter(5, 10)).Post("/pull", gachaH.Pull)
+				r.Get("/history", gachaH.ListHistory)
+			})
+
+			// 衣装
+			r.Get("/costumes", gameH.ListCostumes)
+			r.Post("/costumes/buy", gameH.BuyCostume)
 			})
 		})
 

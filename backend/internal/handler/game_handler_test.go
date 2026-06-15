@@ -49,7 +49,7 @@ func TestUpdatePartySlot_DuplicateCharacter(t *testing.T) {
 	weaponRepo := repository.NewWeaponRepository(db)
 	partyRepo := repository.NewPartyRepository(db)
 	dungeonRepo := repository.NewDungeonProgressRepository(db)
-	h := handler.NewGameHandler(db, userRepo, charRepo, weaponRepo, partyRepo, dungeonRepo)
+	h := handler.NewGameHandler(db, userRepo, charRepo, weaponRepo, partyRepo, dungeonRepo, nil, nil)
 
 	userID, userCharID := createTestUserWithChar(t, db, userRepo, charRepo)
 

@@ -241,6 +241,39 @@ func (MasterGachaBannerFeatured) TableName() string                 { return "m_
 func (f *MasterGachaBannerFeatured) BeforeCreate(tx *gorm.DB) error { ensureUUID(&f.ID); return nil }
 
 // ============================================================
+// m_costumes — 衣装マスタ
+// ============================================================
+
+type MasterCostume struct {
+	ID              uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	CharacterID     *uuid.UUID `gorm:"type:uuid" json:"character_id"`
+	Name            string     `gorm:"type:varchar(100);not null" json:"name"`
+	Rarity          int        `gorm:"not null" json:"rarity"`
+	ImageURL        string     `gorm:"type:text;not null" json:"image_url"`
+	ShopPriceStones *int       `gorm:"" json:"shop_price_stones"`
+	IsLimited       bool       `gorm:"not null;default:false" json:"is_limited"`
+	IsActive        bool       `gorm:"not null;default:true" json:"is_active"`
+	CreatedAt       time.Time  `gorm:"autoCreateTime" json:"created_at"`
+}
+
+func (MasterCostume) TableName() string                 { return "m_costumes" }
+func (c *MasterCostume) BeforeCreate(tx *gorm.DB) error { ensureUUID(&c.ID); return nil }
+
+// ============================================================
+// user_costumes — ユーザー所持衣装
+// ============================================================
+
+type UserCostume struct {
+	ID         uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
+	UserID     uuid.UUID      `gorm:"type:uuid;not null;index;uniqueIndex:idx_user_costume_owned" json:"user_id"`
+	CostumeID  uuid.UUID      `gorm:"type:uuid;not null;uniqueIndex:idx_user_costume_owned" json:"costume_id"`
+	ObtainedAt time.Time      `gorm:"not null" json:"obtained_at"`
+	Costume    *MasterCostume `gorm:"foreignKey:CostumeID" json:"costume,omitempty"`
+}
+
+func (uc *UserCostume) BeforeCreate(tx *gorm.DB) error { ensureUUID(&uc.ID); return nil }
+
+// ============================================================
 // m_study_genres — 勉強ジャンルマスタ
 // デフォルト6ジャンル。将来的にユーザーカスタムジャンル対応可。
 // ============================================================
@@ -271,8 +304,9 @@ type UserCharacter struct {
 	Level            int        `gorm:"not null;default:1"                              json:"level"`
 	CurrentXP        int        `gorm:"not null;default:0"                              json:"current_xp"`       // 次レベルまでの進捗XP（レベル帯ごとに必要量が増える）
 	BreakthroughLevel int       `gorm:"not null;default:0"                              json:"breakthrough_level"` // 凸数（最大6）
-	EquippedWeaponID *uuid.UUID `gorm:"type:uuid"                                     json:"equipped_weapon_id"` // → user_weapons（null = なし）
-	ObtainedAt       time.Time  `gorm:"not null"                                       json:"obtained_at"`
+	EquippedWeaponID  *uuid.UUID `gorm:"type:uuid"                                     json:"equipped_weapon_id"`  // → user_weapons（null = なし）
+	EquippedCostumeID *uuid.UUID `gorm:"type:uuid"                                     json:"equipped_costume_id"` // → user_costumes（null = なし）
+	ObtainedAt        time.Time  `gorm:"not null"                                       json:"obtained_at"`
 
 	// リレーション（読み取り用）
 	Character *MasterCharacter `gorm:"foreignKey:CharacterID"     json:"character,omitempty"`
@@ -382,5 +416,7 @@ func AllModels() []interface{} {
 		&UserPartySlot{},
 		&UserDungeonProgress{},
 		&GachaHistory{},
+		&MasterCostume{},
+		&UserCostume{},
 	}
 }

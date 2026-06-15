@@ -63,6 +63,7 @@ type GachaService struct {
 	masterRepo *repository.MasterRepository
 	charRepo   *repository.CharacterRepository
 	weaponRepo *repository.WeaponRepository
+	costumeRepo *repository.CostumeRepository
 }
 
 func NewGachaService(
@@ -72,14 +73,16 @@ func NewGachaService(
 	masterRepo *repository.MasterRepository,
 	charRepo *repository.CharacterRepository,
 	weaponRepo *repository.WeaponRepository,
+	costumeRepo *repository.CostumeRepository,
 ) *GachaService {
 	return &GachaService{
-		db:         db,
-		userRepo:   userRepo,
-		gachaRepo:  gachaRepo,
-		masterRepo: masterRepo,
-		charRepo:   charRepo,
-		weaponRepo: weaponRepo,
+		db:          db,
+		userRepo:    userRepo,
+		gachaRepo:   gachaRepo,
+		masterRepo:  masterRepo,
+		charRepo:    charRepo,
+		weaponRepo:  weaponRepo,
+		costumeRepo: costumeRepo,
 	}
 }
 
@@ -222,6 +225,28 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 					}
 					charMap[entry.ItemID] = &uc
 				}
+			} else if entry.ResultType == "costume" {
+				mc, _ := s.masterRepo.GetCostume(entry.ItemID)
+				if mc != nil {
+					name = mc.Name
+					rarity = mc.Rarity
+				}
+				if existing, ok := s.costumeRepo.GetByUserAndCostume(userID, entry.ItemID); ok == nil && existing != nil {
+					compStones := 15
+					if err := tx.Model(&model.User{}).Where("id = ?", userID).Update("stones", gorm.Expr("stones + ?", compStones)).Error; err != nil {
+						return fmt.Errorf("衣装代償石付与に失敗: %w", err)
+					}
+				} else {
+					isNew = true
+					uc := model.UserCostume{
+						UserID:     userID,
+						CostumeID:  entry.ItemID,
+						ObtainedAt: time.Now().UTC(),
+					}
+					if err := s.costumeRepo.Create(tx, &uc); err != nil {
+						return fmt.Errorf("衣装付与に失敗: %w", err)
+					}
+				}
 			} else {
 				mw, _ := s.masterRepo.GetWeapon(entry.ItemID)
 				if mw != nil {
@@ -338,7 +363,13 @@ func (s *GachaService) validateRateTable(entries []RateTableEntry) error {
 				return fmt.Errorf("武器マスタが無効です: %s", e.ItemID)
 			}
 		case "costume":
-			// 衣装マスタ（m_costumes）導入後にここで検証する
+			c, err := s.masterRepo.GetCostume(e.ItemID)
+			if err != nil || c == nil {
+				return fmt.Errorf("衣装マスタが見つかりません: %s", e.ItemID)
+			}
+			if !c.IsActive {
+				return fmt.Errorf("衣装マスタが無効です: %s", e.ItemID)
+			}
 		default:
 			return fmt.Errorf("不明な result_type: %s", e.ResultType)
 		}

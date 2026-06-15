@@ -127,9 +127,9 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 
 ## 8. feedback コメントへ返信する
 
-- 対応した review comment には threaded reply を投稿する。
-- 対応した top-level PR conversation comment には follow-up comment を投稿する。
-- 返信本文には、対応内容、関連 commit、検証結果を簡潔に含める。
+- **PRに紐づく全ての未対応 review comment に対して、必ず threaded reply を投稿する。**
+- 返信はコード修正の commit + push が完了した後でのみ行う。修正前に返信だけしてはいけない。
+- 返信本文には、対応内容、関連 commit hash、検証結果を簡潔に含める。
 - **必ず具体的な修正内容を記載する**（「修正しました」だけではなく、何をどう変えたか、どの commit で対応したかを明記する）。
 - 未対応、判断不能、質問が必要な feedback には、必要に応じて理由や確認事項を返信する。
 - 返信対象と投稿方法は `github-pr-comment-reply/SKILL.md` の方針に従う。
@@ -147,11 +147,13 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 
 ## 9. PRレビュー状態ラベルを更新する
 
+- **ラベル更新は、全ての review comment への返信とコード修正の commit/push が完了した後にのみ行う。**
+- **コード修正なし・返信なしでのラベル切り替えは絶対に行わない。**
 - actionable な feedback へ commit / push / 返信まで完了した場合は、`PRレビュー/再レビュー待ち` を付ける。
 - 同時に `PRレビュー修正待ち` と `review:まーじOK` は外す。
 - 対応できない feedback が残る場合は `PRレビュー修正待ち` を維持する。
-- ラベル操作に失敗しても feedback 対応は巻き戻さず、最終報告でラベル未更新と理由を伝える。
 - ラベル更新コマンド: `gh pr edit $PR --remove-label "PRレビュー修正待ち" --add-label "PRレビュー/再レビュー待ち"`
+- ラベル操作に失敗しても feedback 対応は巻き戻さず、最終報告でラベル未更新と理由を伝える。
 
 ## 10. 報告する
 
@@ -169,6 +171,7 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 - PR URL/番号がなくてもブランチから PR 特定可能
 - feedback の収集〜返信・ラベル更新までの全フローがある
 - 無関係変更の commit 禁止 / Resolve・Approve 禁止
+- コード修正 + 返信完了前のラベル切替禁止（赤字ルール）
 - `gh` CLI 優先、GitHub コネクタ非依存
 
 # 参考資料
