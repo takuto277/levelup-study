@@ -42,12 +42,10 @@ func (h *GoalHandler) CreateGoal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		GoalType     string     `json:"goal_type"`
-		Period       string     `json:"period"`
-		TargetValue  int        `json:"target_value"`
-		GenreID      *uuid.UUID `json:"genre_id"`
-		RewardStones int        `json:"reward_stones"`
-		RewardGold   int        `json:"reward_gold"`
+		GoalType    string     `json:"goal_type"`
+		Period      string     `json:"period"`
+		TargetValue int        `json:"target_value"`
+		GenreID     *uuid.UUID `json:"genre_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "リクエストの形式が不正です")
@@ -66,14 +64,15 @@ func (h *GoalHandler) CreateGoal(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "period は daily または weekly です")
 		return
 	}
+	rewardStones, rewardGold := calculateGoalReward(req.GoalType, req.Period, req.TargetValue)
 	goal := &model.UserGoal{
 		UserID:       userID,
 		GoalType:     req.GoalType,
 		Period:       req.Period,
 		TargetValue:  req.TargetValue,
 		GenreID:      req.GenreID,
-		RewardStones: req.RewardStones,
-		RewardGold:   req.RewardGold,
+		RewardStones: rewardStones,
+		RewardGold:   rewardGold,
 	}
 	if err := h.goalRepo.Create(goal); err != nil {
 		respondError(w, http.StatusInternalServerError, "目標作成に失敗しました")
@@ -86,6 +85,20 @@ func (h *GoalHandler) DeleteGoal(w http.ResponseWriter, r *http.Request) {
 	goalID, err := parseUUID(chi.URLParam(r, "goalID"))
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "不正な目標IDです")
+		return
+	}
+	userID, err := parseUUID(chi.URLParam(r, "userID"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "不正なユーザーIDです")
+		return
+	}
+	goal, err := h.goalRepo.GetByID(goalID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "目標が見つかりません")
+		return
+	}
+	if goal.UserID != userID {
+		respondError(w, http.StatusForbidden, "アクセス権限がありません")
 		return
 	}
 	if err := h.goalRepo.Delete(goalID); err != nil {
@@ -142,4 +155,21 @@ func (h *GoalHandler) ClaimGoalReward(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, goal)
+}
+
+func calculateGoalReward(goalType string, period string, targetValue int) (stones int, gold int) {
+	base := targetValue
+	if period == "weekly" {
+		base = base * 2
+	}
+	switch goalType {
+	case "pomodoro_count":
+		return base * 5, 0
+	case "study_minutes":
+		return base / 10, base * 2
+	case "genre_study_minutes":
+		return base / 5, base * 3
+	default:
+		return 0, 0
+	}
 }
