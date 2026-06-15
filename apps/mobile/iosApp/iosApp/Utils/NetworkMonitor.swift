@@ -7,7 +7,8 @@ import Network
     private let queue = DispatchQueue(label: "NetworkMonitor")
     @objc var isOnline = true
 
-    private init() {
+    override private init() {
+        super.init()
         monitor.pathUpdateHandler = { [weak self] path in
             self?.isOnline = path.status == .satisfied
         }
