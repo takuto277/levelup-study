@@ -13,20 +13,11 @@ package org.example.project.core.network
  */
 object ApiRoutes {
 
-    const val DEV_BASE_URL = "http://localhost:8080"
-    const val STG_BASE_URL = "https://levelup-study-api-stg.onrender.com"
-    const val PROD_BASE_URL = "https://levelup-study-api.onrender.com"
-
-    val BASE_URL: String
-        get() = when (getEnv()) {
-            "dev" -> DEV_BASE_URL
-            "staging" -> STG_BASE_URL
-            else -> PROD_BASE_URL
-        }
-
-    private fun getEnv(): String {
-        return "prod"
-    }
+    // Environment-specific URLs (for future env switching via GeneratedApiKey.ENV):
+    // dev:  http://localhost:8080
+    // stg:  https://levelup-study-api-stg.onrender.com
+    // prod: https://levelup-study-api.onrender.com
+    const val BASE_URL = "https://levelup-study-api.onrender.com"
 
     // ── User ────────────────────────────────────
     /** POST: ユーザー作成 */
