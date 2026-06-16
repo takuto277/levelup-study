@@ -22,12 +22,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
+import org.example.project.features.reminder.ReminderIntent
+import org.example.project.features.reminder.ReminderViewModel
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import org.example.project.di.getSettingsViewModel
@@ -143,6 +152,10 @@ fun SettingsScreenDialog(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // 学習リマインダー
+                ReminderSettingsSection()
+
                 OutlinedButton(
                     onClick = {
                         org.example.project.data.local.TutorialProgressStore().resetAll()
@@ -167,6 +180,74 @@ fun SettingsScreenDialog(
                         Text("閉じる")
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReminderSettingsSection() {
+    val viewModel = remember { ReminderViewModel() }
+    val uiState by viewModel.uiState.collectAsState()
+
+    HorizontalDivider()
+    Spacer(modifier = Modifier.height(12.dp))
+    Text("学習リマインダー", style = MaterialTheme.typography.titleSmall)
+
+    Spacer(modifier = Modifier.height(8.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("通知 ON/OFF", modifier = Modifier.weight(1f))
+        Switch(
+            checked = uiState.enabled,
+            onCheckedChange = { viewModel.onIntent(ReminderIntent.SetEnabled(it)) }
+        )
+    }
+
+    if (uiState.enabled) {
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("通知時刻", modifier = Modifier.weight(1f))
+            var showPicker by remember { mutableStateOf(false) }
+            TextButton(onClick = { showPicker = true }) {
+                Text("%02d:%02d".format(uiState.hour, uiState.minute))
+            }
+            if (showPicker) {
+                // simplified: hour/minute text fields
+                var h by remember { mutableStateOf(uiState.hour.toString()) }
+                var m by remember { mutableStateOf(uiState.minute.toString()) }
+                AlertDialog(
+                    onDismissRequest = { showPicker = false },
+                    title = { Text("通知時刻を設定") },
+                    text = {
+                        Row {
+                            OutlinedTextField(
+                                value = h,
+                                onValueChange = { h = it },
+                                modifier = Modifier.width(64.dp),
+                                label = { Text("時") }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedTextField(
+                                value = m,
+                                onValueChange = { m = it },
+                                modifier = Modifier.width(64.dp),
+                                label = { Text("分") }
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            viewModel.onIntent(
+                                ReminderIntent.SetTime(
+                                    h.toIntOrNull() ?: 20,
+                                    m.toIntOrNull() ?: 0
+                                )
+                            )
+                            showPicker = false
+                        }) { Text("OK") }
+                    },
+                    dismissButton = { TextButton(onClick = { showPicker = false }) { Text("キャンセル") } }
+                )
             }
         }
     }
