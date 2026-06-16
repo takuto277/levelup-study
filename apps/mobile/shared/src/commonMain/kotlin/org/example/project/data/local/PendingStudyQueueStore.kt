@@ -20,7 +20,9 @@ class PendingStudyQueueStore(
     private val legacyKey = "pending_study_queue_v1"
     private val migrationFlagKey = "pending_study_queue_v1_migrated"
 
-    init {
+    private fun ensureMigrated() {
+        val userId = userIdProvider()
+        if (userId.isEmpty()) return
         migrateLegacyData()
     }
 
@@ -40,7 +42,7 @@ class PendingStudyQueueStore(
             emptyList()
         }
         if (legacyItems.isNotEmpty()) {
-            val current = readAll()
+            val current = readCurrentUnsafe()
             val merged = (current + legacyItems).distinctBy { it.localId }
             replaceAll(merged)
         }
@@ -48,13 +50,18 @@ class PendingStudyQueueStore(
         kv.putString(migrationFlagKey, "true")
     }
 
-    fun readAll(): List<PendingStudyCompletion> {
+    private fun readCurrentUnsafe(): List<PendingStudyCompletion> {
         val raw = kv.getString(key) ?: return emptyList()
         return try {
             json.decodeFromString(ListSerializer(PendingStudyCompletion.serializer()), raw)
         } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    fun readAll(): List<PendingStudyCompletion> {
+        ensureMigrated()
+        return readCurrentUnsafe()
     }
 
     fun count(): Int = readAll().size
