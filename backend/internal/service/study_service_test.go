@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -133,6 +134,91 @@ func TestCompleteStudyStoresGenreIDFromCategoryUUIDForCompatibility(t *testing.T
 	}
 	if session.Category == nil || *session.Category != category {
 		t.Fatalf("category = %v, want %s", session.Category, category)
+	}
+}
+
+func TestCompleteStudyRejectsInvalidRewardInputs(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	svc := newStudyServiceForTest(db)
+	userID := createStudyTestUser(t, db, nil)
+	startedAt := time.Date(2026, 6, 4, 9, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name    string
+		req     CompleteStudyRequest
+		wantErr string
+	}{
+		{
+			name: "negative defeat normal count",
+			req: CompleteStudyRequest{
+				StartedAt:         startedAt,
+				EndedAt:           startedAt.Add(10 * time.Minute),
+				DurationSeconds:   10 * 60,
+				DefeatNormalCount: -1,
+				IsCompleted:       true,
+			},
+			wantErr: "討伐数",
+		},
+		{
+			name: "difficulty multiplier too high",
+			req: CompleteStudyRequest{
+				StartedAt:            startedAt,
+				EndedAt:              startedAt.Add(10 * time.Minute),
+				DurationSeconds:      10 * 60,
+				DifficultyMultiplier: 10,
+				IsCompleted:          true,
+			},
+			wantErr: "難易度倍率",
+		},
+		{
+			name: "normal defeats exceed limit",
+			req: CompleteStudyRequest{
+				StartedAt:            startedAt,
+				EndedAt:              startedAt.Add(10 * time.Minute),
+				DurationSeconds:      10 * 60,
+				DefeatNormalCount:    1000,
+				DifficultyMultiplier: 1.0,
+				IsCompleted:          true,
+			},
+			wantErr: "通常敵",
+		},
+		{
+			name: "boss defeats exceed limit",
+			req: CompleteStudyRequest{
+				StartedAt:            startedAt,
+				EndedAt:              startedAt.Add(10 * time.Minute),
+				DurationSeconds:      10 * 60,
+				DefeatBossCount:      10,
+				DifficultyMultiplier: 1.0,
+				IsCompleted:          true,
+			},
+			wantErr: "ボス",
+		},
+		{
+			name: "boss defeats exceed normal defeats",
+			req: CompleteStudyRequest{
+				StartedAt:            startedAt,
+				EndedAt:              startedAt.Add(30 * time.Minute),
+				DurationSeconds:      30 * 60,
+				DefeatNormalCount:    1,
+				DefeatBossCount:      2,
+				DifficultyMultiplier: 1.0,
+				IsCompleted:          true,
+			},
+			wantErr: "ボス討伐数が通常敵",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := svc.CompleteStudy(userID, tc.req)
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("error = %q, want containing %q", err.Error(), tc.wantErr)
+			}
+		})
 	}
 }
 
