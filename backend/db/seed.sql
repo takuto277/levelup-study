@@ -11,6 +11,9 @@
 --   2) API 起動で GORM AutoMigrate によりテーブルが存在すること
 --   3) users の UUID は固定（user1 = 00000000-...-001）。Supabase Auth の auth.users とは別テーブル・別 ID。
 --      モバイル DEBUG のシードセッションはこの user1 と揃える。
+--   4) image_url は開発用プレースホルダ（placehold.co）。本番では Supabase Storage CDN に置き換える:
+--      make master-images-upload で backend/assets/master/source/ の画像を
+--      Supabase Storage にアップロードし、各テーブルの image_url を CDN URL に更新する。
 -- ============================================================
 
 BEGIN;
