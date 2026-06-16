@@ -6,9 +6,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.example.project.domain.model.MasterCharacter
 import org.example.project.domain.model.Party
-import org.example.project.domain.model.PartyRepository
 import org.example.project.domain.model.PartySlot
 import org.example.project.domain.model.UserCharacter
+import org.example.project.domain.repository.PartyRepository
 
 class StudyQuestViewModelTest {
 
