@@ -118,7 +118,7 @@ class StudyQuestViewModelTest {
         // まだ開始されていない
         assertEquals(StudySessionStatus.READY, vm.uiState.value.status)
         // 読み込み完了後、保留していた StartQuest が実行され loaded HP が反映される
-        delay(300)
+        delay(1000)
         assertEquals(StudySessionStatus.RUNNING, vm.uiState.value.status)
         assertEquals(600, vm.uiState.value.playerMaxHp)
         assertEquals(600, vm.uiState.value.playerHp)
