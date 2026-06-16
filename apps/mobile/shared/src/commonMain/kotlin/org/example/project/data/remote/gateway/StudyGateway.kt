@@ -2,12 +2,15 @@ package org.example.project.data.remote.gateway
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import org.example.project.core.network.ApiRoutes
+import org.example.project.core.network.ErrorMessage
 import org.example.project.core.network.NetworkResult
+import org.example.project.core.network.isDeviceOnline
 import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.dto.StudyCompleteRequest
 import org.example.project.data.remote.dto.StudyCompleteResponse
@@ -27,7 +30,7 @@ class StudyGateway(private val client: HttpClient) {
             }.body()
             NetworkResult.Success(response)
         }.getOrElse { e ->
-            NetworkResult.Error(message = e.message ?: "通信に失敗しました。時間をおいて再度お試しください")
+            toNetworkError(e)
         }
 
     /** GET /api/v1/users/{userId}/study/sessions — セッション履歴一覧 */
@@ -41,6 +44,14 @@ class StudyGateway(private val client: HttpClient) {
                 }.body()
             NetworkResult.Success(response)
         }.getOrElse { e ->
-            NetworkResult.Error(message = e.message ?: "セッション履歴の取得に失敗しました")
+            toNetworkError(e)
         }
+
+    private fun toNetworkError(e: Throwable): NetworkResult.Error {
+        val statusCode = (e as? ClientRequestException)?.response?.status?.value
+        return NetworkResult.Error(
+            code = statusCode,
+            message = ErrorMessage.classify(statusCode, e, isDeviceOnline())
+        )
+    }
 }
