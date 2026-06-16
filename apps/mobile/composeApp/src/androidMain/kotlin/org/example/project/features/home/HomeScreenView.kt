@@ -32,6 +32,10 @@ fun HomeScreenView(
     val homeViewModel = remember { org.example.project.di.getHomeViewModel() }
     val homeState by homeViewModel.uiState.collectAsState()
 
+    LaunchedEffect(selectedTab) {
+        homeViewModel.onIntent(HomeIntent.Refresh)
+    }
+
     LaunchedEffect(studyMinutes) {
         kvStore.putString(HOME_STUDY_MINUTES_KEY, studyMinutes.toString())
     }
