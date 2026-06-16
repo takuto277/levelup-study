@@ -991,6 +991,10 @@ components:
           type: number
           format: double
           default: 1
+        client_session_id:
+          type: string
+          nullable: true
+          description: クライアント生成の冪等キー。再送時に同一 session として扱う。
 
     CompleteStudyResponse:
       type: object
