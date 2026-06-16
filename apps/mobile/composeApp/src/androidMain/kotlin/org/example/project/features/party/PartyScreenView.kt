@@ -110,6 +110,7 @@ fun PartyScreenView() {
     val uiState by viewModel.uiState.collectAsState()
 
     var showCharacterPicker by remember { mutableStateOf(false) }
+    val isActionInProgress = uiState.isMutating || uiState.isLoading
 
     Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(BgColor, Color(0xFF0F172A))))) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -152,7 +153,6 @@ fun PartyScreenView() {
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                val isActionInProgress = uiState.isMutating || uiState.isLoading
                 uiState.party?.let { party ->
                     PartySlotSection(
                         party = party,
