@@ -19,8 +19,9 @@ class SettingsViewModel(
     private val userGateway: UserGateway,
 ) : ViewModel() {
 
-    /** refresh() の連打（SwiftUI onAppear など）で sync が重複しないようにする */
+    /** refresh() / patch() の連打（SwiftUI onAppear やボタン連打など）で重複実行しないようにする */
     private val refreshMutex = Mutex()
+    private val patchMutex = Mutex()
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -74,6 +75,7 @@ class SettingsViewModel(
 
     private fun patch(stonesDelta: Int, goldDelta: Int) {
         viewModelScope.launch {
+            if (!patchMutex.tryLock()) return@launch
             _uiState.update { it.copy(isLoading = true, toast = null) }
             try {
                 val uid = UserSessionStore.requireUserId()
@@ -96,6 +98,8 @@ class SettingsViewModel(
                         toast = e.message ?: "デバッグ API が失敗しました（DEV_MODE=true と seed ユーザーで試してください）",
                     )
                 }
+            } finally {
+                patchMutex.unlock()
             }
         }
     }
