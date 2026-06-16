@@ -89,6 +89,7 @@ struct AnalyticsScreenView: View {
             }
         }
         .background(LinearGradient(colors: [bgDark, Color(hex: 0x0F172A)], startPoint: .top, endPoint: .bottom).ignoresSafeArea())
+        .onAppear { viewModel.onIntent(intent: RecordIntentRefresh()) }
         .onReceive(Timer.publish(every: 0.3, on: .main, in: .common).autoconnect()) { _ in self.uiState = viewModel.uiState.value as! RecordUiState }
     }
 
