@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.datetime.Clock
+import kotlin.random.Random
 import org.example.project.core.network.isDeviceOnline
 import org.example.project.data.remote.gateway.DungeonGateway
 import org.example.project.domain.model.RewardType
@@ -447,6 +448,7 @@ class StudyQuestViewModel(
                 val normalKills = if (training) 0 else snapshot.normalDefeatCount
                 val bossKills = if (training) 0 else snapshot.bossDefeatCount
                 val offline = !isDeviceOnline()
+                val clientSessionId = "${Clock.System.now().toEpochMilliseconds()}_q${Random.nextInt(1_000_000)}"
                 suspend fun persistPending() {
                     useCase.savePendingStudyCompletion(
                         category = genreId,
@@ -458,7 +460,8 @@ class StudyQuestViewModel(
                         defeatNormalCount = normalKills,
                         defeatBossCount = bossKills,
                         difficultyMultiplier = 1.0,
-                        isTrainingGround = training
+                        isTrainingGround = training,
+                        clientSessionId = clientSessionId
                     )
                 }
                 if (offline) {
@@ -475,7 +478,8 @@ class StudyQuestViewModel(
                             userCharacterId = snapshot.partyLeadUserCharacterId.takeIf { it.isNotBlank() },
                             defeatNormalCount = normalKills,
                             defeatBossCount = bossKills,
-                            difficultyMultiplier = 1.0
+                            difficultyMultiplier = 1.0,
+                            clientSessionId = clientSessionId
                         )
                         val (xpTotal, stoneTotal) = totalsFromServerRewards(result.rewards)
                         _uiState.update {
@@ -488,8 +492,22 @@ class StudyQuestViewModel(
                                 earnedStones = stoneTotal
                             )
                         }
-                    } catch (_: Exception) {
-                        runCatching { persistPending() }
+                    } catch (e: StudyCompletionException) {
+                        runCatching {
+                            useCase.savePendingStudyCompletion(
+                                category = genreId,
+                                startedAt = sessionStart,
+                                endedAt = endedAt,
+                                durationSeconds = studyElapsed.toInt(),
+                                isCompleted = studyElapsed >= targetStudySec,
+                                userCharacterId = snapshot.partyLeadUserCharacterId.takeIf { it.isNotBlank() },
+                                defeatNormalCount = normalKills,
+                                defeatBossCount = bossKills,
+                                difficultyMultiplier = 1.0,
+                                isTrainingGround = training,
+                                clientSessionId = e.clientSessionId ?: clientSessionId
+                            )
+                        }
                         _uiState.update { it.copy(serverSynced = false) }
                     }
                 }
