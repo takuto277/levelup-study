@@ -189,6 +189,7 @@ func newStudyServiceForTest(db *gorm.DB) *StudyService {
 		repository.NewCharacterRepository(db),
 		repository.NewPartyRepository(db),
 		repository.NewDungeonProgressRepository(db),
+		repository.NewGoalRepository(db),
 	)
 }
 

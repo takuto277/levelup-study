@@ -84,7 +84,7 @@ func (h *GachaHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusBadRequest, "不正な banner_id です")
 			return
 		}
-		history, err := h.gachaRepo.ListByBanner(userID, bannerID)
+		history, err := h.gachaRepo.ListByBanner(userID, bannerID, limit, offset)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "ガチャ履歴の取得に失敗しました")
 			return

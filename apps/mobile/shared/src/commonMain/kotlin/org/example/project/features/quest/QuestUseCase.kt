@@ -78,6 +78,10 @@ class QuestUseCase(
         fun bundledDisplayNameForDungeonId(id: String): String? =
             getDefaultDungeons().firstOrNull { it.id == id }?.name
 
+        /** 同梱マスタから fallback 用の画像 URL を補う */
+        fun bundledImageUrlForDungeonId(id: String): String? =
+            getDefaultDungeons().firstOrNull { it.id == id }?.imageUrl
+
         fun getDefaultDungeons(): List<Dungeon> = listOf(
             Dungeon(
                 id = "forest_of_beginnings",
