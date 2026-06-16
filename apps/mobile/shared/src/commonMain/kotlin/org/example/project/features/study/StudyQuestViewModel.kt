@@ -26,6 +26,7 @@ class StudyQuestViewModel(
     private var wallClockEpochMs: Long = 0L
     private var pausedAccumulatedMs: Long = 0L
     private var pauseStartedMs: Long? = null
+    private var pendingStartQuest: StudyQuestIntent.StartQuest? = null
 
     init { loadPartyLead() }
 
@@ -44,7 +45,10 @@ class StudyQuestViewModel(
     }
 
     private fun loadPartyLead() {
-        val repo = partyRepository ?: return
+        val repo = partyRepository ?: run {
+            _uiState.update { it.copy(isPartyLoading = false) }
+            return
+        }
         viewModelScope.launch {
             try {
                 val party = repo.getParty()
@@ -58,11 +62,27 @@ class StudyQuestViewModel(
                             partyLeadImageUrl = lead.character?.imageUrl ?: "",
                             partyLeadUserCharacterId = lead.id,
                             playerMaxHp = maxHp,
-                            playerHp = maxHp
+                            playerHp = maxHp,
+                            isPartyLoading = false
                         )
                     }
+                } else {
+                    _uiState.update { it.copy(isPartyLoading = false) }
                 }
-            } catch (_: Exception) { }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isPartyLoading = false) }
+            }
+            pendingStartQuest?.let { intent ->
+                pendingStartQuest = null
+                startQuest(
+                    studyMinutes = intent.studyMinutes,
+                    genreId = intent.genreId,
+                    dungeonName = intent.dungeonName,
+                    dungeonId = intent.dungeonId,
+                    isTrainingGround = intent.isTrainingGround,
+                    dungeonImageUrl = intent.dungeonImageUrl
+                )
+            }
         }
     }
 
@@ -247,14 +267,20 @@ class StudyQuestViewModel(
 
     fun onIntent(intent: StudyQuestIntent) {
         when (intent) {
-            is StudyQuestIntent.StartQuest -> startQuest(
-                intent.studyMinutes,
-                intent.genreId,
-                intent.dungeonName,
-                intent.dungeonId,
-                intent.isTrainingGround,
-                intent.dungeonImageUrl
-            )
+            is StudyQuestIntent.StartQuest -> {
+                if (_uiState.value.isPartyLoading) {
+                    pendingStartQuest = intent
+                    return
+                }
+                startQuest(
+                    intent.studyMinutes,
+                    intent.genreId,
+                    intent.dungeonName,
+                    intent.dungeonId,
+                    intent.isTrainingGround,
+                    intent.dungeonImageUrl
+                )
+            }
             is StudyQuestIntent.TogglePause -> togglePause()
             is StudyQuestIntent.EndQuest -> endQuest()
             is StudyQuestIntent.NextSession -> nextSession()

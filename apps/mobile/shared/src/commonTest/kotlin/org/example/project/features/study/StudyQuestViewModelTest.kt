@@ -108,6 +108,34 @@ class StudyQuestViewModelTest {
         vm.cleanup()
     }
 
+    @Test
+    fun `StartQuest before party load is deferred and uses loaded playerMaxHp`() = runBlocking {
+        val mockRepo = createMockPartyRepo()
+        val vm = StudyQuestViewModel(partyRepository = mockRepo)
+        // 読み込み完了前に StartQuest を発行
+        assertEquals(true, vm.uiState.value.isPartyLoading)
+        vm.onIntent(StudyQuestIntent.StartQuest(studyMinutes = 25, genreId = null))
+        // まだ開始されていない
+        assertEquals(StudySessionStatus.READY, vm.uiState.value.status)
+        // 読み込み完了後、保留していた StartQuest が実行され loaded HP が反映される
+        delay(300)
+        assertEquals(StudySessionStatus.RUNNING, vm.uiState.value.status)
+        assertEquals(600, vm.uiState.value.playerMaxHp)
+        assertEquals(600, vm.uiState.value.playerHp)
+        vm.cleanup()
+    }
+
+    @Test
+    fun `StartQuest with null repo uses default 100 hp immediately`() = runBlocking {
+        val vm = StudyQuestViewModel(partyRepository = null)
+        assertEquals(false, vm.uiState.value.isPartyLoading)
+        vm.onIntent(StudyQuestIntent.StartQuest(studyMinutes = 25, genreId = null))
+        assertEquals(StudySessionStatus.RUNNING, vm.uiState.value.status)
+        assertEquals(100, vm.uiState.value.playerMaxHp)
+        assertEquals(100, vm.uiState.value.playerHp)
+        vm.cleanup()
+    }
+
     private companion object {
         fun createMockPartyRepo(): PartyRepository = object : PartyRepository {
             override suspend fun getParty(): Party = Party(
