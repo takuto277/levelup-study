@@ -30,6 +30,8 @@ type User struct {
 	TotalStudySeconds int64      `gorm:"not null;default:0"                              json:"total_study_seconds"`
 	Stones            int        `gorm:"not null;default:0"                              json:"stones"`
 	Gold              int        `gorm:"not null;default:0"                              json:"gold"`
+	Level             int        `gorm:"not null;default:1"                              json:"level"`
+	CurrentXP         int        `gorm:"not null;default:0"                              json:"current_xp"`
 	SelectedDungeonID *uuid.UUID `gorm:"type:uuid"                                       json:"selected_dungeon_id"`
 	CreatedAt         time.Time  `gorm:"autoCreateTime"                                  json:"created_at"`
 	UpdatedAt         time.Time  `gorm:"autoUpdateTime"                                  json:"updated_at"`
@@ -121,13 +123,20 @@ func (w *MasterWeapon) BeforeCreate(tx *gorm.DB) error { ensureUUID(&w.ID); retu
 // ============================================================
 
 type MasterDungeon struct {
-	ID              uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	Name            string    `gorm:"type:varchar(100);not null"                      json:"name"`
-	SortOrder       int       `gorm:"not null"                                       json:"sort_order"`
-	UnlockCondition *string   `gorm:"type:text"                                      json:"unlock_condition"` // JSON or 式
-	ImageURL        string    `gorm:"type:text;not null"                              json:"image_url"`
-	IsActive        bool      `gorm:"not null;default:true"                           json:"is_active"`
-	CreatedAt       time.Time `gorm:"autoCreateTime"                                  json:"created_at"`
+	ID                uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	Name              string    `gorm:"type:varchar(100);not null"                      json:"name"`
+	SortOrder         int       `gorm:"not null"                                       json:"sort_order"`
+	UnlockCondition   *string   `gorm:"type:text"                                      json:"unlock_condition"`
+	Description       *string   `gorm:"type:text"                                      json:"description"`
+	Difficulty        string    `gorm:"type:varchar(20);not null;default:beginner"      json:"difficulty"`
+	Category          string    `gorm:"type:varchar(30);not null;default:general"       json:"category"`
+	TotalStages       int       `gorm:"not null;default:1"                              json:"total_stages"`
+	RecommendedMinutes *int     `gorm:""                                                json:"recommended_minutes"`
+	IconEmoji         *string   `gorm:"type:varchar(10)"                                json:"icon_emoji"`
+	RewardSummary     *string   `gorm:"type:jsonb"                                      json:"reward_summary"`
+	ImageURL          string    `gorm:"type:text;not null"                              json:"image_url"`
+	IsActive          bool      `gorm:"not null;default:true"                           json:"is_active"`
+	CreatedAt         time.Time `gorm:"autoCreateTime"                                  json:"created_at"`
 
 	// リレーション
 	Stages []MasterDungeonStage `gorm:"foreignKey:DungeonID" json:"stages,omitempty"`
@@ -186,6 +195,7 @@ type MasterDungeonStage struct {
 	ID               uuid.UUID       `gorm:"type:uuid;primaryKey" json:"id"`
 	DungeonID        uuid.UUID       `gorm:"type:uuid;not null;index"                       json:"dungeon_id"`
 	StageNumber      int             `gorm:"not null"                                       json:"stage_number"`
+	StageName        *string         `gorm:"type:varchar(100)"                              json:"stage_name"`
 	RecommendedPower int             `gorm:"not null"                                       json:"recommended_power"` // 推奨戦力
 	EnemyComposition json.RawMessage `gorm:"type:jsonb;not null"                            json:"enemy_composition"` // 非推奨: 正は enemies
 	DropTable        json.RawMessage `gorm:"type:jsonb;not null"                            json:"drop_table"`        // [{item_id, rate}]
@@ -343,6 +353,7 @@ type GachaHistory struct {
 	ResultType   string    `gorm:"type:varchar(20);not null"                      json:"result_type"`    // character / weapon
 	ResultItemID uuid.UUID `gorm:"type:uuid;not null"                             json:"result_item_id"` // 排出されたマスタID
 	PityCount    int       `gorm:"not null"                                       json:"pity_count"`     // バナー内累計回数
+	IsNew        bool      `gorm:"not null;default:true"                           json:"is_new"`         // 新規入手か凸/精錬か
 	CreatedAt    time.Time `gorm:"autoCreateTime"                                 json:"created_at"`
 }
 
