@@ -135,6 +135,7 @@ fun PartyScreenView() {
                 }
                 Button(
                     onClick = { showCharacterPicker = true },
+                    enabled = !uiState.isMutating && !uiState.isLoading,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)
                 ) {
@@ -151,10 +152,12 @@ fun PartyScreenView() {
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                val isActionInProgress = uiState.isMutating || uiState.isLoading
                 uiState.party?.let { party ->
                     PartySlotSection(
                         party = party,
                         selectedSlot = uiState.selectedSlot,
+                        isActionInProgress = isActionInProgress,
                         onSlotClick = { slot -> viewModel.onIntent(PartyIntent.SelectSlot(slot)) },
                         onRemoveSlot = { slot -> viewModel.onIntent(PartyIntent.RemoveFromSlot(slot)) }
                     )
@@ -165,6 +168,7 @@ fun PartyScreenView() {
                 CharacterListSection(
                     characters = uiState.ownedCharacters,
                     selectedSlot = uiState.selectedSlot,
+                    isActionInProgress = isActionInProgress,
                     onCharacterClick = { charId ->
                         val slot = uiState.selectedSlot
                         if (slot != null) {
@@ -185,15 +189,22 @@ fun PartyScreenView() {
                 character = character,
                 weapon = uiState.ownedWeapons.find { it.id == character.equippedWeaponId },
                 weapons = uiState.ownedWeapons,
+                isActionInProgress = isActionInProgress,
                 onDismiss = { viewModel.onIntent(PartyIntent.DismissCharacterDetail) },
                 onEquipWeapon = { weaponId ->
-                    viewModel.onIntent(PartyIntent.EquipWeapon(character.id, weaponId))
+                    if (!isActionInProgress) {
+                        viewModel.onIntent(PartyIntent.EquipWeapon(character.id, weaponId))
+                    }
                 },
                 onLevelUpCharacter = {
-                    viewModel.onIntent(PartyIntent.LevelUpCharacter(character.id))
+                    if (!isActionInProgress) {
+                        viewModel.onIntent(PartyIntent.LevelUpCharacter(character.id))
+                    }
                 },
                 onLevelUpWeapon = { weaponId ->
-                    viewModel.onIntent(PartyIntent.LevelUpWeapon(weaponId))
+                    if (!isActionInProgress) {
+                        viewModel.onIntent(PartyIntent.LevelUpWeapon(weaponId))
+                    }
                 }
             )
         }
@@ -238,8 +249,10 @@ fun PartyScreenView() {
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(BgColor)
                                     .clickable {
-                                        viewModel.onIntent(PartyIntent.AssignCharacter(1, char.id))
-                                        showCharacterPicker = false
+                                        if (!isActionInProgress) {
+                                            viewModel.onIntent(PartyIntent.AssignCharacter(1, char.id))
+                                            showCharacterPicker = false
+                                        }
                                     }
                                     .padding(vertical = 12.dp)
                             ) {
@@ -421,6 +434,7 @@ private fun StatItem(emoji: String, label: String, value: String, color: Color) 
 private fun PartySlotSection(
     party: org.example.project.domain.model.Party?,
     selectedSlot: Int?,
+    isActionInProgress: Boolean,
     onSlotClick: (Int) -> Unit,
     onRemoveSlot: (Int) -> Unit
 ) {
@@ -439,6 +453,7 @@ private fun PartySlotSection(
                     slotPosition = slot,
                     userCharacter = partySlot?.userCharacter,
                     isSelected = isSelected,
+                    isActionInProgress = isActionInProgress,
                     onClick = { onSlotClick(slot) },
                     onRemove = if (partySlot != null) {
                         { onRemoveSlot(slot) }
@@ -456,6 +471,7 @@ private fun PartySlotCard(
     slotPosition: Int,
     userCharacter: UserCharacter?,
     isSelected: Boolean,
+    isActionInProgress: Boolean,
     onClick: () -> Unit,
     onRemove: (() -> Unit)?,
     modifier: Modifier = Modifier
@@ -473,8 +489,9 @@ private fun PartySlotCard(
             )
             .clip(RoundedCornerShape(16.dp))
             .combinedClickable(
+                enabled = !isActionInProgress,
                 onClick = onClick,
-                onLongClick = { onRemove?.invoke() }
+                onLongClick = { if (!isActionInProgress) onRemove?.invoke() }
             ),
         color = bgColor,
         shape = RoundedCornerShape(16.dp),
@@ -582,6 +599,7 @@ private fun SlotSelectionBanner(slotPosition: Int, onCancel: () -> Unit) {
 private fun CharacterListSection(
     characters: List<UserCharacter>,
     selectedSlot: Int?,
+    isActionInProgress: Boolean,
     onCharacterClick: (String) -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -605,6 +623,7 @@ private fun CharacterListSection(
                     CharacterGridCard(
                         character = char,
                         isSelecting = selectedSlot != null,
+                        isActionInProgress = isActionInProgress,
                         onClick = { onCharacterClick(char.id) },
                         modifier = Modifier.weight(1f)
                     )
@@ -623,6 +642,7 @@ private fun CharacterListSection(
 private fun CharacterGridCard(
     character: UserCharacter,
     isSelecting: Boolean,
+    isActionInProgress: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -632,7 +652,7 @@ private fun CharacterGridCard(
         modifier = modifier
             .aspectRatio(0.78f)
             .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick),
+            .clickable(enabled = !isActionInProgress, onClick = onClick),
         color = CardWhite,
         shape = RoundedCornerShape(16.dp),
         shadowElevation = 4.dp
@@ -734,6 +754,7 @@ private fun CharacterDetailScreen(
     character: UserCharacter,
     weapon: org.example.project.domain.model.UserWeapon?,
     weapons: List<org.example.project.domain.model.UserWeapon>,
+    isActionInProgress: Boolean,
     onDismiss: () -> Unit,
     onEquipWeapon: (String?) -> Unit,
     onLevelUpCharacter: () -> Unit,
@@ -775,6 +796,7 @@ private fun CharacterDetailScreen(
                     WeaponPickerContent(
                         weapons = weapons,
                         equippedWeaponId = character.equippedWeaponId,
+                        isActionInProgress = isActionInProgress,
                         onSelect = { weaponId ->
                             onEquipWeapon(weaponId)
                             pickingWeapon = false
@@ -893,7 +915,10 @@ private fun CharacterDetailScreen(
                         ) {
                             Text("装備中の武器", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                             if (weapons.isNotEmpty()) {
-                                TextButton(onClick = { pickingWeapon = true }) {
+                                TextButton(
+                                    onClick = { pickingWeapon = true },
+                                    enabled = !isActionInProgress
+                                ) {
                                     Text("変更", fontWeight = FontWeight.Bold)
                                 }
                             }
@@ -961,6 +986,7 @@ private fun CharacterDetailScreen(
 
                 Button(
                     onClick = onLevelUpCharacter,
+                    enabled = !isActionInProgress,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
@@ -977,6 +1003,7 @@ private fun CharacterDetailScreen(
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedButton(
                         onClick = { onLevelUpWeapon(equipped.id) },
+                        enabled = !isActionInProgress,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
@@ -1003,6 +1030,7 @@ private fun CharacterDetailScreen(
 private fun WeaponPickerContent(
     weapons: List<org.example.project.domain.model.UserWeapon>,
     equippedWeaponId: String?,
+    isActionInProgress: Boolean,
     onSelect: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1011,7 +1039,11 @@ private fun WeaponPickerContent(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
     ) {
-        TextButton(onClick = { onSelect(null) }, modifier = Modifier.fillMaxWidth()) {
+        TextButton(
+            onClick = { onSelect(null) },
+            enabled = !isActionInProgress,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("装備を外す", fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -1022,7 +1054,7 @@ private fun WeaponPickerContent(
             items(weapons, key = { it.id }) { w ->
                 val selected = w.id == equippedWeaponId
                 Surface(
-                    onClick = { onSelect(w.id) },
+                    onClick = { if (!isActionInProgress) onSelect(w.id) },
                     shape = RoundedCornerShape(14.dp),
                     color = if (selected) AccentBlue.copy(alpha = 0.18f) else BgSurface,
                     border = BorderStroke(
