@@ -10,6 +10,7 @@ import io.ktor.client.request.setBody
 import org.example.project.core.network.ApiRoutes
 import org.example.project.core.network.ErrorMessage
 import org.example.project.core.network.NetworkResult
+import org.example.project.core.network.isDeviceOnline
 import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.dto.PartyResponse
 import org.example.project.data.remote.dto.PartySlotResponse
@@ -55,6 +56,9 @@ class PartyGateway(private val client: HttpClient) {
 
     private fun toNetworkError(e: Throwable): NetworkResult.Error {
         val statusCode = (e as? ClientRequestException)?.response?.status?.value
-        return NetworkResult.Error(code = statusCode, message = ErrorMessage.classify(statusCode, e))
+        return NetworkResult.Error(
+            code = statusCode,
+            message = ErrorMessage.classify(statusCode, e, isDeviceOnline())
+        )
     }
 }
