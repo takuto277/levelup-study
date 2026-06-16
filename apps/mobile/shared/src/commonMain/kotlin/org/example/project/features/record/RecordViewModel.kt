@@ -79,9 +79,9 @@ class RecordViewModel(
                 allSessions = data.sessions
                 genreMap = buildGenreMap(data.genres)
 
-                // 累計はセッションの合計秒数から計算（一貫性のため）
-                val totalSeconds = allSessions.sumOf { it.durationSeconds.toLong() }
-                val totalMinutes = (totalSeconds / 60).toInt()
+                // 累計はユーザー情報の totalStudySeconds を優先し、セッション切り詰めの影響を受けないようにする
+                val totalMinutes = (data.user.totalStudySeconds / 60).toInt()
+                    .coerceAtLeast(allSessions.sumOf { it.durationSeconds / 60 })
                 val streakDays = calculateStreakDays(allSessions)
                 val todayCount = countTodaySessions(allSessions)
                 val availableMonths = buildAvailableMonths(allSessions)
