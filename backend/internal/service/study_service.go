@@ -55,6 +55,7 @@ type StudyService struct {
 	charRepo    *repository.CharacterRepository
 	partyRepo   *repository.PartyRepository
 	dungeonRepo *repository.DungeonProgressRepository
+	goalRepo    *repository.GoalRepository
 }
 
 func NewStudyService(
@@ -64,6 +65,7 @@ func NewStudyService(
 	charRepo *repository.CharacterRepository,
 	partyRepo *repository.PartyRepository,
 	dungeonRepo *repository.DungeonProgressRepository,
+	goalRepo *repository.GoalRepository,
 ) *StudyService {
 	return &StudyService{
 		db:          db,
@@ -72,6 +74,7 @@ func NewStudyService(
 		charRepo:    charRepo,
 		partyRepo:   partyRepo,
 		dungeonRepo: dungeonRepo,
+		goalRepo:    goalRepo,
 	}
 }
 
@@ -146,6 +149,13 @@ func (s *StudyService) CompleteStudy(userID uuid.UUID, req CompleteStudyRequest)
 		// --- 6. ダンジョンステージ進行 ---
 		if err := s.advanceStudyDungeon(tx, userID, dungeonID, req.DurationSeconds); err != nil {
 			return fmt.Errorf("ダンジョン進行に失敗: %w", err)
+		}
+
+		// 目標進捗を更新
+		if s.goalRepo != nil {
+			if err := s.updateGoalProgress(tx, userID, req); err != nil {
+				return fmt.Errorf("目標進捗更新に失敗: %w", err)
+			}
 		}
 
 		return nil
@@ -372,4 +382,34 @@ func applyStudyExperience(tx *gorm.DB, charRepo *repository.CharacterRepository,
 		lvl++
 	}
 	return charRepo.UpdateLevelAndXP(tx, userCharID, lvl, xp)
+}
+
+func (s *StudyService) updateGoalProgress(tx *gorm.DB, userID uuid.UUID, req CompleteStudyRequest) error {
+	activeGoals, err := s.goalRepo.ListActiveByUser(userID)
+	if err != nil || len(activeGoals) == 0 {
+		return nil
+	}
+	for _, goal := range activeGoals {
+		var increment int
+		switch goal.GoalType {
+		case "pomodoro_count":
+			if req.IsCompleted {
+				increment = 1
+			}
+		case "study_minutes":
+			increment = req.DurationSeconds / 60
+		case "genre_study_minutes":
+			if goal.GenreID != nil && req.GenreID != nil && *goal.GenreID == *req.GenreID {
+				increment = req.DurationSeconds / 60
+			}
+		}
+		if increment > 0 {
+			newValue := goal.CurrentValue + increment
+			isCompleted := newValue >= goal.TargetValue
+			if err := s.goalRepo.UpdateProgressTx(tx, goal.ID, newValue, isCompleted); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
