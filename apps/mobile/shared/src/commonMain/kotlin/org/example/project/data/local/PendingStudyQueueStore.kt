@@ -42,13 +42,13 @@ class PendingStudyQueueStore(
         else kv.putString(key, json.encodeToString(ListSerializer(PendingStudyCompletion.serializer()), next))
     }
 
-    fun updateStatus(localId: String, status: String, error: String? = null) {
+    fun updateStatus(localId: String, status: String, error: String? = null, retryCount: Int? = null) {
         val items = readAll().toMutableList()
         val idx = items.indexOfFirst { it.localId == localId }
         if (idx == -1) return
         val old = items[idx]
         val attemptAt = kotlinx.datetime.Clock.System.now().toString()
-        val retries = if (status == SyncStatus.FAILED) old.retryCount + 1 else old.retryCount
+        val retries = retryCount ?: if (status == SyncStatus.FAILED) old.retryCount + 1 else old.retryCount
         items[idx] = old.copy(
             syncStatus = status,
             retryCount = retries,

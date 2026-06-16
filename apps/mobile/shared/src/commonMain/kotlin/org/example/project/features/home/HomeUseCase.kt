@@ -50,14 +50,19 @@ class HomeUseCase(
             if (dungeonId != null) {
                 val dungeons = dungeonRepository.getDungeons()
                 val d = dungeons.find { it.id == dungeonId }
-                // 背景は同梱の bg_dungeon_* のみ（サーバー image_url は表示に使わない）
                 val name = d?.name ?: QuestUseCase.bundledDisplayNameForDungeonId(dungeonId)
-                Pair(name, null)
+                // サーバー image_url を優先し、取得できなければ同梱画像を fallback する
+                val imageUrl = d?.imageUrl?.takeIf { it.isNotBlank() }
+                    ?: QuestUseCase.bundledImageUrlForDungeonId(dungeonId)
+                Pair(name, imageUrl)
             } else Pair(null, null)
         } catch (_: Exception) {
             val dungeonId = user.selectedDungeonId
             if (dungeonId != null) {
-                Pair(QuestUseCase.bundledDisplayNameForDungeonId(dungeonId), null)
+                Pair(
+                    QuestUseCase.bundledDisplayNameForDungeonId(dungeonId),
+                    QuestUseCase.bundledImageUrlForDungeonId(dungeonId)
+                )
             } else Pair(null, null)
         }
 

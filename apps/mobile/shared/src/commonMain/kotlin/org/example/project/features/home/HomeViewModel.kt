@@ -122,7 +122,7 @@ class HomeViewModel(
                     Triple(
                         mid,
                         resolvedName,
-                        // ホームデータ側の方針（同梱背景）に合わせ、前回のリモート URL は引き継がない
+                        // サーバー image_url を優先し、取得失敗時は同梱画像 URL が入る
                         data.selectedDungeonImageUrl
                     )
                 }

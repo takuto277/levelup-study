@@ -49,11 +49,12 @@ func (r *GachaRepository) ListByUser(userID uuid.UUID, limit, offset int) ([]mod
 }
 
 // ListByBanner — バナー別のガチャ履歴を取得する
-func (r *GachaRepository) ListByBanner(userID, bannerID uuid.UUID) ([]model.GachaHistory, error) {
+func (r *GachaRepository) ListByBanner(userID, bannerID uuid.UUID, limit, offset int) ([]model.GachaHistory, error) {
 	var list []model.GachaHistory
 	err := r.db.
 		Where("user_id = ? AND banner_id = ?", userID, bannerID).
 		Order("pity_count ASC").
+		Limit(limit).Offset(offset).
 		Find(&list).Error
 	return list, err
 }
