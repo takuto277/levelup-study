@@ -74,11 +74,10 @@ class PartyViewModel(
         viewModelScope.launch {
             try {
                 partyUseCase.assignCharacterToSlot(slotPosition, userCharacterId)
+                _uiState.update { it.copy(isMutating = false) }
                 loadPartyData()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: "キャラクターの配置に失敗しました") }
-            } finally {
-                _uiState.update { it.copy(isMutating = false) }
+                _uiState.update { it.copy(isMutating = false, error = e.message ?: "キャラクターの配置に失敗しました") }
             }
         }
     }
@@ -89,11 +88,10 @@ class PartyViewModel(
         viewModelScope.launch {
             try {
                 partyUseCase.removeFromSlot(slotPosition)
+                _uiState.update { it.copy(isMutating = false) }
                 loadPartyData()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: "スロット解除に失敗しました") }
-            } finally {
-                _uiState.update { it.copy(isMutating = false) }
+                _uiState.update { it.copy(isMutating = false, error = e.message ?: "スロット解除に失敗しました") }
             }
         }
     }
