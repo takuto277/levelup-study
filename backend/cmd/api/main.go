@@ -75,9 +75,10 @@ func main() {
 	dungeonRepo := repository.NewDungeonProgressRepository(db)
 	gachaRepo := repository.NewGachaRepository(db)
 	masterRepo := repository.NewMasterRepository(db)
+	goalRepo := repository.NewGoalRepository(db)
 
 	// --- Service 初期化 ---
-	studyService := service.NewStudyService(db, userRepo, studyRepo, charRepo, partyRepo, dungeonRepo)
+	studyService := service.NewStudyService(db, userRepo, studyRepo, charRepo, partyRepo, dungeonRepo, goalRepo)
 	gachaService := service.NewGachaService(db, userRepo, gachaRepo, masterRepo, charRepo, weaponRepo, costumeRepo)
 
 	// --- Handler 初期化 ---
@@ -86,6 +87,7 @@ func main() {
 	gameH := handler.NewGameHandler(db, userRepo, charRepo, weaponRepo, partyRepo, dungeonRepo, costumeRepo, masterRepo)
 	gachaH := handler.NewGachaHandler(gachaService, gachaRepo, costumeRepo)
 	masterH := handler.NewMasterHandler(masterRepo)
+	goalH := handler.NewGoalHandler(db, goalRepo, userRepo)
 
 	// --- セキュリティ設定 ---
 	sec := router.SecurityConfig{
@@ -97,7 +99,7 @@ func main() {
 	}
 
 	// --- ルーター構築 ---
-	r := router.NewRouter(sec, userH, studyH, gameH, gachaH, masterH)
+	r := router.NewRouter(sec, userH, studyH, gameH, gachaH, masterH, goalH)
 
 	// --- サーバー起動 ---
 	port := os.Getenv("PORT")

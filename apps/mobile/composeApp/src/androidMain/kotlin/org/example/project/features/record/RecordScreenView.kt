@@ -113,6 +113,10 @@ fun RecordScreenView() {
     val viewModel = remember { org.example.project.di.getRecordViewModel() }
     val uiState by viewModel.uiState.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.onIntent(RecordIntent.Refresh)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

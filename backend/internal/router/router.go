@@ -62,6 +62,12 @@ type SecurityConfig struct {
 //   GET    /api/v1/users/{userID}/costumes             所持衣装一覧
 //   POST   /api/v1/users/{userID}/costumes/buy         衣装購入
 //
+// [目標]
+//   GET    /api/v1/users/{userID}/goals                 目標一覧
+//   POST   /api/v1/users/{userID}/goals                 目標作成
+//   DELETE /api/v1/users/{userID}/goals/{goalID}        目標削除
+//   POST   /api/v1/users/{userID}/goals/{goalID}/claim  報酬受け取り
+//
 // [マスタデータ]
 //   GET    /api/v1/master/characters                   キャラマスタ
 //   GET    /api/v1/master/weapons                      武器マスタ
@@ -80,6 +86,7 @@ func NewRouter(
 	gameH *handler.GameHandler,
 	gachaH *handler.GachaHandler,
 	masterH *handler.MasterHandler,
+	goalH *handler.GoalHandler,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -171,6 +178,12 @@ func NewRouter(
 			// 衣装
 			r.Get("/costumes", gameH.ListCostumes)
 			r.Post("/costumes/buy", gameH.BuyCostume)
+
+			// 目標
+			r.Get("/goals", goalH.ListGoals)
+			r.Post("/goals", goalH.CreateGoal)
+			r.Delete("/goals/{goalID}", goalH.DeleteGoal)
+			r.Post("/goals/{goalID}/claim", goalH.ClaimGoalReward)
 			})
 		})
 

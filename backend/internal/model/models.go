@@ -32,6 +32,7 @@ type User struct {
 	Gold              int        `gorm:"not null;default:0"                              json:"gold"`
 	Level             int        `gorm:"not null;default:1"                              json:"level"`
 	CurrentXP         int        `gorm:"not null;default:0"                              json:"current_xp"`
+	StudyStreak       int        `gorm:"not null;default:0"                              json:"study_streak"`
 	SelectedDungeonID *uuid.UUID `gorm:"type:uuid"                                       json:"selected_dungeon_id"`
 	CreatedAt         time.Time  `gorm:"autoCreateTime"                                  json:"created_at"`
 	UpdatedAt         time.Time  `gorm:"autoUpdateTime"                                  json:"updated_at"`
@@ -394,6 +395,30 @@ type GachaHistory struct {
 func (gh *GachaHistory) BeforeCreate(tx *gorm.DB) error { ensureUUID(&gh.ID); return nil }
 
 // ============================================================
+// user_goals — ユーザー定義の勉強目標
+// 達成したら石・ゴールド報酬を受け取れる。進捗は勉強セッション完了時に自動更新。
+// ============================================================
+
+type UserGoal struct {
+	ID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	UserID       uuid.UUID  `gorm:"type:uuid;not null;index" json:"user_id"`
+	GoalType     string     `gorm:"type:varchar(30);not null" json:"goal_type"`
+	Period       string     `gorm:"type:varchar(10);not null" json:"period"`
+	TargetValue  int        `gorm:"not null" json:"target_value"`
+	GenreID      *uuid.UUID `gorm:"type:uuid" json:"genre_id"`
+	RewardStones int        `gorm:"not null;default:0" json:"reward_stones"`
+	RewardGold   int        `gorm:"not null;default:0" json:"reward_gold"`
+	CurrentValue int        `gorm:"not null;default:0" json:"current_value"`
+	IsCompleted  bool       `gorm:"not null;default:false" json:"is_completed"`
+	IsClaimed    bool       `gorm:"not null;default:false" json:"is_claimed"`
+	CompletedAt  *time.Time `gorm:"" json:"completed_at"`
+	CreatedAt    time.Time  `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt    time.Time  `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+func (g *UserGoal) BeforeCreate(tx *gorm.DB) error { ensureUUID(&g.ID); return nil }
+
+// ============================================================
 // AllModels — マイグレーション対象の全モデルリスト
 // ============================================================
 
@@ -418,5 +443,6 @@ func AllModels() []interface{} {
 		&GachaHistory{},
 		&MasterCostume{},
 		&UserCostume{},
+		&UserGoal{},
 	}
 }
