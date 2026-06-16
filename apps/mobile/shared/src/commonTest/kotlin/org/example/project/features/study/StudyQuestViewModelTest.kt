@@ -110,8 +110,17 @@ class StudyQuestViewModelTest {
 
     @Test
     fun `StartQuest before party load is deferred and uses loaded playerMaxHp`() = runBlocking {
-        val mockRepo = createMockPartyRepo()
-        val vm = StudyQuestViewModel(partyRepository = mockRepo)
+        // getParty() を遅延させ、isPartyLoading=true の状態を安定的に保証する
+        val delayedRepo = object : PartyRepository {
+            override suspend fun getParty(): Party {
+                delay(500)
+                return createMockPartyRepo().getParty()
+            }
+            override suspend fun updateSlot(slotPosition: Int, userCharacterId: String): PartySlot =
+                error("not used")
+            override suspend fun removeFromSlot(slotPosition: Int) = error("not used")
+        }
+        val vm = StudyQuestViewModel(partyRepository = delayedRepo)
         // 読み込み完了前に StartQuest を発行
         assertEquals(true, vm.uiState.value.isPartyLoading)
         vm.onIntent(StudyQuestIntent.StartQuest(studyMinutes = 25, genreId = null))
