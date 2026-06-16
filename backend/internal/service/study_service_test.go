@@ -67,20 +67,22 @@ func TestCompleteStudyGrantsDailyBonusOnlyWhenCrossingTwoHours(t *testing.T) {
 	startedAt := time.Date(2026, 6, 4, 9, 0, 0, 0, time.UTC)
 
 	_, err := svc.CompleteStudy(userID, CompleteStudyRequest{
-		StartedAt:       startedAt,
-		EndedAt:         startedAt.Add(90 * time.Minute),
-		DurationSeconds: 90 * 60,
-		IsCompleted:     true,
+		StartedAt:            startedAt,
+		EndedAt:              startedAt.Add(90 * time.Minute),
+		DurationSeconds:      90 * 60,
+		DifficultyMultiplier: 1.0,
+		IsCompleted:          true,
 	})
 	if err != nil {
 		t.Fatalf("first CompleteStudy failed: %v", err)
 	}
 
 	resp, err := svc.CompleteStudy(userID, CompleteStudyRequest{
-		StartedAt:       startedAt.Add(2 * time.Hour),
-		EndedAt:         startedAt.Add(2*time.Hour + 30*time.Minute),
-		DurationSeconds: 30 * 60,
-		IsCompleted:     true,
+		StartedAt:            startedAt.Add(2 * time.Hour),
+		EndedAt:              startedAt.Add(2*time.Hour + 30*time.Minute),
+		DurationSeconds:      30 * 60,
+		DifficultyMultiplier: 1.0,
+		IsCompleted:          true,
 	})
 	if err != nil {
 		t.Fatalf("second CompleteStudy failed: %v", err)
@@ -92,10 +94,11 @@ func TestCompleteStudyGrantsDailyBonusOnlyWhenCrossingTwoHours(t *testing.T) {
 	}
 
 	resp, err = svc.CompleteStudy(userID, CompleteStudyRequest{
-		StartedAt:       startedAt.Add(3 * time.Hour),
-		EndedAt:         startedAt.Add(3*time.Hour + 10*time.Minute),
-		DurationSeconds: 10 * 60,
-		IsCompleted:     true,
+		StartedAt:            startedAt.Add(3 * time.Hour),
+		EndedAt:              startedAt.Add(3*time.Hour + 10*time.Minute),
+		DurationSeconds:      10 * 60,
+		DifficultyMultiplier: 1.0,
+		IsCompleted:          true,
 	})
 	if err != nil {
 		t.Fatalf("third CompleteStudy failed: %v", err)
@@ -115,11 +118,12 @@ func TestCompleteStudyStoresGenreIDFromCategoryUUIDForCompatibility(t *testing.T
 	startedAt := time.Date(2026, 6, 4, 9, 0, 0, 0, time.UTC)
 
 	resp, err := svc.CompleteStudy(userID, CompleteStudyRequest{
-		StartedAt:       startedAt,
-		EndedAt:         startedAt.Add(10 * time.Minute),
-		DurationSeconds: 10 * 60,
-		Category:        &category,
-		IsCompleted:     true,
+		StartedAt:            startedAt,
+		EndedAt:              startedAt.Add(10 * time.Minute),
+		DurationSeconds:      10 * 60,
+		Category:             &category,
+		DifficultyMultiplier: 1.0,
+		IsCompleted:          true,
 	})
 	if err != nil {
 		t.Fatalf("CompleteStudy failed: %v", err)
@@ -230,10 +234,11 @@ func TestCompleteStudyAdvancesSelectedDungeonProgress(t *testing.T) {
 	startedAt := time.Date(2026, 6, 4, 9, 0, 0, 0, time.UTC)
 
 	resp, err := svc.CompleteStudy(userID, CompleteStudyRequest{
-		StartedAt:       startedAt,
-		EndedAt:         startedAt.Add(20 * time.Minute),
-		DurationSeconds: 20 * 60,
-		IsCompleted:     true,
+		StartedAt:            startedAt,
+		EndedAt:              startedAt.Add(20 * time.Minute),
+		DurationSeconds:      20 * 60,
+		DifficultyMultiplier: 1.0,
+		IsCompleted:          true,
 	})
 	if err != nil {
 		t.Fatalf("CompleteStudy failed: %v", err)
