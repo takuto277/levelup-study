@@ -174,11 +174,10 @@ func NewRouter(
 			r.Get("/genres", masterH.ListStudyGenres)
 		})
 
-		// マスタ書き込み（JWT 必須 — API Key のみでは変更不可）
+		// マスタ書き込み（admin ロール必須）
 		r.Group(func(r chi.Router) {
-			if !sec.DevMode {
-				r.Use(mw.JWTAuth(sec.JWTSecret))
-			}
+			r.Use(mw.JWTAuth(sec.JWTSecret))
+			r.Use(mw.RequireAdminRole)
 			r.Post("/master/genres", masterH.CreateStudyGenre)
 			r.Delete("/master/genres/{genreID}", masterH.DeleteStudyGenre)
 		})

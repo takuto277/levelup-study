@@ -40,6 +40,7 @@ fun HomeScreenView(
         StudyQuestScreenView(
             initialStudyMinutes = studyMinutes.coerceIn(1, 60),
             genreId = selectedGenreSlug,
+            dungeonId = homeState.selectedDungeonId,
             dungeonName = homeState.adventureDungeonDisplayName,
             dungeonImageUrl = if (homeState.isTrainingStudySession) null else homeState.selectedDungeonImageUrl,
             isTrainingGround = homeState.isTrainingStudySession,
