@@ -101,7 +101,7 @@ fun QuestScreenView() {
                     org.example.project.features.home.HomeIntent.SelectDungeon(
                         id = pick.id,
                         name = pick.name,
-                        imageUrl = null
+                        imageUrl = pick.imageUrl
                     )
                 )
             }
@@ -157,7 +157,7 @@ fun QuestScreenView() {
                         org.example.project.features.home.HomeIntent.SelectDungeon(
                             id = dungeon.id,
                             name = dungeon.name,
-                            imageUrl = null
+                            imageUrl = dungeon.imageUrl
                         )
                     )
                     viewModel.onIntent(QuestIntent.DismissDetail)
