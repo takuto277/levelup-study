@@ -2,7 +2,7 @@ package org.example.project.core.storage
 
 import platform.Foundation.NSUserDefaults
 
-actual class KeyValueStore actual constructor() {
+actual class KeyValueStore actual constructor() : KeyValueStorage {
     private val defaults = NSUserDefaults.standardUserDefaults
 
     actual fun getString(key: String): String? =

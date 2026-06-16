@@ -12,7 +12,7 @@ fun initKeyValueStore(context: Context) {
 /** Connectivity など共有モジュールから参照 */
 internal fun requireAndroidAppContext(): Context = appContext
 
-actual class KeyValueStore actual constructor() {
+actual class KeyValueStore actual constructor() : KeyValueStorage {
     private val prefs: SharedPreferences by lazy {
         appContext.getSharedPreferences("levelup_prefs", Context.MODE_PRIVATE)
     }

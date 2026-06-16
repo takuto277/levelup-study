@@ -1,11 +1,13 @@
 package org.example.project.core.storage
 
-expect class KeyValueStore() {
+interface KeyValueStorage {
     fun getString(key: String): String?
     fun putString(key: String, value: String)
     fun remove(key: String)
     fun clear()
 }
+
+expect class KeyValueStore() : KeyValueStorage
 
 fun KeyValueStore.isOnboardingDone(): Boolean = getString(ONBOARDING_DONE_KEY) == "true"
 
