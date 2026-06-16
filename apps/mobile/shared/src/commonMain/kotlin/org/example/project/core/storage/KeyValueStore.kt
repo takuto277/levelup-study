@@ -7,7 +7,12 @@ interface KeyValueStorage {
     fun clear()
 }
 
-expect class KeyValueStore() : KeyValueStorage
+expect class KeyValueStore() : KeyValueStorage {
+    override fun getString(key: String): String?
+    override fun putString(key: String, value: String)
+    override fun remove(key: String)
+    override fun clear()
+}
 
 fun KeyValueStore.isOnboardingDone(): Boolean = getString(ONBOARDING_DONE_KEY) == "true"
 
