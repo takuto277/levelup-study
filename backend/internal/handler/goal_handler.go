@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -132,11 +133,14 @@ func (h *GoalHandler) ClaimGoalReward(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "目標はまだ達成されていません")
 		return
 	}
-	if goal.IsClaimed {
-		respondError(w, http.StatusBadRequest, "報酬はすでに受け取り済みです")
-		return
-	}
 	err = h.db.Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&model.UserGoal{}).Where("id = ? AND is_claimed = false", goalID).Update("is_claimed", true)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return fmt.Errorf("報酬はすでに受け取り済みです")
+		}
 		if goal.RewardStones > 0 {
 			if err := tx.Model(&model.User{}).Where("id = ?", userID).Update("stones", gorm.Expr("stones + ?", goal.RewardStones)).Error; err != nil {
 				return err
@@ -147,13 +151,17 @@ func (h *GoalHandler) ClaimGoalReward(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 		}
-		goal.IsClaimed = true
-		return tx.Save(goal).Error
+		return nil
 	})
 	if err != nil {
+		if err.Error() == "報酬はすでに受け取り済みです" {
+			respondError(w, http.StatusBadRequest, "報酬はすでに受け取り済みです")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, "報酬受け取りに失敗しました")
 		return
 	}
+	goal.IsClaimed = true
 	respondJSON(w, http.StatusOK, goal)
 }
 
