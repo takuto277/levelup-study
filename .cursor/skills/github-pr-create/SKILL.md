@@ -144,6 +144,7 @@ gh pr view "$BRANCH" --json title,body,url
 - バッククォート、`$()`、引用符、改行を含む本文はシェルに解釈されるため、`--body "..."`、`--field body="$(cat "$FILE")"`、未クォートの heredoc を使わない
 - `gh api` で本文を渡す場合は `--field body=@"$FILE"` のようにファイル参照で渡す
 - 作成後は `gh pr view --json title,body,url` でタイトル・本文・URL を確認する
+- 作成後は github-pr-review の `review-state-labels.md` に従い、`PRレビュー/再レビュー待ち` を付け、他の PR レビュー状態ラベルを外す
 - **作成直後に [github-pr-self-review](../github-pr-self-review/SKILL.md) を必ず実行**（完了報告の前）
 
 ## LevelUp Study 向け

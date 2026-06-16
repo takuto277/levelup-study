@@ -33,8 +33,8 @@
 - `unknown` の指摘は、判断できなかった理由をチャットで報告し、判断できないまま Resolve しない。
 - すべての指摘が `resolved` の場合は、返信できるスレッドをすべて返信済みかつ Resolve 済みにする。
 - コメント返信や Resolve ができない指摘がある場合は、overall comment で再チェック完了と対象指摘の状態を伝える。
-- すべての未解決指摘が解消済みで、新しい指摘コメントが 0 件の場合は、`review-ok-label.md` に従って `review:まーじOK` を付与する。
-- `partial` / `unresolved` / `unknown` が 1 件以上ある場合は、`review-ok-label.md` に従って `review:まーじOK` を外す。
+- すべての未解決指摘が解消済みで、新しい指摘コメントが 0 件の場合は、`review-state-labels.md` に従って `review:まーじOK` を付与し、他のレビュー状態ラベルを外す。
+- `partial` / `unresolved` / `unknown` が 1 件以上ある場合は、`review-state-labels.md` に従って `PRレビュー修正待ち` を付与し、他のレビュー状態ラベルを外す。
 - 返信・追加コメントにも AI エージェント識別メタ情報を欠けなく付け、`references/posting-rules.md` の再チェック用フォーマットに従う。
 - `unknown` を overall comment に含めるのは、PR 上で対応履歴を残す必要がある場合、または同じ PR 上で他の再チェック結果を overall comment で報告する場合に限る。チャット報告で十分な場合は投稿しない。
 
@@ -51,5 +51,5 @@
 - Resolve した件数。
 - overall comment で代替した件数。
 - 未解決の有無。
-- `review:まーじOK` ラベルの付与・除去・未更新。
+- PR レビュー状態ラベルの付与・除去・未更新。
 - 判断不能がある場合は、その理由。

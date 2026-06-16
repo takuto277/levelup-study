@@ -30,7 +30,7 @@ LevelUp 固有設定: [LEVELUP.md](./LEVELUP.md)
 | [github-pr-create](github-pr-create/SKILL.md) | PR 本文生成を含めて GitHub に PR を作成する |
 | [github-pr-self-review](github-pr-self-review/SKILL.md) | PR 作成直後に必須のセルフレビュー（完了報告前） |
 | [github-pr-feedback-address](github-pr-feedback-address/SKILL.md) | GitHub PR のレビュー指摘を確認し、実装対応から返信まで行う |
-| [github-pr-review](github-pr-review/SKILL.md) | `@codex #123 のPRレビューして` のような依頼で指定PRをレビューし、指摘なしコメント・FB対応後の再チェック・`review:まーじOK` ラベル更新まで行う |
+| [github-pr-review](github-pr-review/SKILL.md) | `@codex #123 のPRレビューして` のような依頼で指定PRをレビューし、指摘コメント・再チェック・PRレビュー状態ラベル更新まで行う |
 | [github-pr-comment-reply](github-pr-comment-reply/SKILL.md) | GitHub PR の review comment や conversation comment に返信する |
 
 ### 実装

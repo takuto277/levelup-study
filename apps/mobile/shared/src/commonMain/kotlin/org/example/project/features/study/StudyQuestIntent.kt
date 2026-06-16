@@ -10,6 +10,7 @@ sealed interface StudyQuestIntent {
         val studyMinutes: Int,
         val genreId: String? = null,
         val dungeonName: String? = null,
+        val dungeonId: String? = null,
         val isTrainingGround: Boolean = false,
         val dungeonImageUrl: String? = null
     ) : StudyQuestIntent

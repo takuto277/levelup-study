@@ -88,6 +88,7 @@ struct QuestScreenView: View {
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 14) {
+                        TutorialHintBanner(topic: "quest_select", emoji: "\u{1F5FA}\u{FE0F}", message: "ダンジョンを選ぶと勉強中の冒険先が決まるよ！")
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("冒 険").font(.system(size: 28, weight: .black)).foregroundColor(textW)

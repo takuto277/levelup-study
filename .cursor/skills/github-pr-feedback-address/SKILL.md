@@ -30,6 +30,7 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 - 必要な検証結果
 - 対応コミットと push 済みブランチ
 - 対応した feedback コメントへの返信
+- **PR への修正サマリコメント** と ラベル更新（指示がなくても必須）
 - ユーザーへの簡潔な報告
   - 対応した指摘
   - 対応しなかった指摘と理由
@@ -55,7 +56,9 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 6. 変更を確認し、対応内容だけを commit する。
 7. ブランチを push する。
 8. 対応した feedback コメントへ返信する。
-9. 対応結果を報告する。
+9. PR に修正サマリを投稿する（必須、指示がなくても実施）。
+10. PR ラベルを「PRレビュー/再レビュー待ち」に更新する。
+11. 対応結果を報告する。
 
 # ステップの詳細
 
@@ -132,24 +135,41 @@ GitHub PR に付いた review comments / conversation comments を確認し、�
 - 返信対象と投稿方法は `github-pr-comment-reply/SKILL.md` の方針に従う。
 - review thread の Resolve と Approve は行わない。
 
-## 9. 報告する
+## 8b. PR に修正サマリを投稿する（必須）
+
+- 全ての feedback 対応が完了した後、**必ず** PR に修正内容のサマリコメントを投稿する。
+- この手順はユーザーから明示的な指示がなくても必ず実施する。
+- サマリコメントには以下を含める:
+  - 対応した commit hash
+  - 各指摘に対する修正内容の概要（何をどう変えたか）
+  - 対応する review comment へのリンク
+- 投稿には `gh api repos/{owner}/{repo}/issues/{number}/comments` を使う（review comment の threaded reply とは別の、PR 全体に対するコメント）。
+
+## 9. PRレビュー状態ラベルを更新する
+
+- actionable な feedback へ commit / push / 返信まで完了した場合は、`PRレビュー/再レビュー待ち` を付ける。
+- 同時に `PRレビュー修正待ち` と `review:まーじOK` は外す。
+- 対応できない feedback が残る場合は `PRレビュー修正待ち` を維持する。
+- ラベル操作に失敗しても feedback 対応は巻き戻さず、最終報告でラベル未更新と理由を伝える。
+- ラベル更新コマンド: `gh pr edit $PR --remove-label "PRレビュー修正待ち" --add-label "PRレビュー/再レビュー待ち"`
+
+## 10. 報告する
 
 - 対応した feedback を簡潔に列挙する。
 - 未対応、判断不能、質問が必要な feedback があれば理由を添える。
 - 実行した検証と結果を伝える。
 - commit hash と PR URL を伝える。
 - 返信したコメントを伝える。
+- PRレビュー状態ラベルをどう更新したかを伝える。
 - このスキル自身では review thread の Resolve と Approve を行わない。
 
 # 品質チェック
 
-- `description` を読むだけで、「PRのFBおねがい」「PRのコメントみて」で発火すべきことが分かる
-- PR URL/番号がなくても現在ブランチから PR を特定する手順がある
-- review feedback の収集、分類、実装、検証、commit、push、返信、報告までの流れがある
-- 無関係な変更を commit しないルールがある
-- 対応した feedback コメントへ返信するルールがある
-- Resolve / Approve をこのスキルで行わないルールがある
-- GitHub コネクタに依存せず `gh` / `gh api` の認証で進めるルールがある
+- `description` だけで発火条件が分かる
+- PR URL/番号がなくてもブランチから PR 特定可能
+- feedback の収集〜返信・ラベル更新までの全フローがある
+- 無関係変更の commit 禁止 / Resolve・Approve 禁止
+- `gh` CLI 優先、GitHub コネクタ非依存
 
 # 参考資料
 

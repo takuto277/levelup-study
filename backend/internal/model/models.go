@@ -30,6 +30,8 @@ type User struct {
 	TotalStudySeconds int64      `gorm:"not null;default:0"                              json:"total_study_seconds"`
 	Stones            int        `gorm:"not null;default:0"                              json:"stones"`
 	Gold              int        `gorm:"not null;default:0"                              json:"gold"`
+	Level             int        `gorm:"not null;default:1"                              json:"level"`
+	CurrentXP         int        `gorm:"not null;default:0"                              json:"current_xp"`
 	SelectedDungeonID *uuid.UUID `gorm:"type:uuid"                                       json:"selected_dungeon_id"`
 	CreatedAt         time.Time  `gorm:"autoCreateTime"                                  json:"created_at"`
 	UpdatedAt         time.Time  `gorm:"autoUpdateTime"                                  json:"updated_at"`
@@ -122,13 +124,20 @@ func (w *MasterWeapon) BeforeCreate(tx *gorm.DB) error { ensureUUID(&w.ID); retu
 // ============================================================
 
 type MasterDungeon struct {
-	ID              uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	Name            string    `gorm:"type:varchar(100);not null"                      json:"name"`
-	SortOrder       int       `gorm:"not null"                                       json:"sort_order"`
-	UnlockCondition *string   `gorm:"type:text"                                      json:"unlock_condition"` // JSON or 式
-	ImageURL        string    `gorm:"type:text;not null"                              json:"image_url"`
-	IsActive        bool      `gorm:"not null;default:true"                           json:"is_active"`
-	CreatedAt       time.Time `gorm:"autoCreateTime"                                  json:"created_at"`
+	ID                uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	Name              string    `gorm:"type:varchar(100);not null"                      json:"name"`
+	SortOrder         int       `gorm:"not null"                                       json:"sort_order"`
+	UnlockCondition   *string   `gorm:"type:text"                                      json:"unlock_condition"`
+	Description       *string   `gorm:"type:text"                                      json:"description"`
+	Difficulty        string    `gorm:"type:varchar(20);not null;default:beginner"      json:"difficulty"`
+	Category          string    `gorm:"type:varchar(30);not null;default:general"       json:"category"`
+	TotalStages       int       `gorm:"not null;default:1"                              json:"total_stages"`
+	RecommendedMinutes *int     `gorm:""                                                json:"recommended_minutes"`
+	IconEmoji         *string   `gorm:"type:varchar(10)"                                json:"icon_emoji"`
+	RewardSummary     *string   `gorm:"type:jsonb"                                      json:"reward_summary"`
+	ImageURL          string    `gorm:"type:text;not null"                              json:"image_url"`
+	IsActive          bool      `gorm:"not null;default:true"                           json:"is_active"`
+	CreatedAt         time.Time `gorm:"autoCreateTime"                                  json:"created_at"`
 
 	// リレーション
 	Stages []MasterDungeonStage `gorm:"foreignKey:DungeonID" json:"stages,omitempty"`
@@ -187,6 +196,7 @@ type MasterDungeonStage struct {
 	ID               uuid.UUID       `gorm:"type:uuid;primaryKey" json:"id"`
 	DungeonID        uuid.UUID       `gorm:"type:uuid;not null;index"                       json:"dungeon_id"`
 	StageNumber      int             `gorm:"not null"                                       json:"stage_number"`
+	StageName        *string         `gorm:"type:varchar(100)"                              json:"stage_name"`
 	RecommendedPower int             `gorm:"not null"                                       json:"recommended_power"` // 推奨戦力
 	EnemyComposition json.RawMessage `gorm:"type:jsonb;not null"                            json:"enemy_composition"` // 非推奨: 正は enemies
 	DropTable        json.RawMessage `gorm:"type:jsonb;not null"                            json:"drop_table"`        // [{item_id, rate}]
@@ -257,10 +267,11 @@ func (g *MasterStudyGenre) BeforeCreate(tx *gorm.DB) error { ensureUUID(&g.ID); 
 
 type UserCharacter struct {
 	ID               uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	UserID           uuid.UUID  `gorm:"type:uuid;not null;index"                       json:"user_id"`
-	CharacterID      uuid.UUID  `gorm:"type:uuid;not null"                             json:"character_id"` // → m_characters
+	UserID           uuid.UUID  `gorm:"type:uuid;not null;index;uniqueIndex:idx_user_character_owned" json:"user_id"`
+	CharacterID      uuid.UUID  `gorm:"type:uuid;not null;uniqueIndex:idx_user_character_owned"      json:"character_id"` // → m_characters
 	Level            int        `gorm:"not null;default:1"                              json:"level"`
 	CurrentXP        int        `gorm:"not null;default:0"                              json:"current_xp"`       // 次レベルまでの進捗XP（レベル帯ごとに必要量が増える）
+	BreakthroughLevel int       `gorm:"not null;default:0"                              json:"breakthrough_level"` // 凸数（最大6）
 	EquippedWeaponID *uuid.UUID `gorm:"type:uuid"                                     json:"equipped_weapon_id"` // → user_weapons（null = なし）
 	ObtainedAt       time.Time  `gorm:"not null"                                       json:"obtained_at"`
 
@@ -276,11 +287,12 @@ func (uc *UserCharacter) BeforeCreate(tx *gorm.DB) error { ensureUUID(&uc.ID); r
 // ============================================================
 
 type UserWeapon struct {
-	ID         uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	UserID     uuid.UUID `gorm:"type:uuid;not null;index"                       json:"user_id"`
-	WeaponID   uuid.UUID `gorm:"type:uuid;not null"                             json:"weapon_id"` // → m_weapons
-	Level      int       `gorm:"not null;default:1"                              json:"level"`
-	ObtainedAt time.Time `gorm:"not null"                                       json:"obtained_at"`
+	ID             uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	UserID         uuid.UUID `gorm:"type:uuid;not null;index;uniqueIndex:idx_user_weapon_owned" json:"user_id"`
+	WeaponID       uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_weapon_owned"      json:"weapon_id"` // → m_weapons
+	Level          int       `gorm:"not null;default:1"                              json:"level"`
+	RefinementLevel int      `gorm:"not null;default:0"                              json:"refinement_level"` // 精錬数（最大4）
+	ObtainedAt     time.Time `gorm:"not null"                                       json:"obtained_at"`
 
 	// リレーション
 	Weapon *MasterWeapon `gorm:"foreignKey:WeaponID" json:"weapon,omitempty"`
@@ -291,12 +303,19 @@ func (uw *UserWeapon) BeforeCreate(tx *gorm.DB) error { ensureUUID(&uw.ID); retu
 // ============================================================
 // user_party_slots — パーティ編成（スロット1〜4）
 // ============================================================
+// user_party_slots — パーティ編成スロット
+//
+// 移行: idx_user_char 追加時は既存重複を先に解消すること
+//   DELETE FROM user_party_slots WHERE id NOT IN (
+//     SELECT MIN(id) FROM user_party_slots GROUP BY user_id, user_character_id
+//   )
+// ============================================================
 
 type UserPartySlot struct {
 	ID              uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	UserID          uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_slot"   json:"user_id"`
+	UserID          uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_slot;uniqueIndex:idx_user_char" json:"user_id"`
 	SlotPosition    int       `gorm:"not null;uniqueIndex:idx_user_slot"             json:"slot_position"`     // 1〜4
-	UserCharacterID uuid.UUID `gorm:"type:uuid;not null"                             json:"user_character_id"` // → user_characters
+	UserCharacterID uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_char"   json:"user_character_id"` // → user_characters
 
 	// リレーション
 	UserCharacter *UserCharacter `gorm:"foreignKey:UserCharacterID" json:"user_character,omitempty"`
@@ -335,6 +354,7 @@ type GachaHistory struct {
 	ResultType   string    `gorm:"type:varchar(20);not null"                      json:"result_type"`    // character / weapon
 	ResultItemID uuid.UUID `gorm:"type:uuid;not null"                             json:"result_item_id"` // 排出されたマスタID
 	PityCount    int       `gorm:"not null"                                       json:"pity_count"`     // バナー内累計回数
+	IsNew        bool      `gorm:"not null;default:true"                           json:"is_new"`         // 新規入手か凸/精錬か
 	CreatedAt    time.Time `gorm:"autoCreateTime"                                 json:"created_at"`
 }
 

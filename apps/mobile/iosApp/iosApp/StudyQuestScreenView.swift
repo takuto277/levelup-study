@@ -598,6 +598,7 @@ struct StudyQuestScreenView: View {
     @Environment(\.dismiss) var dismiss
     let initialStudyMinutes: Int
     let genreId: String?
+    let dungeonId: String?
     let dungeonName: String?
     let dungeonImageUrl: String?
     let isTrainingGround: Bool
@@ -617,9 +618,10 @@ struct StudyQuestScreenView: View {
     @State private var confrontationApproach: CGFloat = 0
     @State private var didStartQuest = false
 
-    init(initialStudyMinutes: Int, genreId: String? = nil, dungeonName: String? = nil, dungeonImageUrl: String? = nil, isTrainingGround: Bool = false) {
+    init(initialStudyMinutes: Int, genreId: String? = nil, dungeonId: String? = nil, dungeonName: String? = nil, dungeonImageUrl: String? = nil, isTrainingGround: Bool = false) {
         self.initialStudyMinutes = initialStudyMinutes
         self.genreId = genreId
+        self.dungeonId = dungeonId
         self.dungeonName = dungeonName
         self.dungeonImageUrl = dungeonImageUrl
         self.isTrainingGround = isTrainingGround
@@ -676,7 +678,7 @@ struct StudyQuestScreenView: View {
         .onAppear {
             if !didStartQuest {
                 didStartQuest = true
-                holder.viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId, dungeonName: dungeonName, isTrainingGround: isTrainingGround, dungeonImageUrl: dungeonImageUrl))
+                holder.viewModel.onIntent(intent: StudyQuestIntentStartQuest(studyMinutes: Int32(initialStudyMinutes), genreId: genreId, dungeonName: dungeonName, dungeonId: dungeonId, isTrainingGround: isTrainingGround, dungeonImageUrl: dungeonImageUrl))
             }
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
                 pulsePhase = true

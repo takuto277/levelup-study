@@ -310,6 +310,7 @@ private struct BannerSelectView: View {
         GeometryReader { geo in
             let w = bannerWidth(containerWidth: geo.size.width)
             VStack(spacing: 0) {
+                TutorialHintBanner(topic: "gacha_first_pull", emoji: "\u{1F3B0}", message: "石を使って召喚！キャラや武器が手に入るよ")
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("召 喚")
