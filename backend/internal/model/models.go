@@ -340,6 +340,38 @@ type GachaHistory struct {
 func (gh *GachaHistory) BeforeCreate(tx *gorm.DB) error { ensureUUID(&gh.ID); return nil }
 
 // ============================================================
+// m_costumes — 衣装マスタ
+// ============================================================
+
+type MasterCostume struct {
+	ID              uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	Name            string    `gorm:"type:varchar(100);not null" json:"name"`
+	Rarity          int       `gorm:"not null"                  json:"rarity"`
+	ImageURL        string    `gorm:"type:text"                 json:"image_url"`
+	IdleAnimationURL *string  `gorm:"type:text"                 json:"idle_animation_url"`
+	IsActive        bool      `gorm:"not null;default:true"     json:"is_active"`
+	CreatedAt       time.Time `gorm:"autoCreateTime"            json:"created_at"`
+	UpdatedAt       time.Time `gorm:"autoUpdateTime"            json:"updated_at"`
+}
+
+func (mc *MasterCostume) BeforeCreate(tx *gorm.DB) error { ensureUUID(&mc.ID); return nil }
+
+// ============================================================
+// user_costumes — ユーザー所持衣装
+// ============================================================
+
+type UserCostume struct {
+	ID         uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	UserID     uuid.UUID `gorm:"type:uuid;not null;index" json:"user_id"`
+	CostumeID  uuid.UUID `gorm:"type:uuid;not null"       json:"costume_id"` // → m_costumes
+	ObtainedAt time.Time `gorm:"not null"                 json:"obtained_at"`
+
+	Costume *MasterCostume `gorm:"foreignKey:CostumeID" json:"costume,omitempty"`
+}
+
+func (uc *UserCostume) BeforeCreate(tx *gorm.DB) error { ensureUUID(&uc.ID); return nil }
+
+// ============================================================
 // AllModels — マイグレーション対象の全モデルリスト
 // ============================================================
 
@@ -362,5 +394,7 @@ func AllModels() []interface{} {
 		&UserPartySlot{},
 		&UserDungeonProgress{},
 		&GachaHistory{},
+		&MasterCostume{},
+		&UserCostume{},
 	}
 }

@@ -83,7 +83,8 @@ func createGachaSvcForTest(t *testing.T, db *gorm.DB) *GachaService {
 	mr := repository.NewMasterRepository(db)
 	cr := repository.NewCharacterRepository(db)
 	wr := repository.NewWeaponRepository(db)
-	return NewGachaService(db, ur, gr, mr, cr, wr)
+	cosr := repository.NewCostumeRepository(db)
+	return NewGachaService(db, ur, gr, mr, cr, wr, cosr)
 }
 
 func createGachaTestUser(t *testing.T, db *gorm.DB, stones int) *model.User {

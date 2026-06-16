@@ -319,3 +319,27 @@ func (r *MasterRepository) GetStudyGenre(id uuid.UUID) (*model.MasterStudyGenre,
 func (r *MasterRepository) DeactivateStudyGenre(id uuid.UUID) error {
 	return r.db.Model(&model.MasterStudyGenre{}).Where("id = ?", id).Update("is_active", false).Error
 }
+
+// --- 衣装マスタ ---
+
+// GetCostume — 衣装を1件取得する
+func (r *MasterRepository) GetCostume(id uuid.UUID) (*model.MasterCostume, error) {
+	var c model.MasterCostume
+	err := r.db.Where("id = ?", id).First(&c).Error
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+// ListCostumes — 有効な衣装一覧を取得する
+func (r *MasterRepository) ListCostumes() ([]model.MasterCostume, error) {
+	var list []model.MasterCostume
+	err := r.db.Where("is_active = true").Find(&list).Error
+	return list, err
+}
+
+// CreateCostume — 衣装マスタを追加する
+func (r *MasterRepository) CreateCostume(c *model.MasterCostume) error {
+	return r.db.Create(c).Error
+}

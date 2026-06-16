@@ -74,7 +74,8 @@ func main() {
 
 	// --- Service 初期化 ---
 	studyService := service.NewStudyService(db, userRepo, studyRepo, charRepo, partyRepo, dungeonRepo)
-	gachaService := service.NewGachaService(db, userRepo, gachaRepo, masterRepo, charRepo, weaponRepo)
+	costumeRepo := repository.NewCostumeRepository(db)
+	gachaService := service.NewGachaService(db, userRepo, gachaRepo, masterRepo, charRepo, weaponRepo, costumeRepo)
 
 	// --- Handler 初期化 ---
 	userH := handler.NewUserHandler(userRepo)
