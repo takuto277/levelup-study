@@ -71,6 +71,7 @@ struct AnalyticsScreenView: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
+                TutorialHintBanner(topic: "record_review", emoji: "\u{1F4CA}", message: "勉強の記録を確認しよう。継続が力になる！")
                 header
                 if uiState.pendingCount > 0 {
                     pendingSyncBanner
@@ -88,6 +89,7 @@ struct AnalyticsScreenView: View {
             }
         }
         .background(LinearGradient(colors: [bgDark, Color(hex: 0x0F172A)], startPoint: .top, endPoint: .bottom).ignoresSafeArea())
+        .onAppear { viewModel.onIntent(intent: RecordIntentRefresh()) }
         .onReceive(Timer.publish(every: 0.3, on: .main, in: .common).autoconnect()) { _ in self.uiState = viewModel.uiState.value as! RecordUiState }
     }
 

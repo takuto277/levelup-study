@@ -27,8 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.example.project.data.local.TutorialTopics
-import org.example.project.components.TutorialHintBanner
-import org.example.project.data.local.TutorialProgressStore
+import org.example.project.components.TutorialHintRow
 import org.example.project.domain.local.LocalDungeonIds
 import org.example.project.domain.model.DungeonDifficulty
 
@@ -102,7 +101,7 @@ fun QuestScreenView() {
                     org.example.project.features.home.HomeIntent.SelectDungeon(
                         id = pick.id,
                         name = pick.name,
-                        imageUrl = null
+                        imageUrl = pick.imageUrl
                     )
                 )
             }
@@ -158,7 +157,7 @@ fun QuestScreenView() {
                         org.example.project.features.home.HomeIntent.SelectDungeon(
                             id = dungeon.id,
                             name = dungeon.name,
-                            imageUrl = null
+                            imageUrl = dungeon.imageUrl
                         )
                     )
                     viewModel.onIntent(QuestIntent.DismissDetail)
@@ -654,9 +653,3 @@ private fun RewardDetailItem(emoji: String, label: String, value: String, color:
     }
 }
 
-@Composable
-private fun TutorialHintRow(topic: String, emoji: String, message: String) {
-    val store = remember { TutorialProgressStore() }
-    if (store.isCompleted(topic)) return
-    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
-}

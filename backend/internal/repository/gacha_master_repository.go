@@ -49,11 +49,12 @@ func (r *GachaRepository) ListByUser(userID uuid.UUID, limit, offset int) ([]mod
 }
 
 // ListByBanner — バナー別のガチャ履歴を取得する
-func (r *GachaRepository) ListByBanner(userID, bannerID uuid.UUID) ([]model.GachaHistory, error) {
+func (r *GachaRepository) ListByBanner(userID, bannerID uuid.UUID, limit, offset int) ([]model.GachaHistory, error) {
 	var list []model.GachaHistory
 	err := r.db.
 		Where("user_id = ? AND banner_id = ?", userID, bannerID).
 		Order("pity_count ASC").
+		Limit(limit).Offset(offset).
 		Find(&list).Error
 	return list, err
 }
@@ -325,7 +326,7 @@ func (r *MasterRepository) DeactivateStudyGenre(id uuid.UUID) error {
 // GetCostume — 衣装を1件取得する
 func (r *MasterRepository) GetCostume(id uuid.UUID) (*model.MasterCostume, error) {
 	var c model.MasterCostume
-	err := r.db.Where("id = ?", id).First(&c).Error
+	err := r.db.First(&c, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -337,9 +338,4 @@ func (r *MasterRepository) ListCostumes() ([]model.MasterCostume, error) {
 	var list []model.MasterCostume
 	err := r.db.Where("is_active = true").Find(&list).Error
 	return list, err
-}
-
-// CreateCostume — 衣装マスタを追加する
-func (r *MasterRepository) CreateCostume(c *model.MasterCostume) error {
-	return r.db.Create(c).Error
 }

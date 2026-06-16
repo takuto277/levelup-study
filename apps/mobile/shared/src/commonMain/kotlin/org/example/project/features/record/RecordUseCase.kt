@@ -26,7 +26,16 @@ class RecordUseCase(
 
     suspend fun loadRecordData(): RecordData {
         val user = userRepository.getCurrentUser()
-        val sessions = studyRepository.getSessionHistory(limit = 200)
+        // 履歴件数に切り詰められないよう、ページングですべてのセッションを取得する
+        val sessions = mutableListOf<StudySession>()
+        val pageSize = 200
+        var offset = 0
+        while (true) {
+            val page = studyRepository.getSessionHistory(limit = pageSize, offset = offset)
+            sessions.addAll(page)
+            if (page.size < pageSize) break
+            offset += pageSize
+        }
         val genres = genreRepository.getGenres()
         val mainCharacter: UserCharacter? = try {
             val party = partyRepository.getParty()

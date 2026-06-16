@@ -32,6 +32,10 @@ fun HomeScreenView(
     val homeViewModel = remember { org.example.project.di.getHomeViewModel() }
     val homeState by homeViewModel.uiState.collectAsState()
 
+    LaunchedEffect(selectedTab) {
+        homeViewModel.onIntent(HomeIntent.Refresh)
+    }
+
     LaunchedEffect(studyMinutes) {
         kvStore.putString(HOME_STUDY_MINUTES_KEY, studyMinutes.toString())
     }
@@ -40,6 +44,7 @@ fun HomeScreenView(
         StudyQuestScreenView(
             initialStudyMinutes = studyMinutes.coerceIn(1, 60),
             genreId = selectedGenreSlug,
+            dungeonId = homeState.selectedDungeonId,
             dungeonName = homeState.adventureDungeonDisplayName,
             dungeonImageUrl = if (homeState.isTrainingStudySession) null else homeState.selectedDungeonImageUrl,
             isTrainingGround = homeState.isTrainingStudySession,

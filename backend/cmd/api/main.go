@@ -25,6 +25,9 @@ func main() {
 	// --- 開発モード判定 ---
 	devMode := os.Getenv("DEV_MODE") == "true"
 	if devMode {
+		if os.Getenv("RENDER") == "true" {
+			log.Fatal("❌ DEV_MODE=true は本番環境では許可されていません。DEPLOYMENT_SAFETY_GATE")
+		}
 		log.Println("⚠️  DEV_MODE が有効です — JWT / API Key 認証をスキップします")
 		log.Println("🛠 DEBUG: POST /api/v1/debug/users/{userID}/currencies（stones_delta / gold_delta）が利用可能です")
 	}
@@ -67,22 +70,24 @@ func main() {
 	studyRepo := repository.NewStudyRepository(db)
 	charRepo := repository.NewCharacterRepository(db)
 	weaponRepo := repository.NewWeaponRepository(db)
+	costumeRepo := repository.NewCostumeRepository(db)
 	partyRepo := repository.NewPartyRepository(db)
 	dungeonRepo := repository.NewDungeonProgressRepository(db)
 	gachaRepo := repository.NewGachaRepository(db)
 	masterRepo := repository.NewMasterRepository(db)
+	goalRepo := repository.NewGoalRepository(db)
 
 	// --- Service 初期化 ---
-	studyService := service.NewStudyService(db, userRepo, studyRepo, charRepo, partyRepo, dungeonRepo)
-	costumeRepo := repository.NewCostumeRepository(db)
+	studyService := service.NewStudyService(db, userRepo, studyRepo, charRepo, partyRepo, dungeonRepo, goalRepo)
 	gachaService := service.NewGachaService(db, userRepo, gachaRepo, masterRepo, charRepo, weaponRepo, costumeRepo)
 
 	// --- Handler 初期化 ---
-	userH := handler.NewUserHandler(userRepo)
+	userH := handler.NewUserHandler(userRepo, masterRepo)
 	studyH := handler.NewStudyHandler(studyService)
-	gameH := handler.NewGameHandler(db, userRepo, charRepo, weaponRepo, partyRepo, dungeonRepo)
-	gachaH := handler.NewGachaHandler(gachaService, gachaRepo)
+	gameH := handler.NewGameHandler(db, userRepo, charRepo, weaponRepo, partyRepo, dungeonRepo, costumeRepo, masterRepo)
+	gachaH := handler.NewGachaHandler(gachaService, gachaRepo, costumeRepo)
 	masterH := handler.NewMasterHandler(masterRepo)
+	goalH := handler.NewGoalHandler(db, goalRepo, userRepo)
 
 	// --- セキュリティ設定 ---
 	sec := router.SecurityConfig{
@@ -94,7 +99,7 @@ func main() {
 	}
 
 	// --- ルーター構築 ---
-	r := router.NewRouter(sec, userH, studyH, gameH, gachaH, masterH)
+	r := router.NewRouter(sec, userH, studyH, gameH, gachaH, masterH, goalH)
 
 	// --- サーバー起動 ---
 	port := os.Getenv("PORT")

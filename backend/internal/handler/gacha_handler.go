@@ -18,12 +18,14 @@ import (
 type GachaHandler struct {
 	gachaService *service.GachaService
 	gachaRepo    *repository.GachaRepository
+	costumeRepo  *repository.CostumeRepository
 }
 
-func NewGachaHandler(gachaService *service.GachaService, gachaRepo *repository.GachaRepository) *GachaHandler {
+func NewGachaHandler(gachaService *service.GachaService, gachaRepo *repository.GachaRepository, costumeRepo *repository.CostumeRepository) *GachaHandler {
 	return &GachaHandler{
 		gachaService: gachaService,
 		gachaRepo:    gachaRepo,
+		costumeRepo:  costumeRepo,
 	}
 }
 
@@ -84,7 +86,7 @@ func (h *GachaHandler) ListHistory(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusBadRequest, "不正な banner_id です")
 			return
 		}
-		history, err := h.gachaRepo.ListByBanner(userID, bannerID)
+		history, err := h.gachaRepo.ListByBanner(userID, bannerID, limit, offset)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "ガチャ履歴の取得に失敗しました")
 			return

@@ -45,8 +45,7 @@ import org.example.project.components.PlayerSprite
 import org.example.project.components.PlayerSpriteMode
 import org.example.project.components.hasPartyPlayerSprite
 import org.example.project.data.local.TutorialTopics
-import org.example.project.components.TutorialHintBanner
-import org.example.project.data.local.TutorialProgressStore
+import org.example.project.components.TutorialHintRow
 
 // ── カラーパレット（青テーマ）──────────────────────
 private val BgColor = Color(0xFF0B1120)
@@ -113,6 +112,10 @@ private fun formatHoursMinutes(minutes: Int): Pair<String, String> {
 fun RecordScreenView() {
     val viewModel = remember { org.example.project.di.getRecordViewModel() }
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.onIntent(RecordIntent.Refresh)
+    }
 
     Column(
         modifier = Modifier
@@ -1006,9 +1009,3 @@ private fun PendingSyncBanner(uiState: RecordUiState, onRetry: () -> Unit) {
     }
 }
 
-@Composable
-private fun TutorialHintRow(topic: String, emoji: String, message: String) {
-    val store = remember { TutorialProgressStore() }
-    if (store.isCompleted(topic)) return
-    TutorialHintBanner(emoji = emoji, message = message, onDismiss = { store.markCompleted(topic) })
-}

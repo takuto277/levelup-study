@@ -128,7 +128,11 @@ func (h *MasterHandler) enrichGachaFeaturedJSON(f model.MasterGachaBannerFeature
 			out["image_url"] = w.ImageURL
 		}
 	case "costume":
-		// 衣装マスタ連携後に item_name 等を埋める
+		if c, err := h.repo.GetCostume(f.ItemID); err == nil && c != nil {
+			out["item_name"] = c.Name
+			out["rarity"] = c.Rarity
+			out["image_url"] = c.ImageURL
+		}
 	}
 	return out
 }

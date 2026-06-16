@@ -7,13 +7,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.datetime.Clock
 import org.example.project.core.network.isDeviceOnline
+import org.example.project.data.remote.gateway.DungeonGateway
 import org.example.project.domain.model.RewardType
 import org.example.project.domain.model.StudyReward
 import org.example.project.domain.repository.PartyRepository
 
 class StudyQuestViewModel(
     private val studyUseCase: StudyUseCase? = null,
-    private val partyRepository: PartyRepository? = null
+    private val partyRepository: PartyRepository? = null,
+    private val dungeonGateway: DungeonGateway? = null
 ) {
     private val _uiState = MutableStateFlow(StudyQuestUiState())
     val uiState: StateFlow<StudyQuestUiState> = _uiState.asStateFlow()
@@ -65,7 +67,7 @@ class StudyQuestViewModel(
     }
 
     // ── ダンジョン別の敵テーブル ──
-    private data class EnemyData(val name: String, val emoji: String, val hp: Int, val atk: Int, val spriteKey: String = "")
+    data class EnemyData(val name: String, val emoji: String, val hp: Int, val atk: Int, val spriteKey: String = "")
 
     /** 全スプライトキーに対応するマスター一覧（`EnemySpriteAssets` の bundled と一致） */
     private val enemyCatalog: List<EnemyData> = listOf(
@@ -168,6 +170,23 @@ class StudyQuestViewModel(
         )
     )
 
+    private fun loadServerEnemiesAsync(dungeonId: String?) {
+        if (dungeonId == null || dungeonGateway == null || !isDeviceOnline()) return
+        viewModelScope.launch {
+            val result = dungeonGateway.getDungeonStages(dungeonId)
+            if (result is org.example.project.core.network.NetworkResult.Success) {
+                val enemies = result.data.stages.flatMap { stage ->
+                    stage.enemies.mapNotNull { it.monster }.map {
+                        EnemyData(it.name, it.emoji, it.hp, it.atk, it.slug)
+                    }
+                }
+                if (enemies.isNotEmpty()) {
+                    currentEnemyTable = enemies
+                }
+            }
+        }
+    }
+
     private fun getEnemiesForDungeon(dungeonName: String?): List<EnemyData> {
         if (dungeonName == null) return defaultEnemyPool
         return when {
@@ -232,6 +251,7 @@ class StudyQuestViewModel(
                 intent.studyMinutes,
                 intent.genreId,
                 intent.dungeonName,
+                intent.dungeonId,
                 intent.isTrainingGround,
                 intent.dungeonImageUrl
             )
@@ -266,6 +286,7 @@ class StudyQuestViewModel(
         studyMinutes: Int,
         genreId: String?,
         dungeonName: String? = null,
+        dungeonId: String? = null,
         isTrainingGround: Boolean = false,
         dungeonImageUrl: String? = null
     ) {
@@ -324,6 +345,7 @@ class StudyQuestViewModel(
             }
         } else {
             currentEnemyTable = getEnemiesForDungeon(dungeonName)
+            loadServerEnemiesAsync(dungeonId)
             val firstEnemy = currentEnemyTable.random()
             _uiState.update {
                 it.copy(
@@ -482,6 +504,7 @@ class StudyQuestViewModel(
         if (current.type != StudySessionType.BREAK) return
 
         sessionStartedAt = Clock.System.now().toString()
+        resetWallClock()
         val targetSec = current.targetStudyMinutes.toLong() * 60
         phaseElapsed = 0L
 
@@ -650,6 +673,7 @@ class StudyQuestViewModel(
             AdventurePhase.WALKING -> {
                 if (phaseElapsed >= WALK_DURATION) {
                     phase = AdventurePhase.ENCOUNTER
+                        // SFX: enemy_appear
                     phaseElapsed = 0L
                     newLogs = (newLogs + "⚠️ ${currentFloor}F: ${enemyName}が現れた！").takeLast(5)
                 } else if (phaseElapsed % 3 == 0L) {
@@ -720,6 +744,7 @@ class StudyQuestViewModel(
                             }
                             lastPlayerDamage = 0
                             phase = AdventurePhase.ENEMY_DEFEATED
+            // SFX: enemy_defeat
                             outDefeatSec = 0
                         }
                     }
@@ -736,6 +761,7 @@ class StudyQuestViewModel(
 
                             if (playerHp <= 0) {
                                 phase = AdventurePhase.PLAYER_DEAD
+            // SFX: player_death
                                 phaseElapsed = 0L
                                 newLogs = (newLogs + "💀 力尽きた…1Fからやり直し！").takeLast(5)
                             }

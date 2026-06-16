@@ -50,6 +50,7 @@ struct SettingsScreenView: View {
 
                     Button("チュートリアルをリセット") {
                         TutorialHelper.shared.resetAllTutorials()
+                        NotificationCenter.default.post(name: Notification.Name("TutorialDidReset"), object: nil)
                         vm.clearToastFromPlatform()
                         onClosedRefreshHome()
                         onDismiss()
