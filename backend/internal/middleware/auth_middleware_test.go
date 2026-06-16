@@ -161,3 +161,47 @@ func TestOwnerGuard_MismatchedUserID(t *testing.T) {
 		t.Fatalf("status = %d, want 403", rr.Code)
 	}
 }
+
+func TestRequireAdminRole_NoJWTContext(t *testing.T) {
+	h := middleware.RequireAdminRole(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/master/genres", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want 403 (no JWT in context)", rr.Code)
+	}
+}
+
+func TestRequireAdminRole_NoRoleClaim(t *testing.T) {
+	h := middleware.RequireAdminRole(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/master/genres", nil)
+	claims := jwt.MapClaims{"sub": "user-1", "role": "user"}
+	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, "user-1")
+	req = req.WithContext(context.WithValue(ctx, middleware.JWTClaimsKey{}, claims))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want 403 (role is user)", rr.Code)
+	}
+}
+
+func TestRequireAdminRole_AdminRolePasses(t *testing.T) {
+	h := middleware.RequireAdminRole(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/master/genres", nil)
+	claims := jwt.MapClaims{"sub": "admin-1", "role": "admin"}
+	ctx := context.WithValue(req.Context(), middleware.ContextKeyUserID, "admin-1")
+	req = req.WithContext(context.WithValue(ctx, middleware.JWTClaimsKey{}, claims))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200", rr.Code)
+	}
+}
