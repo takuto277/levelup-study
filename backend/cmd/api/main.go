@@ -70,6 +70,7 @@ func main() {
 	studyRepo := repository.NewStudyRepository(db)
 	charRepo := repository.NewCharacterRepository(db)
 	weaponRepo := repository.NewWeaponRepository(db)
+	costumeRepo := repository.NewCostumeRepository(db)
 	partyRepo := repository.NewPartyRepository(db)
 	dungeonRepo := repository.NewDungeonProgressRepository(db)
 	gachaRepo := repository.NewGachaRepository(db)
@@ -78,13 +79,13 @@ func main() {
 
 	// --- Service 初期化 ---
 	studyService := service.NewStudyService(db, userRepo, studyRepo, charRepo, partyRepo, dungeonRepo, goalRepo)
-	gachaService := service.NewGachaService(db, userRepo, gachaRepo, masterRepo, charRepo, weaponRepo)
+	gachaService := service.NewGachaService(db, userRepo, gachaRepo, masterRepo, charRepo, weaponRepo, costumeRepo)
 
 	// --- Handler 初期化 ---
 	userH := handler.NewUserHandler(userRepo, masterRepo)
 	studyH := handler.NewStudyHandler(studyService)
-	gameH := handler.NewGameHandler(db, userRepo, charRepo, weaponRepo, partyRepo, dungeonRepo)
-	gachaH := handler.NewGachaHandler(gachaService, gachaRepo)
+	gameH := handler.NewGameHandler(db, userRepo, charRepo, weaponRepo, partyRepo, dungeonRepo, costumeRepo, masterRepo)
+	gachaH := handler.NewGachaHandler(gachaService, gachaRepo, costumeRepo)
 	masterH := handler.NewMasterHandler(masterRepo)
 	goalH := handler.NewGoalHandler(db, goalRepo, userRepo)
 

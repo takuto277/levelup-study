@@ -18,12 +18,14 @@ import (
 type GachaHandler struct {
 	gachaService *service.GachaService
 	gachaRepo    *repository.GachaRepository
+	costumeRepo  *repository.CostumeRepository
 }
 
-func NewGachaHandler(gachaService *service.GachaService, gachaRepo *repository.GachaRepository) *GachaHandler {
+func NewGachaHandler(gachaService *service.GachaService, gachaRepo *repository.GachaRepository, costumeRepo *repository.CostumeRepository) *GachaHandler {
 	return &GachaHandler{
 		gachaService: gachaService,
 		gachaRepo:    gachaRepo,
+		costumeRepo:  costumeRepo,
 	}
 }
 

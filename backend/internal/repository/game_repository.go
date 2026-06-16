@@ -90,6 +90,11 @@ func (r *CharacterRepository) EquipWeapon(id uuid.UUID, weaponID *uuid.UUID) err
 		Update("equipped_weapon_id", weaponID).Error
 }
 
+// EquipCostume — 衣装を装備する（null で装備解除）
+func (r *CharacterRepository) EquipCostume(id uuid.UUID, costumeID *uuid.UUID) error {
+	return r.db.Model(&model.UserCharacter{}).Where("id = ?", id).Update("equipped_costume_id", costumeID).Error
+}
+
 // Delete — 所持キャラを削除する
 func (r *CharacterRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&model.UserCharacter{}, "id = ?", id).Error
