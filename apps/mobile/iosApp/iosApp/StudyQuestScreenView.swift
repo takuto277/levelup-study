@@ -663,7 +663,8 @@ struct StudyQuestScreenView: View {
             playerMaxHp: 100,
             earnedXp: 0,
             earnedStones: 0,
-            completedStudyElapsedSeconds: 0
+            completedStudyElapsedSeconds: 0,
+            isPartyLoading: true
         ))
     }
 
