@@ -44,6 +44,7 @@ class PartyViewModel(
     }
 
     private fun loadPartyData() {
+        if (_uiState.value.isMutating) return
         _uiState.update { it.copy(isLoading = true, error = null) }
 
         viewModelScope.launch {
@@ -68,23 +69,29 @@ class PartyViewModel(
     }
 
     private fun assignCharacter(slotPosition: Int, userCharacterId: String) {
+        if (_uiState.value.isMutating || _uiState.value.isLoading) return
+        _uiState.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             try {
                 partyUseCase.assignCharacterToSlot(slotPosition, userCharacterId)
+                _uiState.update { it.copy(isMutating = false) }
                 loadPartyData()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(isMutating = false, error = e.message ?: "キャラクターの配置に失敗しました") }
             }
         }
     }
 
     private fun removeFromSlot(slotPosition: Int) {
+        if (_uiState.value.isMutating || _uiState.value.isLoading) return
+        _uiState.update { it.copy(isMutating = true, error = null) }
         viewModelScope.launch {
             try {
                 partyUseCase.removeFromSlot(slotPosition)
+                _uiState.update { it.copy(isMutating = false) }
                 loadPartyData()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update { it.copy(isMutating = false, error = e.message ?: "スロット解除に失敗しました") }
             }
         }
     }
@@ -95,6 +102,8 @@ class PartyViewModel(
     }
 
     private fun equipWeapon(userCharacterId: String, userWeaponId: String?) {
+        if (_uiState.value.isMutating || _uiState.value.isLoading) return
+        _uiState.update { it.copy(isMutating = true) }
         viewModelScope.launch {
             try {
                 partyUseCase.equipWeapon(userCharacterId, userWeaponId)
@@ -105,28 +114,35 @@ class PartyViewModel(
                         ownedCharacters = data.ownedCharacters,
                         ownedWeapons = data.ownedWeapons,
                         selectedCharacter = data.ownedCharacters.find { c -> c.id == userCharacterId },
-                        isLoading = false,
                         error = null
                     )
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message ?: "武器装備に失敗しました") }
+            } finally {
+                _uiState.update { it.copy(isMutating = false) }
             }
         }
     }
 
     private fun levelUpCharacter(userCharacterId: String) {
+        if (_uiState.value.isMutating || _uiState.value.isLoading) return
+        _uiState.update { it.copy(isMutating = true) }
         viewModelScope.launch {
             try {
                 partyUseCase.levelUpCharacter(userCharacterId)
                 refreshAfterMutation(userCharacterId)
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message ?: "レベルアップに失敗しました") }
+            } finally {
+                _uiState.update { it.copy(isMutating = false) }
             }
         }
     }
 
     private fun levelUpWeapon(userWeaponId: String) {
+        if (_uiState.value.isMutating || _uiState.value.isLoading) return
+        _uiState.update { it.copy(isMutating = true) }
         val characterId = _uiState.value.selectedCharacter?.id
         viewModelScope.launch {
             try {
@@ -134,6 +150,8 @@ class PartyViewModel(
                 refreshAfterMutation(characterId)
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message ?: "武器のレベルアップに失敗しました") }
+            } finally {
+                _uiState.update { it.copy(isMutating = false) }
             }
         }
     }
@@ -148,7 +166,6 @@ class PartyViewModel(
                 selectedCharacter = selectedCharacterId?.let { id ->
                     data.ownedCharacters.find { c -> c.id == id }
                 },
-                isLoading = false,
                 error = null
             )
         }
