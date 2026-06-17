@@ -33,6 +33,7 @@ object UserSessionStore {
 
     private const val KEY_USER_ID = "user_id"
     private const val KEY_AUTH_TOKEN = "auth_token"
+    private const val KEY_DEBUG_ENV = "debug_environment"
 
     var userRepository: UserRepository? = null
 
@@ -89,4 +90,12 @@ object UserSessionStore {
 
     /** ユーザーIDが保存されているか確認 */
     fun hasSession(): Boolean = userId != null
+
+    /** デバッグビルド用: 保存された環境選択を取得。未保存の場合は null */
+    fun getDebugEnvironment(): String? = store.getString(KEY_DEBUG_ENV)
+
+    /** デバッグビルド用: 環境選択を保存 */
+    fun setDebugEnvironment(env: String) {
+        store.putString(KEY_DEBUG_ENV, env)
+    }
 }

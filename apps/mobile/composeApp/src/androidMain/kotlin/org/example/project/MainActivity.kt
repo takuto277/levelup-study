@@ -8,6 +8,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import org.example.project.core.storage.initKeyValueStore
+import org.example.project.core.network.ApiRoutes
+import org.example.project.core.network.AppEnvironment
+import org.example.project.core.session.UserSessionStore
 import org.example.project.di.initKoin
 import org.example.project.di.setDevSession
 
@@ -18,8 +21,18 @@ class MainActivity : ComponentActivity() {
 
         initKeyValueStore(this)
         initKoin()
-        val useSeedUser = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        setDevSession(useSeedUser = useSeedUser, forceSeedUserId = useSeedUser)
+        val isDebug = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        setDevSession(useSeedUser = isDebug, forceSeedUserId = isDebug)
+
+        if (isDebug) {
+            val savedEnv = UserSessionStore.getDebugEnvironment()
+            if (savedEnv != null) {
+                val env = AppEnvironment.entries.firstOrNull { it.name.lowercase() == savedEnv }
+                if (env != null) {
+                    ApiRoutes.BASE_URL = env.url
+                }
+            }
+        }
 
         setContent {
             App()

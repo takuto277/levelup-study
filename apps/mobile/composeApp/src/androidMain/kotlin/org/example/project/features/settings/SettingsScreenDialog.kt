@@ -43,6 +43,7 @@ import org.example.project.di.getSettingsViewModel
 import org.example.project.features.home.HomeIntent
 import org.example.project.features.home.HomeTheme
 import org.example.project.features.home.HomeViewModel
+import org.example.project.core.network.AppEnvironment
 
 @Composable
 fun SettingsScreenDialog(
@@ -127,6 +128,25 @@ fun SettingsScreenDialog(
                         style = MaterialTheme.typography.labelSmall,
                         color = HomeTheme.TextSecondary,
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("環境", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AppEnvironment.entries.forEach { env ->
+                            val selected = state.selectedEnvironment == env.name.lowercase()
+                            OutlinedButton(
+                                onClick = { vm.setEnvironmentFromPlatform(env.name.lowercase()) },
+                            ) {
+                                Text(
+                                    env.displayName,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                )
+                            }
+                        }
+                    }
                 } else {
                     Text("デバッグメニューはデバッグビルドでのみ表示されます。", color = HomeTheme.TextSecondary)
                 }

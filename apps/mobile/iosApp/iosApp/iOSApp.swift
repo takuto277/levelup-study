@@ -15,6 +15,14 @@ struct iOSApp: App {
 #if DEBUG
         // seed.sql / seed-remote の user1 と常に一致（KeyValueStore の古い UUID を残さない）
         KoinHelperKt.setDevSession(useSeedUser: true, forceSeedUserId: true)
+        // 保存されたデバッグ環境を復元。未保存なら dev（http://localhost:8080）がデフォルト
+        let savedEnv = UserSessionStore.shared.getDebugEnvironment() ?? "dev"
+        switch savedEnv {
+        case "stg":
+            ApiRoutes.shared.BASE_URL = "https://levelup-study-api-stg.onrender.com"
+        default:
+            ApiRoutes.shared.BASE_URL = "http://localhost:8080"
+        }
 #else
         KoinHelperKt.setDevSession(useSeedUser: false, forceSeedUserId: false)
 #endif

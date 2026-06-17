@@ -122,6 +122,23 @@ struct SettingsScreenView: View {
             Text("POST /api/v1/debug/users/{id}/currencies は Go の DEV_MODE=true のときのみ有効です。")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+
+            Divider()
+
+            Text("環境")
+                .font(.subheadline.weight(.semibold))
+            HStack(spacing: 8) {
+                let devSelected = (state?.selectedEnvironment ?? "") == "dev"
+                Button("dev") {
+                    vm.setEnvironmentFromPlatform(envName: "dev")
+                }
+                .buttonStyle(devSelected ? .borderedProminent : .bordered)
+
+                Button("stg") {
+                    vm.setEnvironmentFromPlatform(envName: "stg")
+                }
+                .buttonStyle(devSelected ? .bordered : .borderedProminent)
+            }
         }
     }
     #endif
