@@ -2,12 +2,16 @@ package org.example.project.data.remote.gateway
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import org.example.project.core.network.ApiRoutes
+import org.example.project.core.network.ErrorMessage
 import org.example.project.core.network.NetworkResult
+import org.example.project.core.network.isDeviceOnline
 import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.dto.PartyResponse
 import org.example.project.data.remote.dto.PartySlotResponse
@@ -25,7 +29,7 @@ class PartyGateway(private val client: HttpClient) {
         val response: PartyResponse = client.get(ApiRoutes.party(userId)).body()
         NetworkResult.Success(response)
     }.getOrElse { e ->
-        NetworkResult.Error(message = e.message ?: "パーティ情報の取得に失敗しました")
+        toNetworkError(e)
     }
 
     /** PUT /api/v1/users/{userId}/party/{slot} — スロット更新 */
@@ -38,7 +42,7 @@ class PartyGateway(private val client: HttpClient) {
                 }.body()
             NetworkResult.Success(response)
         }.getOrElse { e ->
-            NetworkResult.Error(message = e.message ?: "パーティスロットの更新に失敗しました")
+            toNetworkError(e)
         }
 
     /** DELETE /api/v1/users/{userId}/party/{slot} — スロットからキャラ除外 */
@@ -48,6 +52,15 @@ class PartyGateway(private val client: HttpClient) {
             client.delete(ApiRoutes.partySlot(userId, slot))
             NetworkResult.Success(Unit)
         }.getOrElse { e ->
-            NetworkResult.Error(message = e.message ?: "パーティスロットの解除に失敗しました")
+            toNetworkError(e)
         }
+
+    private fun toNetworkError(e: Throwable): NetworkResult.Error {
+        val statusCode = (e as? ClientRequestException)?.response?.status?.value
+            ?: (e as? ServerResponseException)?.response?.status?.value
+        return NetworkResult.Error(
+            code = statusCode,
+            message = ErrorMessage.classify(statusCode, e, isDeviceOnline())
+        )
+    }
 }
