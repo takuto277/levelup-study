@@ -24,10 +24,10 @@ func NewUserHandler(repo *repository.UserRepository, masterRepo *repository.Mast
 }
 
 // CreateUser — POST /api/v1/users
-// 新規ユーザーを作成する
+// 新規ユーザーを作成する。id はDB側で自動採番され、リクエストからは受け付けない。
+// JWT sub と紐づくユーザー作成は POST /api/v1/auth/user 側で行う。
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ID          string `json:"id"`
 		DisplayName string `json:"display_name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -40,14 +40,6 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := model.User{DisplayName: req.DisplayName}
-	if req.ID != "" {
-		parsedID, err := uuid.Parse(req.ID)
-		if err != nil {
-			respondError(w, http.StatusBadRequest, "id は有効なUUID形式で指定してください")
-			return
-		}
-		user.ID = parsedID
-	}
 	if err := h.repo.Create(&user); err != nil {
 		respondError(w, http.StatusInternalServerError, "ユーザー作成に失敗しました")
 		return
