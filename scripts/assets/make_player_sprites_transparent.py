@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Remove solid-color backgrounds from bundled player sprite PNGs.
+Remove solid-color backgrounds from bundled sprite PNGs (player + enemy).
 
 The canonical PNGs live in apps/mobile/assets/source/. After running this script,
 run sync_battle_assets.py so Android drawable and iOS Assets.xcassets are updated
@@ -8,6 +8,8 @@ from the source images.
 
 Usage:
   ./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py
+  ./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py --kind enemy
+  ./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py --kind all
   ./scripts/assets/run.sh scripts/assets/sync_battle_assets.py
   ./scripts/assets/run.sh scripts/assets/validate_assets.py
 """
@@ -154,17 +156,37 @@ def collect_player_sprite_files() -> list[Path]:
     return sorted(files)
 
 
+def collect_enemy_sprite_files() -> list[Path]:
+    manifest = load_manifest()
+    files: list[Path] = []
+    for key in manifest.get("enemy_sprite_keys", []):
+        path = SOURCE_DIR / f"sprite_enemy_{key}_1.png"
+        if path.is_file():
+            files.append(path)
+    return sorted(files)
+
+
+def collect_sprite_files(kind: str) -> list[Path]:
+    if kind == "player":
+        return collect_player_sprite_files()
+    if kind == "enemy":
+        return collect_enemy_sprite_files()
+    return sorted(set(collect_player_sprite_files() + collect_enemy_sprite_files()))
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Make player sprite backgrounds transparent")
+    parser = argparse.ArgumentParser(description="Make sprite backgrounds transparent")
+    parser.add_argument("--kind", choices=["player", "enemy", "all"], default="all",
+                        help="Sprite kind to process (default: all)")
     parser.add_argument("--tolerance", type=int, default=DEFAULT_TOLERANCE)
     parser.add_argument("--feather", type=int, default=DEFAULT_FEATHER)
     parser.add_argument("--sample-size", type=int, default=12)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    files = collect_player_sprite_files()
+    files = collect_sprite_files(args.kind)
     if not files:
-        print("No player sprite PNGs found in source/.", file=sys.stderr)
+        print(f"No {args.kind} sprite PNGs found in source/.", file=sys.stderr)
         return 1
 
     changed = 0
@@ -172,7 +194,7 @@ def main() -> int:
         if transparentize(path, args.tolerance, args.feather, args.sample_size, args.dry_run):
             changed += 1
 
-    print(f"Done. {changed}/{len(files)} player sprite file(s) changed.")
+    print(f"Done. {changed}/{len(files)} {args.kind} sprite file(s) changed.")
     return 0
 
 
