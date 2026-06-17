@@ -141,6 +141,30 @@ func TestCompleteStudyStoresGenreIDFromCategoryUUIDForCompatibility(t *testing.T
 	}
 }
 
+func TestCompleteStudyAcceptsZeroDifficultyMultiplierForBackwardCompat(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	svc := newStudyServiceForTest(db)
+	userID := createStudyTestUser(t, db, nil)
+	startedAt := time.Date(2026, 6, 4, 9, 0, 0, 0, time.UTC)
+
+	// DifficultyMultiplier が 0（旧クライアントのゼロ値）でもエラーにならず、
+	// calculateRewards で 1.0 に正規化されて通常の経験値が付与されることを確認。
+	resp, err := svc.CompleteStudy(userID, CompleteStudyRequest{
+		StartedAt:       startedAt,
+		EndedAt:         startedAt.Add(10 * time.Minute),
+		DurationSeconds: 10 * 60,
+		IsCompleted:     true,
+	})
+	if err != nil {
+		t.Fatalf("CompleteStudy with zero DifficultyMultiplier failed: %v", err)
+	}
+
+	xp := rewardAmountsByType(resp.Rewards)["xp"]
+	if xp != 60 {
+		t.Fatalf("xp = %d, want 60 (duration 600s / 10s per xp)", xp)
+	}
+}
+
 func TestCompleteStudyRejectsInvalidRewardInputs(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	svc := newStudyServiceForTest(db)

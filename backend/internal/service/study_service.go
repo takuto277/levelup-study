@@ -185,8 +185,10 @@ func (s *StudyService) validateRequest(req CompleteStudyRequest) error {
 	if req.DefeatNormalCount < 0 || req.DefeatBossCount < 0 {
 		return fmt.Errorf("討伐数は0以上である必要があります")
 	}
-	// 難易度倍率はクライアント申告値を受け付けるが、範囲を制限
-	if req.DifficultyMultiplier <= 0 || req.DifficultyMultiplier > 5.0 {
+	// 難易度倍率はクライアント申告値を受け付けるが、範囲を制限。
+	// 0以下の値（旧クライアントのゼロ値含む）は calculateRewards で 1.0 に正規化されるため、
+	// ここでは上限超過のみを拒否する。
+	if req.DifficultyMultiplier > 5.0 {
 		return fmt.Errorf("難易度倍率が不正です: %.2f", req.DifficultyMultiplier)
 	}
 	// 討伐数の上限検証（過大申告を防ぐ）
