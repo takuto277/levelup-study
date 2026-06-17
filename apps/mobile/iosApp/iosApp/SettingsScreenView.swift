@@ -127,18 +127,16 @@ struct SettingsScreenView: View {
 
             Text("環境")
                 .font(.subheadline.weight(.semibold))
-            HStack(spacing: 8) {
-                let devSelected = (state?.selectedEnvironment ?? "") == "dev"
-                Button("dev") {
-                    vm.setEnvironmentFromPlatform(envName: "dev")
+            Picker("環境", selection: Binding<String>(
+                get: { state?.selectedEnvironment ?? "dev" },
+                set: { newValue in
+                    vm.setEnvironmentFromPlatform(envName: newValue)
                 }
-                .buttonStyle(devSelected ? .borderedProminent : .bordered)
-
-                Button("stg") {
-                    vm.setEnvironmentFromPlatform(envName: "stg")
-                }
-                .buttonStyle(devSelected ? .bordered : .borderedProminent)
+            )) {
+                Text("dev").tag("dev")
+                Text("stg").tag("stg")
             }
+            .pickerStyle(.segmented)
         }
     }
     #endif

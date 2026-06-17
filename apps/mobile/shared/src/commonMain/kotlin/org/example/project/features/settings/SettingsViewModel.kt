@@ -24,7 +24,10 @@ class SettingsViewModel(
     private val refreshMutex = Mutex()
     private val patchMutex = Mutex()
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    private val _uiState = MutableStateFlow(SettingsUiState(
+        apiBaseUrl = ApiRoutes.BASE_URL,
+        selectedEnvironment = AppEnvironment.entries.firstOrNull { e -> e.url == ApiRoutes.BASE_URL }?.name?.lowercase() ?: "",
+    ))
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     fun onIntent(intent: SettingsIntent) {
@@ -79,6 +82,8 @@ class SettingsViewModel(
                         it.copy(
                             isLoading = false,
                             toast = e.message ?: "ユーザー情報の取得に失敗しました",
+                            apiBaseUrl = ApiRoutes.BASE_URL,
+                            selectedEnvironment = AppEnvironment.entries.firstOrNull { e -> e.url == ApiRoutes.BASE_URL }?.name?.lowercase() ?: "",
                         )
                     }
                 }
