@@ -32,7 +32,8 @@ actual fun isDeviceOnline(): Boolean = memScoped {
         return@memScoped false
     }
 
-    val isReachable = (flags.value and kSCNetworkReachabilityFlagsReachable) != 0u
-    val connectionRequired = (flags.value and kSCNetworkReachabilityFlagsConnectionRequired) != 0u
+    val f = flags.ptr.pointed.value
+    val isReachable = (f and kSCNetworkReachabilityFlagsReachable) != 0u
+    val connectionRequired = (f and kSCNetworkReachabilityFlagsConnectionRequired) != 0u
     isReachable && !connectionRequired
 }
