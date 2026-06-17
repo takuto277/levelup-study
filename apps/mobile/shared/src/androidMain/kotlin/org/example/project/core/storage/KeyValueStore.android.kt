@@ -12,22 +12,22 @@ fun initKeyValueStore(context: Context) {
 /** Connectivity など共有モジュールから参照 */
 internal fun requireAndroidAppContext(): Context = appContext
 
-actual class KeyValueStore actual constructor() {
+actual class KeyValueStore actual constructor() : KeyValueStorage {
     private val prefs: SharedPreferences by lazy {
         appContext.getSharedPreferences("levelup_prefs", Context.MODE_PRIVATE)
     }
 
-    actual fun getString(key: String): String? = prefs.getString(key, null)
+    actual override fun getString(key: String): String? = prefs.getString(key, null)
 
-    actual fun putString(key: String, value: String) {
+    actual override fun putString(key: String, value: String) {
         prefs.edit().putString(key, value).apply()
     }
 
-    actual fun remove(key: String) {
+    actual override fun remove(key: String) {
         prefs.edit().remove(key).apply()
     }
 
-    actual fun clear() {
+    actual override fun clear() {
         prefs.edit().clear().apply()
     }
 }

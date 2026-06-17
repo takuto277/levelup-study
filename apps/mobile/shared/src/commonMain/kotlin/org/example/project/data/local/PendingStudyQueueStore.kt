@@ -2,27 +2,66 @@ package org.example.project.data.local
 
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import org.example.project.core.storage.KeyValueStorage
 import org.example.project.core.storage.KeyValueStore
 import org.example.project.domain.model.PendingStudyCompletion
 import org.example.project.domain.model.SyncStatus
 
 class PendingStudyQueueStore(
-    private val kv: KeyValueStore = KeyValueStore()
+    private val kv: KeyValueStorage = KeyValueStore(),
+    private val userIdProvider: () -> String = { "" }
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
 
-    private val key = "pending_study_queue_v1"
+    private val key: String get() = "pending_study_queue_v2_${userIdProvider()}"
+    private val legacyKey = "pending_study_queue_v1"
+    private val migrationFlagKey = "pending_study_queue_v1_migrated"
 
-    fun readAll(): List<PendingStudyCompletion> {
+    private fun ensureMigrated() {
+        val userId = userIdProvider()
+        if (userId.isEmpty()) return
+        migrateLegacyData()
+    }
+
+    /**
+     * 旧キー `pending_study_queue_v1` のデータを、現在のユーザーへ一度だけ移行する。
+     * ユーザー切替後の誤同期を防ぐため、移行後は旧キーを削除する。
+     */
+    fun migrateLegacyData() {
+        if (kv.getString(migrationFlagKey) == "true") return
+        val legacyRaw = kv.getString(legacyKey) ?: run {
+            kv.putString(migrationFlagKey, "true")
+            return
+        }
+        val legacyItems = try {
+            json.decodeFromString(ListSerializer(PendingStudyCompletion.serializer()), legacyRaw)
+        } catch (_: Exception) {
+            emptyList()
+        }
+        if (legacyItems.isNotEmpty()) {
+            val current = readCurrentUnsafe()
+            val merged = (current + legacyItems).distinctBy { it.localId }
+            replaceAll(merged)
+        }
+        kv.remove(legacyKey)
+        kv.putString(migrationFlagKey, "true")
+    }
+
+    private fun readCurrentUnsafe(): List<PendingStudyCompletion> {
         val raw = kv.getString(key) ?: return emptyList()
         return try {
             json.decodeFromString(ListSerializer(PendingStudyCompletion.serializer()), raw)
         } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    fun readAll(): List<PendingStudyCompletion> {
+        ensureMigrated()
+        return readCurrentUnsafe()
     }
 
     fun count(): Int = readAll().size
