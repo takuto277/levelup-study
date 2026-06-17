@@ -2,58 +2,19 @@ package org.example.project.data.local
 
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
-import org.example.project.core.storage.KeyValueStorage
 import org.example.project.core.storage.KeyValueStore
 import org.example.project.domain.model.PendingStudyCompletion
 import org.example.project.domain.model.SyncStatus
 
 class PendingStudyQueueStore(
-    private val kv: KeyValueStorage = KeyValueStore(),
-    private val userIdProvider: () -> String = { "" }
+    private val kv: KeyValueStore = KeyValueStore()
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
 
-    private val key: String get() = "pending_study_queue_v2_${userIdProvider()}"
-    private val legacyKey = "pending_study_queue_v1"
-    private val migrationFlagKey = "pending_study_queue_v1_migrated"
-
-    /**
-     * 旧キーからの移行を userId が確定してから一度だけ実行する。
-     * init で即時移行すると Koin singleton 生成時に userId 未確定で空キーへ誤移行するため、
-     * readAll() の初回呼び出し時に遅延実行する。
-     */
-    private fun ensureMigrated() {
-        val userId = userIdProvider()
-        if (userId.isEmpty()) return
-        migrateLegacyData()
-    }
-
-    /**
-     * 旧キー `pending_study_queue_v1` のデータを、現在のユーザーへ一度だけ移行する。
-     * ユーザー切替後の誤同期を防ぐため、移行後は旧キーを削除する。
-     */
-    fun migrateLegacyData() {
-        if (kv.getString(migrationFlagKey) == "true") return
-        val legacyRaw = kv.getString(legacyKey) ?: run {
-            kv.putString(migrationFlagKey, "true")
-            return
-        }
-        val legacyItems = try {
-            json.decodeFromString(ListSerializer(PendingStudyCompletion.serializer()), legacyRaw)
-        } catch (_: Exception) {
-            emptyList()
-        }
-        if (legacyItems.isNotEmpty()) {
-            val current = readAll()
-            val merged = (current + legacyItems).distinctBy { it.localId }
-            replaceAll(merged)
-        }
-        kv.remove(legacyKey)
-        kv.putString(migrationFlagKey, "true")
-    }
+    private val key = "pending_study_queue_v1"
 
     fun readAll(): List<PendingStudyCompletion> {
         val raw = kv.getString(key) ?: return emptyList()
