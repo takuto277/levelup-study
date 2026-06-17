@@ -43,6 +43,7 @@ object UserSessionStore {
         val user = userRepository?.getOrCreateAuthUser()
         if (user != null) {
             _currentUser.value = user
+            setSession(user.id)
         }
     }
 
