@@ -1,5 +1,6 @@
 package org.example.project.core.network
 
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
@@ -17,6 +18,7 @@ import platform.posix.sockaddr_in
  * iOS actual. SCNetworkReachability でインターネット接続の可否を判定する。
  * ゼロアドレス（0.0.0.0）を使い、一般のインターネット到達性を確認する。
  */
+@OptIn(ExperimentalForeignApi::class)
 actual fun isDeviceOnline(): Boolean = memScoped {
     val zeroAddress = alloc<sockaddr_in>().apply {
         sin_len = sizeOf<sockaddr_in>().toUByte()
