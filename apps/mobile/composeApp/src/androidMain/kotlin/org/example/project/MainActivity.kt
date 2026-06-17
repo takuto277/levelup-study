@@ -26,12 +26,10 @@ class MainActivity : ComponentActivity() {
 
         if (isDebug) {
             val savedEnv = UserSessionStore.getDebugEnvironment()
-            if (savedEnv != null) {
-                val env = AppEnvironment.entries.firstOrNull { it.name.lowercase() == savedEnv }
-                if (env != null) {
-                    ApiRoutes.BASE_URL = env.url
-                }
-            }
+            val env = savedEnv?.let { s ->
+                AppEnvironment.entries.firstOrNull { it.name.lowercase() == s }
+            } ?: AppEnvironment.DEV
+            ApiRoutes.BASE_URL = env.url
         }
 
         setContent {
