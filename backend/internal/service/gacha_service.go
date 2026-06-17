@@ -432,3 +432,18 @@ func refinementCompensation(rarity int) (stones int, gold int) {
 		return 0, 50
 	}
 }
+
+// deductStonesTx はガチャ実行時の石減算をトランザクション内で行う。
+// RowsAffected == 0 のとき競合または残高不足としてエラーを返す（テストからも参照）。
+func deductStonesTx(tx *gorm.DB, userID uuid.UUID, amount int) error {
+	result := tx.Model(&model.User{}).
+		Where("id = ? AND stones >= ?", userID, amount).
+		Update("stones", gorm.Expr("stones - ?", amount))
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("石が足りません（競合または残高不足。必要: %d）", amount)
+	}
+	return nil
+}
