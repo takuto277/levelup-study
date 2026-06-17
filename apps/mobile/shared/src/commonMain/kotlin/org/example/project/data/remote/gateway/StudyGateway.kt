@@ -3,6 +3,7 @@ package org.example.project.data.remote.gateway
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
@@ -16,13 +17,8 @@ import org.example.project.data.remote.dto.StudyCompleteRequest
 import org.example.project.data.remote.dto.StudyCompleteResponse
 import org.example.project.data.remote.dto.StudySessionListResponse
 
-/**
- * 勉強セッション API Gateway
- * Go バックエンドの study 系エンドポイントとの通信
- */
 class StudyGateway(private val client: HttpClient) {
 
-    /** POST /api/v1/users/{userId}/study/complete — セッション完了 & 報酬計算 */
     suspend fun completeSession(userId: String, request: StudyCompleteRequest): NetworkResult<StudyCompleteResponse> =
         runCatching {
             val response: StudyCompleteResponse = client.post(ApiRoutes.studyComplete(userId)) {
@@ -33,7 +29,6 @@ class StudyGateway(private val client: HttpClient) {
             toNetworkError(e)
         }
 
-    /** GET /api/v1/users/{userId}/study/sessions — セッション履歴一覧 */
     suspend fun listSessions(limit: Int = 20, offset: Int = 0): NetworkResult<StudySessionListResponse> =
         runCatching {
             val userId = UserSessionStore.requireUserId()
@@ -49,6 +44,7 @@ class StudyGateway(private val client: HttpClient) {
 
     private fun toNetworkError(e: Throwable): NetworkResult.Error {
         val statusCode = (e as? ClientRequestException)?.response?.status?.value
+            ?: (e as? ServerResponseException)?.response?.status?.value
         return NetworkResult.Error(
             code = statusCode,
             message = ErrorMessage.classify(statusCode, e, isDeviceOnline())
