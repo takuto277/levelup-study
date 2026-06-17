@@ -47,7 +47,8 @@ func (u *User) BeforeCreate(tx *gorm.DB) error { ensureUUID(&u.ID); return nil }
 
 type StudySession struct {
 	ID              uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	UserID          uuid.UUID  `gorm:"type:uuid;not null;index"                       json:"user_id"`
+	UserID          uuid.UUID  `gorm:"type:uuid;not null;index;uniqueIndex:idx_user_client_session" json:"user_id"`
+	ClientSessionID *string    `gorm:"type:varchar(100);uniqueIndex:idx_user_client_session" json:"client_session_id"` // 冪等キー
 	Category        *string    `gorm:"type:varchar(50)"                               json:"category"`         // 旧クライアント互換（genre_id 移行前の値）
 	GenreID         *uuid.UUID `gorm:"type:uuid;index"                                json:"genre_id"`         // 勉強ジャンル（m_study_genres）
 	DungeonID       *uuid.UUID `gorm:"type:uuid;index"                                json:"dungeon_id"`       // この勉強中に進行したダンジョン

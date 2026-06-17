@@ -6,6 +6,12 @@ import org.example.project.domain.model.PendingStudyCompletion
 import org.example.project.domain.model.StudyCompleteResult
 import org.example.project.domain.repository.StudyRepository
 
+class StudyCompletionException(
+    message: String,
+    val clientSessionId: String?,
+    cause: Throwable? = null
+) : RuntimeException(message, cause)
+
 /**
  * 勉強タイマーのユースケース
  * セッション完了時の報酬リクエスト・オフライン対応
@@ -14,8 +20,7 @@ class StudyUseCase(
     private val studyRepository: StudyRepository
 ) {
     /**
-     * 勉強セッション完了処理
-     * サーバーに送信し、報酬計算結果を受け取る
+     * 勉強セッション完了処理。クライアント生成IDで冪等性を担保。
      */
     suspend fun completeSession(
         category: String?,
@@ -26,19 +31,30 @@ class StudyUseCase(
         userCharacterId: String? = null,
         defeatNormalCount: Int = 0,
         defeatBossCount: Int = 0,
-        difficultyMultiplier: Double = 1.0
+        difficultyMultiplier: Double = 1.0,
+        clientSessionId: String = "${Clock.System.now().toEpochMilliseconds()}_d${Random.nextInt(1_000_000)}"
     ): StudyCompleteResult {
-        return studyRepository.completeSession(
-            category = category,
-            startedAt = startedAt,
-            endedAt = endedAt,
-            durationSeconds = durationSeconds,
-            isCompleted = isCompleted,
-            userCharacterId = userCharacterId,
-            defeatNormalCount = defeatNormalCount,
-            defeatBossCount = defeatBossCount,
-            difficultyMultiplier = difficultyMultiplier
-        )
+        val id = clientSessionId
+        return try {
+            studyRepository.completeSession(
+                category = category,
+                startedAt = startedAt,
+                endedAt = endedAt,
+                durationSeconds = durationSeconds,
+                isCompleted = isCompleted,
+                userCharacterId = userCharacterId,
+                defeatNormalCount = defeatNormalCount,
+                defeatBossCount = defeatBossCount,
+                difficultyMultiplier = difficultyMultiplier,
+                clientSessionId = id
+            ).copy(clientSessionId = id)
+        } catch (e: Exception) {
+            throw StudyCompletionException(
+                message = e.message ?: "study completion failed",
+                clientSessionId = id,
+                cause = e
+            )
+        }
     }
 
     /**
@@ -54,9 +70,11 @@ class StudyUseCase(
         defeatNormalCount: Int = 0,
         defeatBossCount: Int = 0,
         difficultyMultiplier: Double = 1.0,
-        isTrainingGround: Boolean = false
+        isTrainingGround: Boolean = false,
+        clientSessionId: String? = null
     ) {
-        val localId = "${Clock.System.now().toEpochMilliseconds()}_${Random.nextInt(1_000_000)}"
+        val localId = clientSessionId
+            ?: "${Clock.System.now().toEpochMilliseconds()}_${Random.nextInt(1_000_000)}"
         studyRepository.savePendingCompletion(
             PendingStudyCompletion(
                 localId = localId,
@@ -82,7 +100,8 @@ class StudyUseCase(
         startedAt: String,
         endedAt: String,
         durationSeconds: Int,
-        isCompleted: Boolean
+        isCompleted: Boolean,
+        clientSessionId: String? = null
     ) {
         savePendingStudyCompletion(
             category = category,
@@ -90,11 +109,7 @@ class StudyUseCase(
             endedAt = endedAt,
             durationSeconds = durationSeconds,
             isCompleted = isCompleted,
-            userCharacterId = null,
-            defeatNormalCount = 0,
-            defeatBossCount = 0,
-            difficultyMultiplier = 1.0,
-            isTrainingGround = false
+            clientSessionId = clientSessionId
         )
     }
 }

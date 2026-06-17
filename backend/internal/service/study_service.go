@@ -29,16 +29,15 @@ type CompleteStudyRequest struct {
 	StartedAt       time.Time  `json:"started_at"`
 	EndedAt         time.Time  `json:"ended_at"`
 	DurationSeconds int        `json:"duration_seconds"`
-	Category        *string    `json:"category"` // 旧クライアント互換。UUID 文字列なら genre_id としても扱う。
+	Category        *string    `json:"category"`
 	GenreID         *uuid.UUID `json:"genre_id,omitempty"`
 	DungeonID       *uuid.UUID `json:"dungeon_id,omitempty"`
 	IsCompleted     bool       `json:"is_completed"`
-	UserCharacterID *uuid.UUID `json:"user_character_id,omitempty"` // 冒険に出した所持キャラ（省略時はパーティ先頭スロット）
-	// 冒険クエスト用: 通常敵・ボス（最終フロア撃破）討伐数。旧クライアントは 0 のまま。
+	UserCharacterID *uuid.UUID `json:"user_character_id,omitempty"`
 	DefeatNormalCount int `json:"defeat_normal_count"`
 	DefeatBossCount   int `json:"defeat_boss_count"`
-	// ダンジョン難易度倍率（経験値のみ）。0 以下は 1 扱い。
 	DifficultyMultiplier float64 `json:"difficulty_multiplier"`
+	ClientSessionID  *string   `json:"client_session_id,omitempty"`
 }
 
 // CompleteStudyResponse — 勉強完了レスポンス
@@ -85,6 +84,23 @@ func (s *StudyService) CompleteStudy(userID uuid.UUID, req CompleteStudyRequest)
 		return nil, err
 	}
 
+	// --- 2. 冪等チェック ---
+	if req.ClientSessionID != nil && *req.ClientSessionID != "" {
+		var existing model.StudySession
+		if err := s.db.Where("user_id = ? AND client_session_id = ?", userID, *req.ClientSessionID).
+			Preload("Rewards").First(&existing).Error; err == nil {
+			user, _ := s.userRepo.GetByID(userID)
+			resp := &CompleteStudyResponse{
+				SessionID:   existing.ID,
+				Rewards:     existing.Rewards,
+			}
+			if user != nil {
+				resp.UpdatedUser = *user
+			}
+			return resp, nil
+		}
+	}
+
 	var resp CompleteStudyResponse
 
 	// --- トランザクション開始 ---
@@ -107,6 +123,7 @@ func (s *StudyService) CompleteStudy(userID uuid.UUID, req CompleteStudyRequest)
 		// --- 2. セッション保存 ---
 		session := model.StudySession{
 			UserID:          userID,
+			ClientSessionID: req.ClientSessionID,
 			Category:        req.Category,
 			GenreID:         genreID,
 			DungeonID:       dungeonID,

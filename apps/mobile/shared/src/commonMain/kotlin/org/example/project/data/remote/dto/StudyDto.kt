@@ -57,7 +57,9 @@ data class StudyCompleteRequest(
     @SerialName("defeat_normal_count") val defeatNormalCount: Int = 0,
     @SerialName("defeat_boss_count") val defeatBossCount: Int = 0,
     /** ダンジョン難易度による経験値倍率。1.0 で等倍。 */
-    @SerialName("difficulty_multiplier") val difficultyMultiplier: Double = 1.0
+    @SerialName("difficulty_multiplier") val difficultyMultiplier: Double = 1.0,
+    /** 冪等キー（未同期再送防止）。オフライン pending の localId を送信する */
+    @SerialName("client_session_id") val clientSessionId: String? = null,
 )
 
 // ── Mapper ──────────────────────────────────────

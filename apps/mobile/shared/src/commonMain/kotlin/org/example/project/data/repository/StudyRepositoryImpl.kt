@@ -42,7 +42,8 @@ class StudyRepositoryImpl(
         userCharacterId: String?,
         defeatNormalCount: Int,
         defeatBossCount: Int,
-        difficultyMultiplier: Double
+        difficultyMultiplier: Double,
+        clientSessionId: String?
     ): StudyCompleteResult {
         val userId = UserSessionStore.requireUserId()
         val request = StudyCompleteRequest(
@@ -54,10 +55,12 @@ class StudyRepositoryImpl(
             userCharacterId = userCharacterId,
             defeatNormalCount = defeatNormalCount,
             defeatBossCount = defeatBossCount,
-            difficultyMultiplier = difficultyMultiplier
+            difficultyMultiplier = difficultyMultiplier,
+            clientSessionId = clientSessionId
         )
         val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
-        userRepository.updateCachedUser(result.updatedUser)
+            .copy(clientSessionId = clientSessionId)
+        result.updatedUser?.let { userRepository.updateCachedUser(it) }
         return result
     }
 
@@ -105,10 +108,11 @@ class StudyRepositoryImpl(
                     userCharacterId = p.userCharacterId,
                     defeatNormalCount = p.defeatNormalCount,
                     defeatBossCount = p.defeatBossCount,
-                    difficultyMultiplier = p.difficultyMultiplier
+                    difficultyMultiplier = p.difficultyMultiplier,
+                    clientSessionId = p.localId
                 )
                 val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
-                userRepository.updateCachedUser(result.updatedUser)
+                result.updatedUser?.let { userRepository.updateCachedUser(it) }
                 pendingQueue.remove(p.localId)
             } catch (e: Exception) {
                 val newRetryCount = p.retryCount + 1
@@ -143,10 +147,11 @@ class StudyRepositoryImpl(
                     userCharacterId = p.userCharacterId,
                     defeatNormalCount = p.defeatNormalCount,
                     defeatBossCount = p.defeatBossCount,
-                    difficultyMultiplier = p.difficultyMultiplier
+                    difficultyMultiplier = p.difficultyMultiplier,
+                    clientSessionId = p.localId
                 )
                 val result = gateway.completeSession(userId, request).getOrThrow().toDomain()
-                userRepository.updateCachedUser(result.updatedUser)
+                result.updatedUser?.let { userRepository.updateCachedUser(it) }
                 pendingQueue.remove(p.localId)
             } catch (e: Exception) {
                 pendingQueue.updateStatus(p.localId, SyncStatus.FAILED, e.message)
