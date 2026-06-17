@@ -6,6 +6,7 @@ import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.sizeOf
+import kotlinx.cinterop.value
 import platform.SystemConfiguration.SCNetworkReachabilityCreateWithAddress
 import platform.SystemConfiguration.SCNetworkReachabilityFlagsVar
 import platform.SystemConfiguration.SCNetworkReachabilityGetFlags
@@ -32,8 +33,7 @@ actual fun isDeviceOnline(): Boolean = memScoped {
         return@memScoped false
     }
 
-    val f = flags.ptr.pointed.value
-    val isReachable = (f and kSCNetworkReachabilityFlagsReachable) != 0u
-    val connectionRequired = (f and kSCNetworkReachabilityFlagsConnectionRequired) != 0u
+    val isReachable = (flags.value and kSCNetworkReachabilityFlagsReachable) != 0u
+    val connectionRequired = (flags.value and kSCNetworkReachabilityFlagsConnectionRequired) != 0u
     isReachable && !connectionRequired
 }
