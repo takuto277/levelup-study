@@ -24,7 +24,8 @@ func NewUserHandler(repo *repository.UserRepository, masterRepo *repository.Mast
 }
 
 // CreateUser — POST /api/v1/users
-// 新規ユーザーを作成する
+// 新規ユーザーを作成する。id はDB側で自動採番され、リクエストからは受け付けない。
+// JWT sub と紐づくユーザー作成は POST /api/v1/auth/user 側で行う。
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		DisplayName string `json:"display_name"`
@@ -163,6 +164,30 @@ func (h *UserHandler) DebugPatchCurrencies(w http.ResponseWriter, r *http.Reques
 	user, err := h.repo.ApplyCurrencyDelta(id, req.StonesDelta, req.GoldDelta)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "ユーザーが見つかりません")
+		return
+	}
+	respondJSON(w, http.StatusOK, user)
+}
+
+// GetOrCreateUser — POST /api/v1/auth/user
+// 認証ユーザーを取得、なければ作成する
+func (h *UserHandler) GetOrCreateUser(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("userID").(uuid.UUID)
+	if !ok || userID == uuid.Nil {
+		respondError(w, http.StatusUnauthorized, "認証情報がありません")
+		return
+	}
+	user, err := h.repo.GetByID(userID)
+	if err != nil {
+		user = &model.User{
+			ID:          userID,
+			DisplayName: "New User",
+		}
+		if err := h.repo.Create(user); err != nil {
+			respondError(w, http.StatusInternalServerError, "ユーザー作成に失敗しました")
+			return
+		}
+		respondJSON(w, http.StatusCreated, user)
 		return
 	}
 	respondJSON(w, http.StatusOK, user)

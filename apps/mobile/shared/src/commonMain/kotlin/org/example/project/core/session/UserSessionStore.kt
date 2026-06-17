@@ -1,6 +1,10 @@
 package org.example.project.core.session
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.example.project.core.storage.KeyValueStore
+import org.example.project.domain.model.User
+import org.example.project.domain.repository.UserRepository
 
 /**
  * ユーザーセッション管理
@@ -29,6 +33,19 @@ object UserSessionStore {
 
     private const val KEY_USER_ID = "user_id"
     private const val KEY_AUTH_TOKEN = "auth_token"
+
+    var userRepository: UserRepository? = null
+
+    private val _currentUser = MutableStateFlow<User?>(null)
+    val currentUser: StateFlow<User?> = _currentUser
+
+    suspend fun initializeFromAuth() {
+        val user = userRepository?.getOrCreateAuthUser()
+        if (user != null) {
+            _currentUser.value = user
+            setSession(user.id)
+        }
+    }
 
     /** 現在ログイン中のユーザー ID */
     var userId: String?

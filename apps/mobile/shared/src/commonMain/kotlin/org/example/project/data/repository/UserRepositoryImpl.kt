@@ -1,6 +1,7 @@
 package org.example.project.data.repository
 
 import kotlinx.serialization.json.Json
+import org.example.project.core.network.NetworkResult
 import org.example.project.core.network.getOrThrow
 import org.example.project.core.session.UserSessionStore
 import org.example.project.core.storage.KeyValueStore
@@ -44,6 +45,13 @@ class UserRepositoryImpl(
         } catch (_: Exception) {
             null
         }
+
+    override suspend fun getOrCreateAuthUser(): User? {
+        return when (val result = gateway.getOrCreateAuthUser()) {
+            is NetworkResult.Success -> result.data.toDomain()
+            else -> null
+        }
+    }
 
     override suspend fun createUser(displayName: String): User {
         val response = gateway.createUser(CreateUserRequest(displayName)).getOrThrow()

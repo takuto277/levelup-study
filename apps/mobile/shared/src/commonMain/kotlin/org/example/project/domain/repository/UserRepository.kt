@@ -8,6 +8,9 @@ import org.example.project.domain.model.User
  */
 interface UserRepository {
 
+    /** 認証ユーザーを取得、なければ作成 */
+    suspend fun getOrCreateAuthUser(): User?
+
     /** 新規ユーザーを作成（初回起動時） */
     suspend fun createUser(displayName: String): User
 

@@ -19,6 +19,14 @@ import org.example.project.data.remote.dto.UserResponse
  */
 class UserGateway(private val client: HttpClient) {
 
+    /** POST /api/v1/auth/user — 認証ユーザー取得／作成 */
+    suspend fun getOrCreateAuthUser(): NetworkResult<UserResponse> = runCatching {
+        val response: UserResponse = client.post(ApiRoutes.AUTH_USER).body()
+        NetworkResult.Success(response)
+    }.getOrElse { e ->
+        NetworkResult.Error(message = e.message ?: "認証ユーザー取得に失敗しました")
+    }
+
     /** POST /api/v1/users — ユーザー作成 */
     suspend fun createUser(request: CreateUserRequest): NetworkResult<UserResponse> = runCatching {
         val response: UserResponse = client.post(ApiRoutes.USERS) {
