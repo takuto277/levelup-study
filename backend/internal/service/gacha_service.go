@@ -140,15 +140,9 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 	var results []GachaPullResult
 
 	err = s.db.Transaction(func(tx *gorm.DB) error {
-		// 石を消費する（競合防止: WHERE stones >= totalCost で楽観ロック）
-		result := tx.Model(&model.User{}).
-			Where("id = ? AND stones >= ?", userID, totalCost).
-			Update("stones", gorm.Expr("stones - ?", totalCost))
-		if result.Error != nil {
-			return fmt.Errorf("石の消費に失敗: %w", result.Error)
-		}
-		if result.RowsAffected == 0 {
-			return fmt.Errorf("石が足りません（競合または残高不足。必要: %d）", totalCost)
+		// 石を消費する（deductStonesTx は RowsAffected==0 の競合検出を含む）
+		if err := deductStonesTx(tx, userID, totalCost); err != nil {
+			return err
 		}
 
 		// 所持キャラ一覧（新規/凸判定用）
