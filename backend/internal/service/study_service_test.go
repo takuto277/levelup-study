@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -66,20 +67,22 @@ func TestCompleteStudyGrantsDailyBonusOnlyWhenCrossingTwoHours(t *testing.T) {
 	startedAt := time.Date(2026, 6, 4, 9, 0, 0, 0, time.UTC)
 
 	_, err := svc.CompleteStudy(userID, CompleteStudyRequest{
-		StartedAt:       startedAt,
-		EndedAt:         startedAt.Add(90 * time.Minute),
-		DurationSeconds: 90 * 60,
-		IsCompleted:     true,
+		StartedAt:            startedAt,
+		EndedAt:              startedAt.Add(90 * time.Minute),
+		DurationSeconds:      90 * 60,
+		DifficultyMultiplier: 1.0,
+		IsCompleted:          true,
 	})
 	if err != nil {
 		t.Fatalf("first CompleteStudy failed: %v", err)
 	}
 
 	resp, err := svc.CompleteStudy(userID, CompleteStudyRequest{
-		StartedAt:       startedAt.Add(2 * time.Hour),
-		EndedAt:         startedAt.Add(2*time.Hour + 30*time.Minute),
-		DurationSeconds: 30 * 60,
-		IsCompleted:     true,
+		StartedAt:            startedAt.Add(2 * time.Hour),
+		EndedAt:              startedAt.Add(2*time.Hour + 30*time.Minute),
+		DurationSeconds:      30 * 60,
+		DifficultyMultiplier: 1.0,
+		IsCompleted:          true,
 	})
 	if err != nil {
 		t.Fatalf("second CompleteStudy failed: %v", err)
@@ -91,10 +94,11 @@ func TestCompleteStudyGrantsDailyBonusOnlyWhenCrossingTwoHours(t *testing.T) {
 	}
 
 	resp, err = svc.CompleteStudy(userID, CompleteStudyRequest{
-		StartedAt:       startedAt.Add(3 * time.Hour),
-		EndedAt:         startedAt.Add(3*time.Hour + 10*time.Minute),
-		DurationSeconds: 10 * 60,
-		IsCompleted:     true,
+		StartedAt:            startedAt.Add(3 * time.Hour),
+		EndedAt:              startedAt.Add(3*time.Hour + 10*time.Minute),
+		DurationSeconds:      10 * 60,
+		DifficultyMultiplier: 1.0,
+		IsCompleted:          true,
 	})
 	if err != nil {
 		t.Fatalf("third CompleteStudy failed: %v", err)
@@ -114,11 +118,12 @@ func TestCompleteStudyStoresGenreIDFromCategoryUUIDForCompatibility(t *testing.T
 	startedAt := time.Date(2026, 6, 4, 9, 0, 0, 0, time.UTC)
 
 	resp, err := svc.CompleteStudy(userID, CompleteStudyRequest{
-		StartedAt:       startedAt,
-		EndedAt:         startedAt.Add(10 * time.Minute),
-		DurationSeconds: 10 * 60,
-		Category:        &category,
-		IsCompleted:     true,
+		StartedAt:            startedAt,
+		EndedAt:              startedAt.Add(10 * time.Minute),
+		DurationSeconds:      10 * 60,
+		Category:             &category,
+		DifficultyMultiplier: 1.0,
+		IsCompleted:          true,
 	})
 	if err != nil {
 		t.Fatalf("CompleteStudy failed: %v", err)
@@ -136,6 +141,115 @@ func TestCompleteStudyStoresGenreIDFromCategoryUUIDForCompatibility(t *testing.T
 	}
 }
 
+func TestCompleteStudyAcceptsZeroDifficultyMultiplierForBackwardCompat(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	svc := newStudyServiceForTest(db)
+	userID := createStudyTestUser(t, db, nil)
+	startedAt := time.Date(2026, 6, 4, 9, 0, 0, 0, time.UTC)
+
+	// DifficultyMultiplier が 0（旧クライアントのゼロ値）でもエラーにならず、
+	// calculateRewards で 1.0 に正規化されて通常の経験値が付与されることを確認。
+	resp, err := svc.CompleteStudy(userID, CompleteStudyRequest{
+		StartedAt:       startedAt,
+		EndedAt:         startedAt.Add(10 * time.Minute),
+		DurationSeconds: 10 * 60,
+		IsCompleted:     true,
+	})
+	if err != nil {
+		t.Fatalf("CompleteStudy with zero DifficultyMultiplier failed: %v", err)
+	}
+
+	xp := rewardAmountsByType(resp.Rewards)["xp"]
+	if xp != 60 {
+		t.Fatalf("xp = %d, want 60 (duration 600s / 10s per xp)", xp)
+	}
+}
+
+func TestCompleteStudyRejectsInvalidRewardInputs(t *testing.T) {
+	db := testutil.SetupTestDB(t)
+	svc := newStudyServiceForTest(db)
+	userID := createStudyTestUser(t, db, nil)
+	startedAt := time.Date(2026, 6, 4, 9, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name    string
+		req     CompleteStudyRequest
+		wantErr string
+	}{
+		{
+			name: "negative defeat normal count",
+			req: CompleteStudyRequest{
+				StartedAt:         startedAt,
+				EndedAt:           startedAt.Add(10 * time.Minute),
+				DurationSeconds:   10 * 60,
+				DefeatNormalCount: -1,
+				IsCompleted:       true,
+			},
+			wantErr: "討伐数",
+		},
+		{
+			name: "difficulty multiplier too high",
+			req: CompleteStudyRequest{
+				StartedAt:            startedAt,
+				EndedAt:              startedAt.Add(10 * time.Minute),
+				DurationSeconds:      10 * 60,
+				DifficultyMultiplier: 10,
+				IsCompleted:          true,
+			},
+			wantErr: "難易度倍率",
+		},
+		{
+			name: "normal defeats exceed limit",
+			req: CompleteStudyRequest{
+				StartedAt:            startedAt,
+				EndedAt:              startedAt.Add(10 * time.Minute),
+				DurationSeconds:      10 * 60,
+				DefeatNormalCount:    1000,
+				DifficultyMultiplier: 1.0,
+				IsCompleted:          true,
+			},
+			wantErr: "通常敵",
+		},
+		{
+			name: "boss defeats exceed limit",
+			req: CompleteStudyRequest{
+				StartedAt:            startedAt,
+				EndedAt:              startedAt.Add(10 * time.Minute),
+				DurationSeconds:      10 * 60,
+				DefeatBossCount:      10,
+				DifficultyMultiplier: 1.0,
+				IsCompleted:          true,
+			},
+			wantErr: "ボス",
+		},
+		{
+			name: "boss defeats exceed normal defeats",
+			req: CompleteStudyRequest{
+				StartedAt:            startedAt,
+				EndedAt:              startedAt.Add(30 * time.Minute),
+				DurationSeconds:      30 * 60,
+				DefeatNormalCount:    1,
+				DefeatBossCount:      2,
+				DifficultyMultiplier: 1.0,
+				IsCompleted:          true,
+			},
+			wantErr: "ボス討伐数が通常敵",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := svc.CompleteStudy(userID, tc.req)
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("error = %q, want containing %q", err.Error(), tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestCompleteStudyAdvancesSelectedDungeonProgress(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 	svc := newStudyServiceForTest(db)
@@ -144,10 +258,11 @@ func TestCompleteStudyAdvancesSelectedDungeonProgress(t *testing.T) {
 	startedAt := time.Date(2026, 6, 4, 9, 0, 0, 0, time.UTC)
 
 	resp, err := svc.CompleteStudy(userID, CompleteStudyRequest{
-		StartedAt:       startedAt,
-		EndedAt:         startedAt.Add(20 * time.Minute),
-		DurationSeconds: 20 * 60,
-		IsCompleted:     true,
+		StartedAt:            startedAt,
+		EndedAt:              startedAt.Add(20 * time.Minute),
+		DurationSeconds:      20 * 60,
+		DifficultyMultiplier: 1.0,
+		IsCompleted:          true,
 	})
 	if err != nil {
 		t.Fatalf("CompleteStudy failed: %v", err)

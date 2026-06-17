@@ -204,9 +204,34 @@ func (s *StudyService) validateRequest(req CompleteStudyRequest) error {
 	if !req.EndedAt.After(req.StartedAt) {
 		return fmt.Errorf("終了時刻が開始時刻より前です")
 	}
-	// 勉強時間が妥当か（最大24時間=86400秒）
-	if req.DurationSeconds <= 0 || req.DurationSeconds > 86400 {
+	// 勉強時間が妥当か（最小1秒、最大6時間=21600秒）
+	if req.DurationSeconds <= 0 || req.DurationSeconds > 21600 {
 		return fmt.Errorf("勉強時間が不正です: %d秒", req.DurationSeconds)
+	}
+	// 討伐数の符号チェック
+	if req.DefeatNormalCount < 0 || req.DefeatBossCount < 0 {
+		return fmt.Errorf("討伐数は0以上である必要があります")
+	}
+	// 難易度倍率はクライアント申告値を受け付けるが、範囲を制限。
+	// 0以下の値（旧クライアントのゼロ値含む）は calculateRewards で 1.0 に正規化されるため、
+	// ここでは上限超過のみを拒否する。
+	if req.DifficultyMultiplier > 5.0 {
+		return fmt.Errorf("難易度倍率が不正です: %.2f", req.DifficultyMultiplier)
+	}
+	// 討伐数の上限検証（過大申告を防ぐ）
+	// 戦闘ターン周期3秒を想定し、通常敵は3秒に1体が理論上限。
+	// ボスは最終フロア到達に時間を要するため、3分に1体を上限とする。
+	maxNormal := req.DurationSeconds/3 + 5
+	if req.DefeatNormalCount > maxNormal {
+		return fmt.Errorf("通常敵討伐数が上限を超えています: %d > %d", req.DefeatNormalCount, maxNormal)
+	}
+	maxBoss := req.DurationSeconds/180 + 1
+	if req.DefeatBossCount > maxBoss {
+		return fmt.Errorf("ボス討伐数が上限を超えています: %d > %d", req.DefeatBossCount, maxBoss)
+	}
+	// ボスを倒すには通常敵を一定程度倒している必要がある
+	if req.DefeatBossCount > 0 && req.DefeatBossCount > req.DefeatNormalCount {
+		return fmt.Errorf("ボス討伐数が通常敵討伐数を超えています")
 	}
 	return nil
 }
