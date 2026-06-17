@@ -142,16 +142,17 @@ private class GachaStore: ObservableObject {
     }
 
     func pullSingle() {
-        guard canPullSingle, let banner = selectedBanner else { return }
+        guard phase != .pulling, canPullSingle, let banner = selectedBanner else { return }
         kmpViewModel.onIntent(intent: GachaIntentPullSingle(bannerId: banner.id))
     }
 
     func pullMulti() {
-        guard canPullMulti, let banner = selectedBanner else { return }
+        guard phase != .pulling, canPullMulti, let banner = selectedBanner else { return }
         kmpViewModel.onIntent(intent: GachaIntentPullMulti(bannerId: banner.id))
     }
 
     func pullAgain() {
+        guard phase != .pulling else { return }
         kmpViewModel.onIntent(intent: GachaIntentPullAgain())
     }
 
