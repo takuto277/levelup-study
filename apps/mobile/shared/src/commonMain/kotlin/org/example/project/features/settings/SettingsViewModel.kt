@@ -26,7 +26,7 @@ class SettingsViewModel(
 
     private val _uiState = MutableStateFlow(SettingsUiState(
         apiBaseUrl = ApiRoutes.BASE_URL,
-        selectedEnvironment = AppEnvironment.entries.firstOrNull { e -> e.url == ApiRoutes.BASE_URL }?.name?.lowercase() ?: "",
+        selectedEnvironment = AppEnvironment.resolveFromUrl(ApiRoutes.BASE_URL)?.name?.lowercase() ?: "",
     ))
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
@@ -46,8 +46,13 @@ class SettingsViewModel(
 
     fun clearToastFromPlatform() = onIntent(SettingsIntent.ClearToast)
 
+    /** Swift 互換用: overrideDevUrl なし（iOS は localhost をそのまま使う） */
+    fun setEnvironmentFromPlatform(envName: String) {
+        setEnvironmentFromPlatform(envName, null)
+    }
+
     /** デバッグビルド用: 環境を切り替え、ApiRoutes.BASE_URL と保存先を更新する */
-    fun setEnvironmentFromPlatform(envName: String, overrideDevUrl: String? = null) {
+    fun setEnvironmentFromPlatform(envName: String, overrideDevUrl: String?) {
         val env = AppEnvironment.entries.find { it.name.lowercase() == envName.lowercase() } ?: return
         val url = if (env == AppEnvironment.DEV && overrideDevUrl != null) overrideDevUrl else env.url
         ApiRoutes.BASE_URL = url
@@ -71,7 +76,7 @@ class SettingsViewModel(
                         it.copy(
                             displayedUserId = UserSessionStore.userId.orEmpty(),
                             apiBaseUrl = ApiRoutes.BASE_URL,
-                            selectedEnvironment = AppEnvironment.entries.firstOrNull { e -> e.url == ApiRoutes.BASE_URL }?.name?.lowercase() ?: "",
+                            selectedEnvironment = AppEnvironment.resolveFromUrl(ApiRoutes.BASE_URL)?.name?.lowercase() ?: "",
                             stones = u.stones,
                             gold = u.gold,
                             forceDevSeed = UserSessionStore.isForceDevSeedUserId(),
@@ -84,7 +89,7 @@ class SettingsViewModel(
                             isLoading = false,
                             toast = e.message ?: "ユーザー情報の取得に失敗しました",
                             apiBaseUrl = ApiRoutes.BASE_URL,
-                            selectedEnvironment = AppEnvironment.entries.firstOrNull { e -> e.url == ApiRoutes.BASE_URL }?.name?.lowercase() ?: "",
+                            selectedEnvironment = AppEnvironment.resolveFromUrl(ApiRoutes.BASE_URL)?.name?.lowercase() ?: "",
                         )
                     }
                 }
