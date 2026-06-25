@@ -47,13 +47,14 @@ class SettingsViewModel(
     fun clearToastFromPlatform() = onIntent(SettingsIntent.ClearToast)
 
     /** デバッグビルド用: 環境を切り替え、ApiRoutes.BASE_URL と保存先を更新する */
-    fun setEnvironmentFromPlatform(envName: String) {
+    fun setEnvironmentFromPlatform(envName: String, overrideDevUrl: String? = null) {
         val env = AppEnvironment.entries.find { it.name.lowercase() == envName.lowercase() } ?: return
-        ApiRoutes.BASE_URL = env.url
+        val url = if (env == AppEnvironment.DEV && overrideDevUrl != null) overrideDevUrl else env.url
+        ApiRoutes.BASE_URL = url
         UserSessionStore.setDebugEnvironment(env.name.lowercase())
         _uiState.update {
             it.copy(
-                apiBaseUrl = env.url,
+                apiBaseUrl = url,
                 selectedEnvironment = env.name.lowercase(),
             )
         }

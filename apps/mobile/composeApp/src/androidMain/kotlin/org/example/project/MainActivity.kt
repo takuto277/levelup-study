@@ -29,7 +29,8 @@ class MainActivity : ComponentActivity() {
             val env = savedEnv?.let { s ->
                 AppEnvironment.entries.firstOrNull { it.name.lowercase() == s }
             } ?: AppEnvironment.DEV
-            ApiRoutes.BASE_URL = env.url
+            val url = if (env == AppEnvironment.DEV) AppEnvironment.ANDROID_DEV_URL else env.url
+            ApiRoutes.BASE_URL = url
         }
 
         setContent {

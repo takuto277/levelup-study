@@ -138,7 +138,7 @@ fun SettingsScreenDialog(
                         AppEnvironment.entries.forEach { env ->
                             val selected = state.selectedEnvironment == env.name.lowercase()
                             OutlinedButton(
-                                onClick = { vm.setEnvironmentFromPlatform(env.name.lowercase()) },
+                                onClick = { vm.setEnvironmentFromPlatform(env.name.lowercase(), AppEnvironment.ANDROID_DEV_URL) },
                             ) {
                                 Text(
                                     env.displayName,

@@ -6,7 +6,11 @@ package org.example.project.core.network
  */
 enum class AppEnvironment(val url: String, val displayName: String) {
     DEV("http://localhost:8080", "dev"),
-    STG("https://levelup-study-api-stg.onrender.com", "stg"),
+    STG("https://levelup-study-api-stg.onrender.com", "stg");
+
+    companion object {
+        const val ANDROID_DEV_URL = "http://10.0.2.2:8080"
+    }
 }
 
 /**
