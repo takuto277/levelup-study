@@ -12,7 +12,7 @@ MIGRATE_IMAGE ?= migrate/migrate:v4.18.2
 # Docker からホストの Postgres へ（Linux は host-gateway で host.docker.internal を解決）
 MIGRATE_DATABASE_URL ?= postgres://postgres:postgres@host.docker.internal:5432/levelup_study?sslmode=disable
 
-.PHONY: help setup run test build lint db-up db-down db-reset env migrate-up migrate-down migrate-create migrate-version seed seed-remote db-fresh mint-dev-jwt master-images-validate master-images-upload
+.PHONY: help setup run test build lint db-up db-down db-reset env migrate-up migrate-down migrate-create migrate-version seed seed-remote seed-stg seed-prod db-fresh mint-dev-jwt master-images-validate master-images-upload
 
 # --- ヘルプ ---
 help: ## このヘルプを表示
@@ -106,6 +106,21 @@ seed-remote: ## シードを .env の DATABASE_URL 先へ投入（Supabase 用�
 			sh -c 'if psql --help 2>&1 | grep -q -- --ipv4; then psql --ipv4 "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /seed.sql; else psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /seed.sql; fi'; \
 	fi
 	@echo "✅ リモート DB へのシードが完了しました"
+
+seed-stg: ## シードを stg 環境 (STG_DATABASE_URL) へ投入
+	@test -n "$(STG_DATABASE_URL)" || (echo '✖ STG_DATABASE_URL が空です。.env の STG_DATABASE_URL に Render stg サービスの DATABASE_URL を設定してください。' && exit 1)
+	@echo "🌱 stg 環境へシード投入中..."
+	@$(MAKE) seed-remote DATABASE_URL="$(STG_DATABASE_URL)"
+
+seed-prod: ## シードを prod 環境 (PROD_DATABASE_URL) へ投入
+	@test -n "$(PROD_DATABASE_URL)" || (echo '✖ PROD_DATABASE_URL が空です。.env の PROD_DATABASE_URL に Render prod サービスの DATABASE_URL を設定してください。' && exit 1)
+	@if [ "$(CONFIRM_PROD_SEED)" != "yes" ]; then \
+		echo "❌ 本番 DB の全テーブル (users, study_sessions 等) を TRUNCATE してからシードを再投入します。"; \
+		echo "   実行するには CONFIRM_PROD_SEED=yes make seed-prod としてください。"; \
+		exit 1; \
+	fi
+	@echo "🌱 prod 環境へシード投入中...（本番 DB の全テーブルを削除して再投入します）"
+	@$(MAKE) seed-remote DATABASE_URL="$(PROD_DATABASE_URL)"
 
 db-fresh: db-reset ## DB完全リセット → migrate up → AutoMigrate → seed
 	@echo "⏳ PostgreSQL 起動待ち..."
