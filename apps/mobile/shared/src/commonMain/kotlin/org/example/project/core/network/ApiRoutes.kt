@@ -1,6 +1,24 @@
 package org.example.project.core.network
 
 /**
+ * デバッグビルドで切り替え可能な API 接続先環境。
+ * prod はリリースビルド固定のため選択肢に含めない。
+ */
+enum class AppEnvironment(val url: String, val displayName: String) {
+    DEV("http://localhost:8080", "dev"),
+    STG("https://levelup-study-api-stg.onrender.com", "stg");
+
+    companion object {
+        const val ANDROID_DEV_URL = "http://10.0.2.2:8080"
+
+        fun resolveFromUrl(url: String): AppEnvironment? {
+            if (url == ANDROID_DEV_URL) return DEV
+            return entries.firstOrNull { it.url == url }
+        }
+    }
+}
+
+/**
  * Go バックエンドの API エンドポイント定義
  *
  * パスは Go 側の router.go と 1:1 で対応する:
@@ -13,11 +31,11 @@ package org.example.project.core.network
  */
 object ApiRoutes {
 
-    // Environment-specific URLs (for future env switching via GeneratedApiKey.ENV):
-    // dev:  http://localhost:8080
-    // stg:  https://levelup-study-api-stg.onrender.com
-    // prod: https://levelup-study-api.onrender.com
-    const val BASE_URL = "https://levelup-study-api.onrender.com"
+    // prod: https://levelup-study-api.onrender.com（リリースビルド固定、デバッグでは選択不可）
+    const val PROD_URL = "https://levelup-study-api.onrender.com"
+
+    /** デバッグビルドでは実行時に AppEnvironment で切り替え可能。デフォルトは dev。 */
+    var BASE_URL: String = PROD_URL
 
     // ── Auth ────────────────────────────────────
     /** POST: 認証ユーザー取得／作成 */

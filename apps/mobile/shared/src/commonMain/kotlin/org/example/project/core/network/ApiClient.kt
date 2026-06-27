@@ -34,7 +34,7 @@ object ApiClient {
      * HttpClient を生成
      * Ktor のエンジンは各プラットフォーム (OkHttp / Darwin) で自動解決される
      */
-    fun create(baseUrl: String = ApiRoutes.BASE_URL): HttpClient {
+    fun create(): HttpClient {
         return HttpClient {
             // JSON シリアライゼーション
             install(ContentNegotiation) {
@@ -48,7 +48,7 @@ object ApiClient {
 
             // デフォルトリクエスト設定
             defaultRequest {
-                url(baseUrl)
+                url(ApiRoutes.BASE_URL)
                 contentType(ContentType.Application.Json)
                 if (GENERATED_CLIENT_API_KEY.isNotEmpty()) {
                     header("X-API-Key", GENERATED_CLIENT_API_KEY)

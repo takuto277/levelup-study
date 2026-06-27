@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import org.example.project.core.network.ApiRoutes
+import org.example.project.core.network.AppEnvironment
 import org.example.project.core.network.getOrThrow
 import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.gateway.UserGateway
@@ -23,7 +24,10 @@ class SettingsViewModel(
     private val refreshMutex = Mutex()
     private val patchMutex = Mutex()
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    private val _uiState = MutableStateFlow(SettingsUiState(
+        apiBaseUrl = ApiRoutes.BASE_URL,
+        selectedEnvironment = AppEnvironment.resolveFromUrl(ApiRoutes.BASE_URL)?.name?.lowercase() ?: "",
+    ))
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     fun onIntent(intent: SettingsIntent) {
@@ -42,6 +46,25 @@ class SettingsViewModel(
 
     fun clearToastFromPlatform() = onIntent(SettingsIntent.ClearToast)
 
+    /** Swift 互換用: overrideDevUrl なし（iOS は localhost をそのまま使う） */
+    fun setEnvironmentFromPlatform(envName: String) {
+        setEnvironmentFromPlatform(envName, null)
+    }
+
+    /** デバッグビルド用: 環境を切り替え、ApiRoutes.BASE_URL と保存先を更新する */
+    fun setEnvironmentFromPlatform(envName: String, overrideDevUrl: String?) {
+        val env = AppEnvironment.entries.find { it.name.lowercase() == envName.lowercase() } ?: return
+        val url = if (env == AppEnvironment.DEV && overrideDevUrl != null) overrideDevUrl else env.url
+        ApiRoutes.BASE_URL = url
+        UserSessionStore.setDebugEnvironment(env.name.lowercase())
+        _uiState.update {
+            it.copy(
+                apiBaseUrl = url,
+                selectedEnvironment = env.name.lowercase(),
+            )
+        }
+    }
+
     private fun refresh() {
         viewModelScope.launch {
             if (!refreshMutex.tryLock()) return@launch
@@ -53,6 +76,7 @@ class SettingsViewModel(
                         it.copy(
                             displayedUserId = UserSessionStore.userId.orEmpty(),
                             apiBaseUrl = ApiRoutes.BASE_URL,
+                            selectedEnvironment = AppEnvironment.resolveFromUrl(ApiRoutes.BASE_URL)?.name?.lowercase() ?: "",
                             stones = u.stones,
                             gold = u.gold,
                             forceDevSeed = UserSessionStore.isForceDevSeedUserId(),
@@ -64,6 +88,8 @@ class SettingsViewModel(
                         it.copy(
                             isLoading = false,
                             toast = e.message ?: "ユーザー情報の取得に失敗しました",
+                            apiBaseUrl = ApiRoutes.BASE_URL,
+                            selectedEnvironment = AppEnvironment.resolveFromUrl(ApiRoutes.BASE_URL)?.name?.lowercase() ?: "",
                         )
                     }
                 }
