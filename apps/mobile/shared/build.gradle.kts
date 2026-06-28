@@ -59,6 +59,13 @@ val generateLevelupClientApiKey = tasks.register("generateLevelupClientApiKey") 
         val devJwt = normalizeApiKey(devJwtRaw)
         val escapedJwt = escapeKotlinStringLiteral(devJwt)
 
+        val stgDevJwtFromEnv = System.getenv("LEVELUP_STG_DEV_JWT")?.trim().orEmpty()
+        val stgDevJwtRaw = stgDevJwtFromEnv.ifBlank {
+            props.getProperty("stg.dev.jwt")?.trim().orEmpty()
+        }
+        val stgDevJwt = normalizeApiKey(stgDevJwtRaw)
+        val escapedStgJwt = escapeKotlinStringLiteral(stgDevJwt)
+
         val file = outDir.get().asFile.resolve("org/example/project/core/network/GeneratedApiKey.kt")
         file.parentFile.mkdirs()
         file.writeText(
@@ -77,10 +84,16 @@ val generateLevelupClientApiKey = tasks.register("generateLevelupClientApiKey") 
              * 優先: 環境変数 `LEVELUP_DEV_JWT`、次に local.properties の `dev.jwt`（JWT 文字列のみ、Bearer プレフィックス不要）。
              * HS256 かつ `sub` がリクエストの userId（例: seed の 00000000-0000-0000-0000-000000000001）と一致し、
              * 署名鍵はサーバーの `JWT_SECRET`（= Supabase の JWT Secret）と同じもので署名された JWT を入れる。
+             *
+             * [GENERATED_STG_DEV_JWT]（任意・stg 環境用）
+             * stg 環境切替時に使用。優先: 環境変数 `LEVELUP_STG_DEV_JWT`、次に local.properties の `stg.dev.jwt`。
+             * 署名鍵は stg サーバーの `JWT_SECRET` と一致させること。
              */
             internal const val GENERATED_CLIENT_API_KEY: String = "$escaped"
 
             internal const val GENERATED_DEV_JWT: String = "$escapedJwt"
+
+            internal const val GENERATED_STG_DEV_JWT: String = "$escapedStgJwt"
             """.trimIndent() + "\n",
         )
     }

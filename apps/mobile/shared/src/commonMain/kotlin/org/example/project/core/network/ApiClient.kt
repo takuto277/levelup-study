@@ -54,7 +54,7 @@ object ApiClient {
                     header("X-API-Key", GENERATED_CLIENT_API_KEY)
                 }
                 val bearer = UserSessionStore.authToken?.takeIf { it.isNotBlank() }
-                    ?: GENERATED_DEV_JWT.takeIf { it.isNotBlank() }
+                    ?: DevJwtSelector.current.takeIf { it.isNotBlank() }
                 bearer?.let { header("Authorization", "Bearer $it") }
             }
         }

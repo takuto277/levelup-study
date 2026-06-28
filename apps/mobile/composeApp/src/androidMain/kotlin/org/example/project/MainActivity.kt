@@ -10,6 +10,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import org.example.project.core.storage.initKeyValueStore
 import org.example.project.core.network.ApiRoutes
 import org.example.project.core.network.AppEnvironment
+import org.example.project.core.network.DevJwtSelector
 import org.example.project.core.session.UserSessionStore
 import org.example.project.di.initKoin
 import org.example.project.di.setDevSession
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
             } ?: AppEnvironment.DEV
             val url = if (env == AppEnvironment.DEV) AppEnvironment.ANDROID_DEV_URL else env.url
             ApiRoutes.BASE_URL = url
+            DevJwtSelector.selectForEnvironment(env.name.lowercase())
         }
 
         setContent {
