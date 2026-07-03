@@ -34,7 +34,7 @@ data class StudyRewardResponse(
 @Serializable
 data class StudyCompleteResponse(
     @SerialName("session_id") val sessionId: String,
-    val rewards: List<StudyRewardResponse>,
+    val rewards: List<StudyRewardResponse>? = null,
     @SerialName("updated_user") val updatedUser: UserResponse
 )
 
@@ -88,6 +88,6 @@ fun StudyRewardResponse.toDomain(): StudyReward = StudyReward(
 
 fun StudyCompleteResponse.toDomain(): StudyCompleteResult = StudyCompleteResult(
     sessionId = sessionId,
-    rewards = rewards.map { it.toDomain() },
+    rewards = rewards?.map { it.toDomain() } ?: emptyList(),
     updatedUser = updatedUser.toDomain()
 )
