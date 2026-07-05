@@ -3,7 +3,7 @@ package org.example.project.data.remote.dto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.JsonPrimitive
 import org.example.project.domain.model.DungeonMonster
 import org.example.project.domain.model.DungeonProgress
 import org.example.project.domain.model.DungeonStage
@@ -130,7 +130,7 @@ fun DungeonStageResponse.toDomain(): DungeonStage = DungeonStage(
     dungeonId = dungeonId,
     stageNumber = stageNumber,
     recommendedPower = recommendedPower,
-    enemyComposition = enemyComposition?.jsonPrimitive?.content ?: enemyComposition?.toString() ?: "[]",
+    enemyComposition = (enemyComposition as? JsonPrimitive)?.content ?: enemyComposition?.toString() ?: "[]",
     drops = dropTable.map { StageDrop(it.itemType, it.amount, it.rate) },
     enemies = enemies.mapNotNull { row ->
         val m = row.monster ?: return@mapNotNull null
