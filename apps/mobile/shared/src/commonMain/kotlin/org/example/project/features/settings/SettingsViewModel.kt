@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import org.example.project.core.network.ApiRoutes
 import org.example.project.core.network.AppEnvironment
+import org.example.project.core.network.DevJwtSelector
 import org.example.project.core.network.getOrThrow
 import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.gateway.UserGateway
@@ -56,6 +57,7 @@ class SettingsViewModel(
         val env = AppEnvironment.entries.find { it.name.lowercase() == envName.lowercase() } ?: return
         val url = if (env == AppEnvironment.DEV && overrideDevUrl != null) overrideDevUrl else env.url
         ApiRoutes.BASE_URL = url
+        DevJwtSelector.selectForEnvironment(env.name.lowercase())
         UserSessionStore.setDebugEnvironment(env.name.lowercase())
         _uiState.update {
             it.copy(

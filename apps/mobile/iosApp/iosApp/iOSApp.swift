@@ -23,6 +23,7 @@ struct iOSApp: App {
         default:
             ApiRoutes.shared.BASE_URL = "http://localhost:8080"
         }
+        DevJwtSelector.shared.selectForEnvironment(envName: savedEnv)
 #else
         KoinHelperKt.setDevSession(useSeedUser: false, forceSeedUserId: false)
 #endif
