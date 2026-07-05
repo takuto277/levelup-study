@@ -21,3 +21,10 @@ sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
 # 値は stg サーバーの JWT_SECRET で署名された JWT を 1 行で貼る。Bearer プレフィックスは不要。
 # 優先: 環境変数 `LEVELUP_STG_DEV_JWT`、なければ local.properties の `stg.dev.jwt`。
 # stg.dev.jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# 任意: Guest Session（Supabase Anonymous Sign-In）用。
+# `SessionMode.GUEST` 選択時や Release ビルドで使用。未設定の場合、Guest モードは実行時エラーになる。
+# 優先: 環境変数 `LEVELUP_SUPABASE_URL` / `LEVELUP_SUPABASE_ANON_KEY`、
+# なければ local.properties の `supabase.url` / `supabase.anon.key`。
+# supabase.url=https://xxxxxxxx.supabase.co
+# supabase.anon.key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...

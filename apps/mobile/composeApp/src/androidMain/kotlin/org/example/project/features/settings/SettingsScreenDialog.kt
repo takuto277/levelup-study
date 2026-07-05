@@ -44,6 +44,7 @@ import org.example.project.features.home.HomeIntent
 import org.example.project.features.home.HomeTheme
 import org.example.project.features.home.HomeViewModel
 import org.example.project.core.network.AppEnvironment
+import org.example.project.core.session.SessionMode
 
 @Composable
 fun SettingsScreenDialog(
@@ -105,6 +106,23 @@ fun SettingsScreenDialog(
                         color = HomeTheme.TextSecondary,
                     )
                     Spacer(modifier = Modifier.height(12.dp))
+                    Text("セッション", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SessionMode.entries.forEach { mode ->
+                            val selected = state.sessionMode == mode
+                            OutlinedButton(
+                                onClick = { vm.setSessionModeFromPlatform(mode.name.lowercase()) },
+                            ) {
+                                Text(
+                                    mode.name.replaceFirstChar { it.uppercase() },
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text("石: ${state.stones}", fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf(-100, -10, 10, 100).forEach { d ->

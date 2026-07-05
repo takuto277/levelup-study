@@ -7,13 +7,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import org.example.project.core.storage.initKeyValueStore
 import org.example.project.core.network.ApiRoutes
 import org.example.project.core.network.AppEnvironment
 import org.example.project.core.network.DevJwtSelector
 import org.example.project.core.session.UserSessionStore
+import org.example.project.di.getSessionManager
 import org.example.project.di.initKoin
-import org.example.project.di.setDevSession
+import org.example.project.di.initializeSessionMode
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,7 +26,11 @@ class MainActivity : ComponentActivity() {
         initKeyValueStore(this)
         initKoin()
         val isDebug = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        setDevSession(useSeedUser = isDebug, forceSeedUserId = isDebug)
+        initializeSessionMode(isDebug)
+
+        lifecycleScope.launch {
+            getSessionManager().initialize(isDebug)
+        }
 
         if (isDebug) {
             val savedEnv = UserSessionStore.getDebugEnvironment()

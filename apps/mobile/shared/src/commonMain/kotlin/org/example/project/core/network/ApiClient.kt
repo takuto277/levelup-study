@@ -10,7 +10,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import org.example.project.core.session.UserSessionStore
 
 /**
  * Ktor HttpClient ファクトリ
@@ -53,8 +52,7 @@ object ApiClient {
                 if (GENERATED_CLIENT_API_KEY.isNotEmpty()) {
                     header("X-API-Key", GENERATED_CLIENT_API_KEY)
                 }
-                val bearer = UserSessionStore.authToken?.takeIf { it.isNotBlank() }
-                    ?: DevJwtSelector.current.takeIf { it.isNotBlank() }
+                val bearer = AuthTokenProvider.currentToken()
                 bearer?.let { header("Authorization", "Bearer $it") }
             }
         }

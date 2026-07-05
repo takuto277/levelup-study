@@ -11,23 +11,39 @@ import org.example.project.domain.repository.UserRepository
  *
  * アプリ起動時にユーザーID を保持し、全 API コールで利用する。
  * expect/actual の KeyValueStore を使用して永続化する。
+ *
+ * Debug ビルドでは [SessionModeStore] と連動し、Seed / Guest モードを切り替える。
+ * Release ビルドでは常に Guest モード相当（forceDevSeedUserId=false）となる。
  */
 object UserSessionStore {
 
     /** db/seed.sql の user1 と同じ ID（DEV_MODE + シード開発用） */
     const val DEV_SEED_USER_ID: String = "00000000-0000-0000-0000-000000000001"
 
+    private var isDebugBuild: Boolean = false
+
+    /**
+     * プラットフォーム起動時に DEBUG / RELEASE を設定する。
+     * 呼び出し後は [refreshSessionMode] を呼んでモードを同期すること。
+     */
+    fun setDebugBuild(value: Boolean) {
+        isDebugBuild = value
+    }
+
     private var forceDevSeedUserId: Boolean = false
 
     /**
      * true のとき、[userId] / [requireUserId] は常に [DEV_SEED_USER_ID] を返す。
-     * createUser が別 UUID を保存しても API パスはシードユーザーに揃う（setDevSession(..., forceSeedUserId=true) からオン）。
+     */
+    fun isForceDevSeedUserId(): Boolean = forceDevSeedUserId
+
+    /**
+     * 低レベル API: Seed 固定の有効/無効を直接設定する。
+     * 通常は [setSessionMode] または [refreshSessionMode] を使うこと。
      */
     fun setForceDevSeedUserId(enabled: Boolean) {
         forceDevSeedUserId = enabled
     }
-
-    fun isForceDevSeedUserId(): Boolean = forceDevSeedUserId
 
     private val store = KeyValueStore()
 
@@ -39,6 +55,36 @@ object UserSessionStore {
 
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser
+
+    /**
+     * 現在のセッションモード。
+     * Release では常に [SessionMode.GUEST]、Debug では [SessionModeStore.mode] を返す。
+     */
+    val sessionMode: SessionMode
+        get() = if (isDebugBuild) SessionModeStore.mode else SessionMode.GUEST
+
+    /**
+     * [SessionModeStore] の値と [isDebugBuild] に応じて [forceDevSeedUserId] を更新する。
+     * Debug + Seed のときだけ true、それ以外は false。
+     */
+    fun refreshSessionMode() {
+        forceDevSeedUserId = isDebugBuild && SessionModeStore.mode == SessionMode.SEED
+        if (!forceDevSeedUserId) {
+            // Seed 固定が外れた場合、古い Seed userId が KeyValueStore に残っていても
+            // 次回の setSession で上書きされる。ここでは平文 token もクリアしておく。
+            authToken = null
+        }
+    }
+
+    /**
+     * Debug ビルド用: [SessionMode] を切り替える。
+     * Release では無視する。
+     */
+    fun setSessionMode(mode: SessionMode) {
+        if (!isDebugBuild) return
+        SessionModeStore.mode = mode
+        refreshSessionMode()
+    }
 
     suspend fun initializeFromAuth() {
         val user = userRepository?.getOrCreateAuthUser()
@@ -97,5 +143,10 @@ object UserSessionStore {
     /** デバッグビルド用: 環境選択を保存 */
     fun setDebugEnvironment(env: String) {
         store.putString(KEY_DEBUG_ENV, env)
+    }
+
+    /** 平文で保存された既存 auth_token があれば削除する（移行用） */
+    fun migrateAwayFromPlainAuthToken() {
+        store.remove(KEY_AUTH_TOKEN)
     }
 }

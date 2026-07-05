@@ -19,6 +19,10 @@ val generateLevelupClientApiKey = tasks.register("generateLevelupClientApiKey") 
         .optional(true)
     inputs.property("LEVELUP_STG_DEV_JWT", providers.environmentVariable("LEVELUP_STG_DEV_JWT").orElse(""))
         .optional(true)
+    inputs.property("LEVELUP_SUPABASE_URL", providers.environmentVariable("LEVELUP_SUPABASE_URL").orElse(""))
+        .optional(true)
+    inputs.property("LEVELUP_SUPABASE_ANON_KEY", providers.environmentVariable("LEVELUP_SUPABASE_ANON_KEY").orElse(""))
+        .optional(true)
     outputs.dir(outDir)
     doLast {
         fun normalizeApiKey(raw: String): String {
@@ -72,6 +76,20 @@ val generateLevelupClientApiKey = tasks.register("generateLevelupClientApiKey") 
         val stgDevJwt = normalizeApiKey(stgDevJwtRaw)
         val escapedStgJwt = escapeKotlinStringLiteral(stgDevJwt)
 
+        val supabaseUrlFromEnv = System.getenv("LEVELUP_SUPABASE_URL")?.trim().orEmpty()
+        val supabaseUrlRaw = supabaseUrlFromEnv.ifBlank {
+            props.getProperty("supabase.url")?.trim().orEmpty()
+        }
+        val supabaseUrl = normalizeApiKey(supabaseUrlRaw)
+        val escapedSupabaseUrl = escapeKotlinStringLiteral(supabaseUrl)
+
+        val supabaseAnonKeyFromEnv = System.getenv("LEVELUP_SUPABASE_ANON_KEY")?.trim().orEmpty()
+        val supabaseAnonKeyRaw = supabaseAnonKeyFromEnv.ifBlank {
+            props.getProperty("supabase.anon.key")?.trim().orEmpty()
+        }
+        val supabaseAnonKey = normalizeApiKey(supabaseAnonKeyRaw)
+        val escapedSupabaseAnonKey = escapeKotlinStringLiteral(supabaseAnonKey)
+
         val file = outDir.get().asFile.resolve("org/example/project/core/network/GeneratedApiKey.kt")
         file.parentFile.mkdirs()
         file.writeText(
@@ -94,12 +112,21 @@ val generateLevelupClientApiKey = tasks.register("generateLevelupClientApiKey") 
              * [GENERATED_STG_DEV_JWT]（任意・stg 環境用）
              * stg 環境切替時に使用。優先: 環境変数 `LEVELUP_STG_DEV_JWT`、次に local.properties の `stg.dev.jwt`。
              * 署名鍵は stg サーバーの `JWT_SECRET` と一致させること。
+             *
+             * [GENERATED_SUPABASE_URL] / [GENERATED_SUPABASE_ANON_KEY]
+             * Guest Session（Supabase Anonymous Sign-In）用。
+             * 優先: 環境変数 `LEVELUP_SUPABASE_URL` / `LEVELUP_SUPABASE_ANON_KEY`、
+             * 次に local.properties の `supabase.url` / `supabase.anon.key`。
              */
             internal const val GENERATED_CLIENT_API_KEY: String = "$escaped"
 
             internal const val GENERATED_DEV_JWT: String = "$escapedJwt"
 
             internal const val GENERATED_STG_DEV_JWT: String = "$escapedStgJwt"
+
+            internal const val GENERATED_SUPABASE_URL: String = "$escapedSupabaseUrl"
+
+            internal const val GENERATED_SUPABASE_ANON_KEY: String = "$escapedSupabaseAnonKey"
             """.trimIndent() + "\n",
         )
     }
@@ -150,6 +177,9 @@ kotlin {
 
                 // ViewModel
                 implementation(libs.androidx.lifecycle.viewmodel)
+
+                // Supabase Auth
+                implementation(libs.supabase.auth)
             }
         }
         androidMain.dependencies {

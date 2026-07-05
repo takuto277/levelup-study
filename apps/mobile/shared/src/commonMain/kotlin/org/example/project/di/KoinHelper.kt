@@ -1,5 +1,7 @@
 package org.example.project.di
 
+import org.example.project.core.session.SessionManager
+import org.example.project.core.session.SessionMode
 import org.example.project.core.session.UserSessionStore
 import org.example.project.features.record.RecordViewModel
 import org.example.project.features.collection.CollectionViewModel
@@ -58,6 +60,33 @@ fun setDevSession(useSeedUser: Boolean = true, forceSeedUserId: Boolean = false)
 }
 
 /**
+ * アプリ起動時に DEBUG / RELEASE フラグをセットし、保存されている [SessionMode] を反映する。
+ *
+ * Release では常に Guest モード相当（Seed 固定を外す）。
+ * Debug では [SessionModeStore] の値に応じて Seed または Guest となる。
+ */
+fun initializeSessionMode(isDebug: Boolean) {
+    UserSessionStore.setDebugBuild(isDebug)
+    UserSessionStore.refreshSessionMode()
+    if (UserSessionStore.isForceDevSeedUserId()) {
+        val seedId = UserSessionStore.DEV_SEED_USER_ID
+        UserSessionStore.setSession(userId = seedId)
+        println(
+            "[LevelUpStudy] DevSession userId=${UserSessionStore.userId} (seed user1 = $seedId). " +
+                "API の DATABASE_URL は seed / seed-remote を流した DB と同じであること。",
+        )
+    }
+}
+
+/**
+ * Debug ビルド用: [SessionMode] を切り替える。
+ * Release では何もしない。
+ */
+fun setDebugSessionMode(mode: SessionMode) {
+    UserSessionStore.setSessionMode(mode)
+}
+
+/**
  * iOS 側から ViewModel を取得するためのヘルパー関数
  *
  * Kotlin/Native では reified generics が使えないため、
@@ -92,5 +121,9 @@ fun getSettingsViewModel(): SettingsViewModel {
 }
 
 fun getCollectionViewModel(): CollectionViewModel {
+    return KoinPlatform.getKoin().get()
+}
+
+fun getSessionManager(): SessionManager {
     return KoinPlatform.getKoin().get()
 }
