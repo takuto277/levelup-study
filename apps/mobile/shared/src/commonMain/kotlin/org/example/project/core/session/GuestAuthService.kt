@@ -1,10 +1,10 @@
 package org.example.project.core.session
 
-import io.github.jan_tennert.supabase.SupabaseClient
-import io.github.jan_tennert.supabase.auth.Auth
-import io.github.jan_tennert.supabase.auth.auth
-import io.github.jan_tennert.supabase.auth.user.UserSession
-import io.github.jan_tennert.supabase.createSupabaseClient
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.user.UserSession
+import io.github.jan.supabase.createSupabaseClient
 import org.example.project.core.network.GENERATED_SUPABASE_ANON_KEY
 import org.example.project.core.network.GENERATED_SUPABASE_URL
 
@@ -12,8 +12,8 @@ import org.example.project.core.network.GENERATED_SUPABASE_URL
  * Supabase Anonymous Sign-In による Guest Session 管理。
  *
  * - 新規 Guest 作成
+ * - refresh token によるセッション更新
  * - 現在セッションの復元
- * - access token の refresh
  */
 class GuestAuthService {
 
@@ -33,22 +33,19 @@ class GuestAuthService {
 
     /**
      * 匿名ユーザーを新規作成し、セッションを返す。
-     *
-     * @param captchaToken 必要に応じて CAPTCHA token（現状は null）
      */
-    suspend fun signInAnonymously(captchaToken: String? = null): GuestSession {
-        val result = client.auth.signInAnonymously(
-            captchaToken = captchaToken,
-        )
-        return result.toGuestSession()
+    suspend fun signInAnonymously(): GuestSession {
+        client.auth.signInAnonymously()
+        return client.auth.currentSessionOrNull()?.toGuestSession()
+            ?: error("匿名サインイン後にセッションが取得できません")
     }
 
     /**
      * 保存されている refresh token を使ってセッションを更新する。
      */
     suspend fun refreshSession(refreshToken: String): GuestSession {
-        val result = client.auth.refreshCurrentSession(refreshToken)
-        return result.toGuestSession()
+        val session = client.auth.refreshSession(refreshToken)
+        return session.toGuestSession()
     }
 
     /**
@@ -63,7 +60,7 @@ class GuestAuthService {
             userId = user?.id ?: error("匿名サインイン後に user ID が取得できません"),
             accessToken = accessToken,
             refreshToken = refreshToken,
-            expiresAtEpochSeconds = expiresAt,
+            expiresAtEpochSeconds = expiresAt.epochSeconds,
         )
     }
 }

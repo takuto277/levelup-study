@@ -8,7 +8,7 @@ package org.example.project.core.session
  *
  * 保存に失敗した場合は平文フォールバックせず、例外を投げる。
  */
-expect class SecureSessionStore {
+expect class SecureSessionStore() {
 
     /**
      * 指定した環境キーで [StoredGuestSession] を保存する。
