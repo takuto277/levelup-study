@@ -27,9 +27,7 @@ struct iOSApp: App {
         KoinHelperKt.initializeSessionMode(isDebug: false)
 #endif
         // Guest Session を初期化（Release では必須、Debug Guest 時も実行）
-        Task {
-            await KoinHelperKt.getSessionManager().initialize(isDebug: isDebug)
-        }
+        KoinHelperKt.initializeSessionManagerAsync(isDebug: isDebug)
     }
 
     var body: some Scene {

@@ -1,5 +1,9 @@
 package org.example.project.di
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.example.project.core.session.SessionManager
 import org.example.project.core.session.SessionMode
 import org.example.project.core.session.UserSessionStore
@@ -75,6 +79,17 @@ fun initializeSessionMode(isDebug: Boolean) {
             "[LevelUpStudy] DevSession userId=${UserSessionStore.userId} (seed user1 = $seedId). " +
                 "API の DATABASE_URL は seed / seed-remote を流した DB と同じであること。",
         )
+    }
+}
+
+private val helperScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+/**
+ * iOS 向け: [SessionManager.initialize] を非同期で呼び出す。
+ */
+fun initializeSessionManagerAsync(isDebug: Boolean) {
+    helperScope.launch {
+        getSessionManager().initialize(isDebug)
     }
 }
 

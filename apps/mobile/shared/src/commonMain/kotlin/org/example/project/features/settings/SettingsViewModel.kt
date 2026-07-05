@@ -14,6 +14,7 @@ import org.example.project.core.network.DevJwtSelector
 import org.example.project.core.network.getOrThrow
 import org.example.project.core.session.SessionManager
 import org.example.project.core.session.SessionMode
+import org.example.project.core.session.SessionState
 import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.gateway.UserGateway
 import org.example.project.domain.repository.UserRepository
@@ -104,7 +105,7 @@ class SettingsViewModel(
             try {
                 sessionManager.switchMode(mode)
                 val state = sessionManager.state.value
-                if (state is org.example.project.core.session.SessionState.Ready) {
+                if (state is SessionState.Ready) {
                     // ユーザー依存データを再読込
                     val u = userRepository.syncFromServer()
                     _uiState.update {

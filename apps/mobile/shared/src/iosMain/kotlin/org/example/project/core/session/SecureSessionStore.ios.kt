@@ -1,17 +1,13 @@
 package org.example.project.core.session
 
+import kotlinx.cinterop.CFTypeRefVar
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.allocArrayOf
+import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.pointed
+import kotlinx.cinterop.value
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import platform.CoreFoundation.CFDictionaryAddValue
-import platform.CoreFoundation.CFDictionaryCreateMutable
-import platform.CoreFoundation.CFDictionaryRef
-import platform.CoreFoundation.CFMutableDictionaryRef
-import platform.CoreFoundation.CFRelease
-import platform.CoreFoundation.CFStringRef
-import platform.CoreFoundation.kCFAllocatorDefault
 import platform.Foundation.NSData
 import platform.Foundation.NSMutableDictionary
 import platform.Foundation.NSString
@@ -22,7 +18,6 @@ import platform.Foundation.setValue
 import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
-import platform.Security.SecItemUpdate
 import platform.Security.errSecSuccess
 import platform.Security.kSecAttrAccount
 import platform.Security.kSecAttrService
@@ -76,11 +71,11 @@ actual class SecureSessionStore {
         }
 
         memScoped {
-            val result = allocArrayOf<Any?>(null)
-            val status = SecItemCopyMatching(query, result)
+            val result = alloc<CFTypeRefVar>()
+            val status = SecItemCopyMatching(query, result.ptr)
             if (status != errSecSuccess) return null
 
-            val data = result[0] as? NSData ?: return null
+            val data = result.value as? NSData ?: return null
             val json = data.toKotlinString() ?: return null
             return Json.decodeFromString(json)
         }
