@@ -1,6 +1,7 @@
 package org.example.project.data.remote.dto
 
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -45,7 +46,7 @@ class DungeonDtoParseTest {
         """.trimIndent()
 
         val stage = ApiClient.json.decodeFromString<DungeonStageResponse>(json)
-        assertEquals("slime:2", stage.enemyComposition?.toString())
+        assertEquals("slime:2", stage.enemyComposition?.jsonPrimitive?.content)
         val domain = stage.toDomain()
         assertEquals("slime:2", domain.enemyComposition)
     }
@@ -72,7 +73,7 @@ class DungeonDtoParseTest {
         """.trimIndent()
 
         val response = ApiClient.json.decodeFromString<StudyCompleteResponse>(json)
-        assertEquals(true, response.rewards?.isEmpty())
+        assertEquals(true, response.rewards == null)
         val domain = response.toDomain()
         assertEquals(true, domain.rewards.isEmpty())
     }
