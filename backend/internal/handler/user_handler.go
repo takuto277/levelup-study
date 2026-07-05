@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/takuto277/levelup-study/backend/internal/middleware"
 	"github.com/takuto277/levelup-study/backend/internal/model"
 	"github.com/takuto277/levelup-study/backend/internal/repository"
 )
@@ -170,11 +171,16 @@ func (h *UserHandler) DebugPatchCurrencies(w http.ResponseWriter, r *http.Reques
 }
 
 // GetOrCreateUser — POST /api/v1/auth/user
-// 認証ユーザーを取得、なければ作成する
+// JWT の sub に紐づく認証ユーザーを取得、なければ作成する
 func (h *UserHandler) GetOrCreateUser(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("userID").(uuid.UUID)
-	if !ok || userID == uuid.Nil {
+	sub, ok := middleware.UserIDFromContext(r.Context())
+	if !ok || sub == "" {
 		respondError(w, http.StatusUnauthorized, "認証情報がありません")
+		return
+	}
+	userID, err := uuid.Parse(sub)
+	if err != nil {
+		respondError(w, http.StatusUnauthorized, "無効なユーザーIDです")
 		return
 	}
 	user, err := h.repo.GetByID(userID)
@@ -183,7 +189,7 @@ func (h *UserHandler) GetOrCreateUser(w http.ResponseWriter, r *http.Request) {
 			ID:          userID,
 			DisplayName: "New User",
 		}
-		if err := h.repo.Create(user); err != nil {
+		if err := h.repo.Upsert(user); err != nil {
 			respondError(w, http.StatusInternalServerError, "ユーザー作成に失敗しました")
 			return
 		}

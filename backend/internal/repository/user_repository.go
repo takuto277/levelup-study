@@ -24,6 +24,11 @@ func (r *UserRepository) Create(user *model.User) error {
 	return r.db.Create(user).Error
 }
 
+// Upsert — ユーザーを作成する。既に存在する場合は何もしない（冪等）。
+func (r *UserRepository) Upsert(user *model.User) error {
+	return r.db.FirstOrCreate(user, "id = ?", user.ID).Error
+}
+
 // GetByID — IDでユーザーを1件取得する
 func (r *UserRepository) GetByID(id uuid.UUID) (*model.User, error) {
 	var user model.User
