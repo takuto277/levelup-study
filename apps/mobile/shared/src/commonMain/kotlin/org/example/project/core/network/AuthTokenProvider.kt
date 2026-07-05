@@ -16,12 +16,16 @@ object AuthTokenProvider {
      * 現在アクティブな Bearer token を返す。未設定時は null。
      */
     fun currentToken(): String? {
+        val mode = UserSessionStore.sessionMode
+        val authToken = UserSessionStore.authToken
+        val devJwt = DevJwtSelector.current
+        println("[AuthTokenProvider] mode=$mode, authToken=${authToken?.take(20)}, devJwt=${devJwt?.take(20)}")
         // Guest モードでは real auth token を優先
-        if (UserSessionStore.sessionMode == SessionMode.GUEST) {
-            return UserSessionStore.authToken?.takeIf { it.isNotBlank() }
+        if (mode == SessionMode.GUEST) {
+            return authToken?.takeIf { it.isNotBlank() }
         }
         // Seed モードでは real token があればそれを、なければ dev JWT
-        return UserSessionStore.authToken?.takeIf { it.isNotBlank() }
-            ?: DevJwtSelector.current.takeIf { it.isNotBlank() }
+        return authToken?.takeIf { it.isNotBlank() }
+            ?: devJwt.takeIf { it.isNotBlank() }
     }
 }

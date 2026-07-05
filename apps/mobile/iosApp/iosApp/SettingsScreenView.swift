@@ -100,7 +100,7 @@ struct SettingsScreenView: View {
             Text("セッション")
                 .font(.subheadline.weight(.semibold))
             Picker("セッション", selection: Binding<String>(
-                get: { state?.sessionMode?.name().lowercased() ?? "seed" },
+                get: { state?.sessionMode.name().lowercased() ?? "seed" },
                 set: { newValue in
                     vm.setSessionModeFromPlatform(modeName: newValue)
                 }
