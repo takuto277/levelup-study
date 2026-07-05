@@ -55,7 +55,9 @@ actual class SecureSessionStore {
             kSecValueData to data,
         )
         @Suppress("UNCHECKED_CAST")
-        val status = SecItemAdd(CFBridgingRetain(query) as CFDictionaryRef, null)
+        val cfQuery = CFBridgingRetain(query) as CFDictionaryRef
+        val status = SecItemAdd(cfQuery, null)
+        CFBridgingRelease(cfQuery)
         if (status != errSecSuccess) {
             throw IllegalStateException("Keychain save failed: $status")
         }
@@ -72,7 +74,9 @@ actual class SecureSessionStore {
         memScoped {
             val result = alloc<CFTypeRefVar>()
             @Suppress("UNCHECKED_CAST")
-            val status = SecItemCopyMatching(CFBridgingRetain(query) as CFDictionaryRef, result.ptr)
+            val cfQuery = CFBridgingRetain(query) as CFDictionaryRef
+            val status = SecItemCopyMatching(cfQuery, result.ptr)
+            CFBridgingRelease(cfQuery)
             if (status != errSecSuccess) return null
 
             val data = CFBridgingRelease(result.value) as? NSData ?: return null
@@ -88,7 +92,9 @@ actual class SecureSessionStore {
             kSecAttrAccount to keyFor(environmentKey),
         )
         @Suppress("UNCHECKED_CAST")
-        SecItemDelete(CFBridgingRetain(query) as CFDictionaryRef)
+        val cfQuery = CFBridgingRetain(query) as CFDictionaryRef
+        SecItemDelete(cfQuery)
+        CFBridgingRelease(cfQuery)
     }
 
     private fun keyFor(environmentKey: String): String = "guest_session_$environmentKey"
