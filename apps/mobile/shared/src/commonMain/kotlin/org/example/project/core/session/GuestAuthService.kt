@@ -1,11 +1,10 @@
 package org.example.project.core.session
 
-import io.github.jan_supabase.SupabaseClient
-import io.github.jan_supabase.createSupabaseClient
-import io.github.jan_supabase.gotrue.Auth
-import io.github.jan_supabase.gotrue.auth
-import io.github.jan_supabase.gotrue.providers.builtin.Email
-import kotlinx.datetime.Clock
+import io.github.jan_tennert.supabase.SupabaseClient
+import io.github.jan_tennert.supabase.auth.Auth
+import io.github.jan_tennert.supabase.auth.auth
+import io.github.jan_tennert.supabase.auth.user.UserSession
+import io.github.jan_tennert.supabase.createSupabaseClient
 import org.example.project.core.network.GENERATED_SUPABASE_ANON_KEY
 import org.example.project.core.network.GENERATED_SUPABASE_URL
 
@@ -59,7 +58,7 @@ class GuestAuthService {
         return client.auth.currentSessionOrNull()?.toGuestSession()
     }
 
-    private fun io.github.jan_supabase.gotrue.user.UserSession.toGuestSession(): GuestSession {
+    private fun UserSession.toGuestSession(): GuestSession {
         return GuestSession(
             userId = user?.id ?: error("匿名サインイン後に user ID が取得できません"),
             accessToken = accessToken,

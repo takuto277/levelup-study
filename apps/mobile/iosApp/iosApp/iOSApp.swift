@@ -13,7 +13,8 @@ struct iOSApp: App {
         // make run の DATABASE_URL は seed を流した DB と同じ .env にすること。
         // RELEASE: 常に Guest モード相当（Seed 固定を外す）
 #if DEBUG
-        KoinHelperKt.initializeSessionMode(isDebug: true)
+        let isDebug = true
+        KoinHelperKt.initializeSessionMode(isDebug: isDebug)
         // 保存されたデバッグ環境を復元。未保存なら dev（http://localhost:8080）がデフォルト
         let savedEnv = UserSessionStore.shared.getDebugEnvironment() ?? "dev"
         switch savedEnv {
@@ -24,7 +25,8 @@ struct iOSApp: App {
         }
         DevJwtSelector.shared.selectForEnvironment(envName: savedEnv)
 #else
-        KoinHelperKt.initializeSessionMode(isDebug: false)
+        let isDebug = false
+        KoinHelperKt.initializeSessionMode(isDebug: isDebug)
 #endif
         // Guest Session を初期化（Release では必須、Debug Guest 時も実行）
         KoinHelperKt.initializeSessionManagerAsync(isDebug: isDebug)
