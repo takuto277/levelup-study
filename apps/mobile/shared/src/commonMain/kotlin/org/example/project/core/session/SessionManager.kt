@@ -27,8 +27,8 @@ class SessionManager(
      */
     suspend fun initialize(isDebug: Boolean) {
         UserSessionStore.setDebugBuild(isDebug)
-        // 平文保存されていた既存 auth_token を削除
-        UserSessionStore.migrateAwayFromPlainAuthToken()
+        // 平文保存されていた既存 auth_token を削除（移行用）
+        UserSessionStore.clearLegacyPlainAuthToken()
         when {
             !isDebug -> initializeGuest()
             UserSessionStore.sessionMode == SessionMode.SEED -> initializeSeed()

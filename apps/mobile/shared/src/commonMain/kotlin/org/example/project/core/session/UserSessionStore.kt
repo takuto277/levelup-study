@@ -102,13 +102,14 @@ object UserSessionStore {
             else store.remove(KEY_USER_ID)
         }
 
-    /** 認証トークン (JWT) */
-    var authToken: String?
-        get() = store.getString(KEY_AUTH_TOKEN)
-        private set(value) {
-            if (value != null) store.putString(KEY_AUTH_TOKEN, value)
-            else store.remove(KEY_AUTH_TOKEN)
-        }
+    /**
+     * 認証トークン (JWT)。
+     *
+     * Guest モードでは [SecureSessionStore] から復元後にメモリに保持し、
+     * 平文 KeyValueStore には保存しない。
+     */
+    var authToken: String? = null
+        private set
 
     /** ユーザーセッションを設定 */
     fun setSession(userId: String, token: String? = null) {
@@ -145,8 +146,8 @@ object UserSessionStore {
         store.putString(KEY_DEBUG_ENV, env)
     }
 
-    /** 平文で保存された既存 auth_token があれば削除する（移行用） */
-    fun migrateAwayFromPlainAuthToken() {
+    /** 平文で保存された既存 auth_token があれば削除する（移行用・ワンタイム） */
+    fun clearLegacyPlainAuthToken() {
         store.remove(KEY_AUTH_TOKEN)
     }
 }
