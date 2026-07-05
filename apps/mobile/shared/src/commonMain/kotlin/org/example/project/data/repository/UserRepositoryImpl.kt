@@ -107,6 +107,11 @@ class UserRepositoryImpl(
         persistUserOffline(user)
     }
 
+    override fun clearCache() {
+        cachedUser = null
+        kv.remove(keyCachedUser)
+    }
+
     private fun debugLogSyncFromServer(hint: String) {
         val stack = runCatching {
             Exception()

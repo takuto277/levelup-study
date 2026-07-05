@@ -24,6 +24,7 @@ struct iOSApp: App {
             ApiRoutes.shared.BASE_URL = "http://localhost:8080"
         }
         DevJwtSelector.shared.selectForEnvironment(envName: savedEnv)
+        SupabaseConfigSelector.shared.selectForEnvironment(envName: savedEnv)
 #else
         let isDebug = false
         KoinHelperKt.initializeSessionMode(isDebug: isDebug)

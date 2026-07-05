@@ -11,6 +11,7 @@ import kotlinx.coroutines.sync.Mutex
 import org.example.project.core.network.ApiRoutes
 import org.example.project.core.network.AppEnvironment
 import org.example.project.core.network.DevJwtSelector
+import org.example.project.core.network.SupabaseConfigSelector
 import org.example.project.core.network.getOrThrow
 import org.example.project.core.session.SessionManager
 import org.example.project.core.session.SessionMode
@@ -64,6 +65,7 @@ class SettingsViewModel(
         val url = if (env == AppEnvironment.DEV && overrideDevUrl != null) overrideDevUrl else env.url
         ApiRoutes.BASE_URL = url
         DevJwtSelector.selectForEnvironment(env.name.lowercase())
+        SupabaseConfigSelector.selectForEnvironment(env.name.lowercase())
         UserSessionStore.setDebugEnvironment(env.name.lowercase())
         _uiState.update {
             it.copy(
@@ -120,13 +122,14 @@ class SettingsViewModel(
                         )
                     }
                 } else {
+                    val detail = (state as? SessionState.RecoverableError)?.reason?.throwable?.message.orEmpty()
                     _uiState.update {
                         it.copy(
                             sessionMode = UserSessionStore.sessionMode,
                             forceDevSeed = UserSessionStore.isForceDevSeedUserId(),
                             displayedUserId = UserSessionStore.userId.orEmpty(),
                             isLoading = false,
-                            toast = "Guest セッションの初期化に失敗しました。Supabase 設定を確認してください。",
+                            toast = "Guest セッションの初期化に失敗しました。Supabase 設定を確認してください。$detail",
                         )
                     }
                 }

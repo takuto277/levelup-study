@@ -96,7 +96,13 @@ object UserSessionStore {
 
     /** 現在ログイン中のユーザー ID */
     var userId: String?
-        get() = if (forceDevSeedUserId) DEV_SEED_USER_ID else store.getString(KEY_USER_ID)
+        get() = when {
+            forceDevSeedUserId -> DEV_SEED_USER_ID
+            // Guest モードでは authToken がない = セッション未初期化。
+            // KeyValueStore に古い userId が残っていても使わないよう null を返す。
+            sessionMode == SessionMode.GUEST && authToken == null -> null
+            else -> store.getString(KEY_USER_ID)
+        }
         private set(value) {
             if (value != null) store.putString(KEY_USER_ID, value)
             else store.remove(KEY_USER_ID)
@@ -124,11 +130,12 @@ object UserSessionStore {
         this.authToken = token
     }
 
-    /** セッションをクリア（ログアウト時） */
+    /** セッションをクリア（ログアウト時・モード切替時） */
     fun clear() {
         forceDevSeedUserId = false
         userId = null
         authToken = null
+        _currentUser.value = null
     }
 
     /** ユーザーIDを取得（未設定の場合は例外） */

@@ -26,5 +26,14 @@ sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
 # `SessionMode.GUEST` 選択時や Release ビルドで使用。未設定の場合、Guest モードは実行時エラーになる。
 # 優先: 環境変数 `LEVELUP_SUPABASE_URL` / `LEVELUP_SUPABASE_ANON_KEY`、
 # なければ local.properties の `supabase.url` / `supabase.anon.key`。
+# これらは dev / デフォルト環境用。stg 環境では下記を設定すること。
 # supabase.url=https://xxxxxxxx.supabase.co
 # supabase.anon.key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# 任意: stg 環境切替時の Guest Session（Supabase Anonymous Sign-In）用。
+# stg 環境では本番とは別の Supabase プロジェクトを使うことを推奨。
+# 優先: 環境変数 `LEVELUP_STG_SUPABASE_URL` / `LEVELUP_STG_SUPABASE_ANON_KEY`、
+# なければ local.properties の `stg.supabase.url` / `stg.supabase.anon.key`。
+# 未設定の場合、stg 環境で Guest モードを選ぶと実行時エラーになる。
+# stg.supabase.url=https://yyyyyyyy.supabase.co
+# stg.supabase.anon.key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...

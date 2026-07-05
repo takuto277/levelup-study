@@ -28,4 +28,7 @@ interface UserRepository {
 
     /** メモリキャッシュを外部から更新する（他機能のレスポンスに含まれる最新 User を反映） */
     fun updateCachedUser(user: User)
+
+    /** ローカルに保持しているユーザー情報キャッシュを削除する（モード切替時） */
+    fun clearCache()
 }

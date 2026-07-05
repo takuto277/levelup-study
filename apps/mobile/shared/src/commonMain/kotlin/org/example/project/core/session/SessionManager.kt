@@ -38,8 +38,11 @@ class SessionManager(
 
     /**
      * Debug ビルド用: Seed / Guest を切り替える。
+     * 切替前に現在のセッションとローカルキャッシュをクリアし、
+     * モード間のユーザー情報の混在を防ぐ。
      */
     suspend fun switchMode(mode: SessionMode) {
+        clearCurrentSession()
         UserSessionStore.setSessionMode(mode)
         when (mode) {
             SessionMode.SEED -> initializeSeed()
@@ -92,9 +95,15 @@ class SessionManager(
      * 無効な Guest Session から新しい Guest を作成する（ユーザー確認後）。
      */
     suspend fun resetGuestSession() {
+        clearCurrentSession()
+        initializeGuest()
+    }
+
+    private suspend fun clearCurrentSession() {
         val envKey = environmentKey()
         secureSessionStore.remove(envKey)
-        initializeGuest()
+        userRepository.clearCache()
+        UserSessionStore.clear()
     }
 
     private fun environmentKey(): String = ApiRoutes.BASE_URL.hashCode().toString()

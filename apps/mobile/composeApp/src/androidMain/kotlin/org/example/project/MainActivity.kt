@@ -13,6 +13,7 @@ import org.example.project.core.storage.initKeyValueStore
 import org.example.project.core.network.ApiRoutes
 import org.example.project.core.network.AppEnvironment
 import org.example.project.core.network.DevJwtSelector
+import org.example.project.core.network.SupabaseConfigSelector
 import org.example.project.core.session.UserSessionStore
 import org.example.project.di.getSessionManager
 import org.example.project.di.initKoin
@@ -40,6 +41,7 @@ class MainActivity : ComponentActivity() {
             val url = if (env == AppEnvironment.DEV) AppEnvironment.ANDROID_DEV_URL else env.url
             ApiRoutes.BASE_URL = url
             DevJwtSelector.selectForEnvironment(env.name.lowercase())
+            SupabaseConfigSelector.selectForEnvironment(env.name.lowercase())
         }
 
         setContent {

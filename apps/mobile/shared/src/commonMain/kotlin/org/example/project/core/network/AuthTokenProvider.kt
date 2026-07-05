@@ -19,8 +19,7 @@ object AuthTokenProvider {
         val mode = UserSessionStore.sessionMode
         val authToken = UserSessionStore.authToken
         val devJwt = DevJwtSelector.current
-        println("[AuthTokenProvider] mode=$mode, authToken=${authToken?.take(20)}, devJwt=${devJwt?.take(20)}")
-        // Guest モードでは real auth token を優先
+        // Guest モードでは real auth token のみ使用
         if (mode == SessionMode.GUEST) {
             return authToken?.takeIf { it.isNotBlank() }
         }
