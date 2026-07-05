@@ -248,7 +248,7 @@ func (s *StudyService) calculateRewards(
 	difficultyMult float64,
 	grantDailyBonus bool,
 ) ([]model.StudyReward, int, int, int) {
-	var rewards []model.StudyReward
+	rewards := make([]model.StudyReward, 0)
 	totalStones := 0
 	totalGold := 0
 	totalXP := 0

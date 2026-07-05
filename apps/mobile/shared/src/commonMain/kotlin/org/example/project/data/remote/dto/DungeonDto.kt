@@ -2,6 +2,8 @@ package org.example.project.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import org.example.project.domain.model.DungeonMonster
 import org.example.project.domain.model.DungeonProgress
 import org.example.project.domain.model.DungeonStage
@@ -67,7 +69,7 @@ data class DungeonStageResponse(
     @SerialName("dungeon_id") val dungeonId: String,
     @SerialName("stage_number") val stageNumber: Int,
     @SerialName("recommended_power") val recommendedPower: Int,
-    @SerialName("enemy_composition") val enemyComposition: String? = null,
+    @SerialName("enemy_composition") val enemyComposition: JsonElement? = null,
     @SerialName("drop_table") val dropTable: List<StageDropEntryResponse> = emptyList(),
     val enemies: List<DungeonStageEnemyResponse> = emptyList()
 )
@@ -128,7 +130,7 @@ fun DungeonStageResponse.toDomain(): DungeonStage = DungeonStage(
     dungeonId = dungeonId,
     stageNumber = stageNumber,
     recommendedPower = recommendedPower,
-    enemyComposition = enemyComposition ?: "[]",
+    enemyComposition = (enemyComposition as? JsonPrimitive)?.content ?: enemyComposition?.toString() ?: "[]",
     drops = dropTable.map { StageDrop(it.itemType, it.amount, it.rate) },
     enemies = enemies.mapNotNull { row ->
         val m = row.monster ?: return@mapNotNull null
