@@ -13,6 +13,12 @@ val generateLevelupClientApiKey = tasks.register("generateLevelupClientApiKey") 
     val localProperties = rootProject.layout.projectDirectory.file("local.properties")
     // local.properties を変更したのにタスクが UP-TO-DATE のままだと api.key / dev.jwt が反映されない
     inputs.file(localProperties).optional()
+    inputs.property("LEVELUP_API_KEY", providers.environmentVariable("LEVELUP_API_KEY").orElse(""))
+        .optional(true)
+    inputs.property("LEVELUP_DEV_JWT", providers.environmentVariable("LEVELUP_DEV_JWT").orElse(""))
+        .optional(true)
+    inputs.property("LEVELUP_STG_DEV_JWT", providers.environmentVariable("LEVELUP_STG_DEV_JWT").orElse(""))
+        .optional(true)
     outputs.dir(outDir)
     doLast {
         fun normalizeApiKey(raw: String): String {

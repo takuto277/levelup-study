@@ -16,3 +16,8 @@ sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
 # 任意: 本番 API で DEBUG + シード userId を試すときの Bearer（Supabase ログインが無い場合のフォールバック）。
 # 値は `cd backend && make mint-dev-jwt`（.env の JWT_SECRET を使用）で生成し、1 行をそのまま貼る。Bearer プレフィックスは不要。
 # dev.jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# 任意: stg 環境切替時に使用する Bearer（stg 用 JWT）。
+# 値は stg サーバーの JWT_SECRET で署名された JWT を 1 行で貼る。Bearer プレフィックスは不要。
+# 優先: 環境変数 `LEVELUP_STG_DEV_JWT`、なければ local.properties の `stg.dev.jwt`。
+# stg.dev.jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
