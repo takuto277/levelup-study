@@ -30,6 +30,9 @@ object UserSessionStore {
         isDebugBuild = value
     }
 
+    /** 現在 DEBUG ビルドかどうか。 */
+    fun isDebugBuild(): Boolean = isDebugBuild
+
     private var forceDevSeedUserId: Boolean = false
 
     /**
@@ -117,17 +120,28 @@ object UserSessionStore {
     var authToken: String? = null
         private set
 
+    /**
+     * [authToken] の有効期限（Unix epoch seconds）。
+     * Guest モードでの実行時トークン更新判定に使用する。
+     */
+    var authTokenExpiresAt: Long? = null
+        private set
+
     /** ユーザーセッションを設定 */
-    fun setSession(userId: String, token: String? = null) {
+    fun setSession(userId: String, token: String? = null, expiresAtEpochSeconds: Long? = null) {
         if (forceDevSeedUserId && userId != DEV_SEED_USER_ID) {
             println(
                 "[LevelUpStudy] dev seed mode: API 用 userId は $DEV_SEED_USER_ID に固定。createUser の $userId は保存しません。",
             )
-            if (token != null) this.authToken = token
+            if (token != null) {
+                this.authToken = token
+                this.authTokenExpiresAt = expiresAtEpochSeconds
+            }
             return
         }
         this.userId = userId
         this.authToken = token
+        this.authTokenExpiresAt = expiresAtEpochSeconds
     }
 
     /** セッションをクリア（ログアウト時・モード切替時） */
@@ -135,6 +149,7 @@ object UserSessionStore {
         forceDevSeedUserId = false
         userId = null
         authToken = null
+        authTokenExpiresAt = null
         _currentUser.value = null
     }
 

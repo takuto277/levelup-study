@@ -3,13 +3,16 @@ package org.example.project.core.network
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.request.header
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.request.header
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import org.example.project.core.session.GuestAuthService
+import org.example.project.core.session.SecureSessionStore
 
 /**
  * Ktor HttpClient ファクトリ
@@ -31,19 +34,30 @@ object ApiClient {
 
     /**
      * HttpClient を生成
-     * Ktor のエンジンは各プラットフォーム (OkHttp / Darwin) で自動解決される
+     * Ktor のエンジンは各プラットフォーム (OkHttp / Darwin) で自動解決される。
+     *
+     * @param isDebug デバッグビルド時は HTTP ボディログを有効化。Release では無効化し、
+     *                いずれの場合も Authorization ヘッダーはマスクする。
      */
-    fun create(): HttpClient {
+    fun create(
+        isDebug: Boolean,
+        guestAuthService: GuestAuthService,
+        secureSessionStore: SecureSessionStore,
+    ): HttpClient {
         return HttpClient {
             // JSON シリアライゼーション
             install(ContentNegotiation) {
                 json(json)
             }
 
-            // ロギング（デバッグ用）
+            // ロギング（Debug のみ有効、Authorization は常にマスク）
             install(Logging) {
-                level = LogLevel.BODY
+                level = if (isDebug) LogLevel.BODY else LogLevel.NONE
+                sanitizeHeader { header -> header == HttpHeaders.Authorization }
             }
+
+            // Guest モード時の access token 期限切れ refresh
+            TokenRefreshInterceptor(guestAuthService, secureSessionStore).install(this)
 
             // デフォルトリクエスト設定
             defaultRequest {

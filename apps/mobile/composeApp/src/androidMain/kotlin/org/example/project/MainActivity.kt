@@ -9,12 +9,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import org.example.project.core.session.SessionGate
+import org.example.project.core.session.UserSessionStore
 import org.example.project.core.storage.initKeyValueStore
 import org.example.project.core.network.ApiRoutes
 import org.example.project.core.network.AppEnvironment
 import org.example.project.core.network.DevJwtSelector
 import org.example.project.core.network.SupabaseConfigSelector
-import org.example.project.core.session.UserSessionStore
 import org.example.project.di.getSessionManager
 import org.example.project.di.initKoin
 import org.example.project.di.initializeSessionMode
@@ -29,10 +30,7 @@ class MainActivity : ComponentActivity() {
         val isDebug = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         initializeSessionMode(isDebug)
 
-        lifecycleScope.launch {
-            getSessionManager().initialize(isDebug)
-        }
-
+        // DEBUG 環境を復元してから SessionManager を初期化する（Guest Supabase config を正しく紐付けるため）
         if (isDebug) {
             val savedEnv = UserSessionStore.getDebugEnvironment()
             val env = savedEnv?.let { s ->
@@ -44,8 +42,14 @@ class MainActivity : ComponentActivity() {
             SupabaseConfigSelector.selectForEnvironment(env.name.lowercase())
         }
 
+        lifecycleScope.launch {
+            getSessionManager().initialize(isDebug)
+        }
+
         setContent {
-            App()
+            SessionGate(sessionManager = getSessionManager()) {
+                App()
+            }
         }
     }
 }

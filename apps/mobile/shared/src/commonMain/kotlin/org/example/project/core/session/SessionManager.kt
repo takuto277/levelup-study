@@ -22,10 +22,13 @@ class SessionManager(
     private val _state = MutableStateFlow<SessionState>(SessionState.Initializing)
     val state: StateFlow<SessionState> = _state.asStateFlow()
 
+    private var lastIsDebug: Boolean = false
+
     /**
      * アプリ起動時に呼び出す。
      */
     suspend fun initialize(isDebug: Boolean) {
+        lastIsDebug = isDebug
         UserSessionStore.setDebugBuild(isDebug)
         // 平文保存されていた既存 auth_token を削除（移行用）
         UserSessionStore.clearLegacyPlainAuthToken()
@@ -37,9 +40,17 @@ class SessionManager(
     }
 
     /**
+     * 初期化失敗時に再試行する。
+     */
+    suspend fun retry() {
+        initialize(lastIsDebug)
+    }
+
+    /**
      * Debug ビルド用: Seed / Guest を切り替える。
-     * 切替前に現在のセッションとローカルキャッシュをクリアし、
+     * 切替前にメモリ上のセッションとローカルキャッシュをクリアし、
      * モード間のユーザー情報の混在を防ぐ。
+     * 永続化された Guest Session は削除しない（Guest → Seed → Guest で元のユーザーに戻せるように）。
      */
     suspend fun switchMode(mode: SessionMode) {
         clearCurrentSession()
@@ -82,9 +93,9 @@ class SessionManager(
                 guestAuthService.signInAnonymously()
             }
             secureSessionStore.save(envKey, session.toStored(envKey))
-            UserSessionStore.setSession(session.userId, session.accessToken)
-            // public.users を冪等に作成・取得
-            runCatching { userRepository.getOrCreateAuthUser() }
+            UserSessionStore.setSession(session.userId, session.accessToken, session.expiresAtEpochSeconds)
+            // public.users を冪等に作成・取得。失敗は初期化エラーとして伝播する。
+            userRepository.getOrCreateAuthUser()
             _state.value = SessionState.Ready(SessionMode.GUEST, session.userId)
         } catch (e: Exception) {
             _state.value = SessionState.RecoverableError(SessionError.InitializationFailed(e))
@@ -93,17 +104,29 @@ class SessionManager(
 
     /**
      * 無効な Guest Session から新しい Guest を作成する（ユーザー確認後）。
+     * 永続化された Guest Session も削除する。
      */
     suspend fun resetGuestSession() {
+        clearPersistedGuestSession()
         clearCurrentSession()
         initializeGuest()
     }
 
-    private suspend fun clearCurrentSession() {
-        val envKey = environmentKey()
-        secureSessionStore.remove(envKey)
+    /**
+     * メモリ上のセッションとローカルユーザーキャッシュをクリアする。
+     * 永続化された Guest Session は残す。
+     */
+    private fun clearCurrentSession() {
         userRepository.clearCache()
         UserSessionStore.clear()
+    }
+
+    /**
+     * 永続化された Guest Session を削除する。
+     */
+    private suspend fun clearPersistedGuestSession() {
+        val envKey = environmentKey()
+        secureSessionStore.remove(envKey)
     }
 
     private fun environmentKey(): String = ApiRoutes.BASE_URL.hashCode().toString()

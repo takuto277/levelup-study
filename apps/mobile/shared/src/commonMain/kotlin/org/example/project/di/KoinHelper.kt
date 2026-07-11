@@ -3,9 +3,12 @@ package org.example.project.di
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.example.project.core.session.SessionManager
 import org.example.project.core.session.SessionMode
+import org.example.project.core.session.SessionState
 import org.example.project.core.session.UserSessionStore
 import org.example.project.features.record.RecordViewModel
 import org.example.project.features.collection.CollectionViewModel
@@ -94,6 +97,15 @@ fun initializeSessionManagerAsync(isDebug: Boolean) {
 }
 
 /**
+ * iOS 向け: [SessionManager.retry] を非同期で呼び出す。
+ */
+fun retrySessionManagerAsync() {
+    helperScope.launch {
+        getSessionManager().retry()
+    }
+}
+
+/**
  * Debug ビルド用: [SessionMode] を切り替える。
  * Release では何もしない。
  */
@@ -141,4 +153,25 @@ fun getCollectionViewModel(): CollectionViewModel {
 
 fun getSessionManager(): SessionManager {
     return KoinPlatform.getKoin().get()
+}
+
+/**
+ * iOS 向け: [SessionManager.state] の変更を簡易コールバックで受け取る。
+ *
+ * Kotlin sealed interface の Swift interop が不安定な環境でも安定して使えるよう、
+ * state 文字列とエラーメッセージのペアに変換して渡す。
+ *
+ * 返却値の [kotlinx.coroutines.Job] を保持し、不要になったら dispose すること。
+ */
+fun observeSessionGateState(onState: (state: String, errorMessage: String?) -> Unit): kotlinx.coroutines.Job {
+    return getSessionManager().state
+        .onEach {
+            when (it) {
+                is SessionState.Initializing -> onState("Initializing", null)
+                is SessionState.Ready -> onState("Ready", null)
+                is SessionState.RecoverableError -> onState("RecoverableError", it.reason.throwable?.message)
+                is SessionState.ResetRequired -> onState("ResetRequired", "セッションのリセットが必要です")
+            }
+        }
+        .launchIn(helperScope)
 }

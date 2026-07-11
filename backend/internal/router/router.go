@@ -118,13 +118,17 @@ func NewRouter(
 		// ===== ユーザー作成（JWT なしで呼べる — サインアップ直後） =====
 		r.Post("/users", userH.CreateUser)
 
-		// ===== 認証が必要なエンドポイント =====
+		// ===== /auth/user は常に JWT 必須（Guest モードでも sub が必要） =====
+		r.Group(func(r chi.Router) {
+			r.Use(mw.JWTAuth(sec.JWTSecret))
+			r.Post("/auth/user", userH.GetOrCreateUser)
+		})
+
+		// ===== 認証が必要なエンドポイント（dev では JWT スキップ） =====
 		r.Group(func(r chi.Router) {
 			if !sec.DevMode {
 				r.Use(mw.JWTAuth(sec.JWTSecret))
 			}
-
-			r.Post("/auth/user", userH.GetOrCreateUser)
 
 			if sec.DevMode {
 				r.Post("/debug/users/{userID}/currencies", userH.DebugPatchCurrencies)

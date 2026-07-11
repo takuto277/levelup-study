@@ -2,6 +2,7 @@ package org.example.project.core.session
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.MemorySessionManager
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.user.UserSession
 import io.github.jan.supabase.createSupabaseClient
@@ -29,7 +30,13 @@ class GuestAuthService {
             supabaseUrl = url,
             supabaseKey = key,
         ) {
-            install(Auth)
+            install(Auth) {
+                sessionManager = MemorySessionManager()
+                alwaysAutoRefresh = false
+                autoLoadFromStorage = false
+                autoSaveToStorage = false
+                enableLifecycleCallbacks = false
+            }
         }
     }
 

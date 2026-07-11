@@ -35,7 +35,9 @@ struct iOSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainTabView()
+            SessionGateView {
+                MainTabView()
+            }
         }
     }
 }

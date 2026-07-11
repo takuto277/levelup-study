@@ -4,6 +4,7 @@ import org.example.project.core.network.ApiClient
 import org.example.project.core.session.GuestAuthService
 import org.example.project.core.session.SecureSessionStore
 import org.example.project.core.session.SessionManager
+import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.gateway.CharacterGateway
 import org.example.project.data.remote.gateway.DungeonGateway
 import org.example.project.data.remote.gateway.GachaGateway
@@ -51,7 +52,7 @@ import org.koin.dsl.module
 val sharedModule = module {
 
     // ── Network ─────────────────────────────────
-    single { ApiClient.create() }
+    single { ApiClient.create(UserSessionStore.isDebugBuild(), get(), get()) }
 
     // ── Session ─────────────────────────────────
     single { SecureSessionStore() }
