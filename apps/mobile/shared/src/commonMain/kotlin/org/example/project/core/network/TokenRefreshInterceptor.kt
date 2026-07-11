@@ -1,7 +1,7 @@
 package org.example.project.core.network
 
 import io.ktor.client.HttpClient
-import io.ktor.client.plugins.HttpSendPipeline
+import io.ktor.client.request.HttpSendPipeline
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import kotlinx.coroutines.sync.Mutex

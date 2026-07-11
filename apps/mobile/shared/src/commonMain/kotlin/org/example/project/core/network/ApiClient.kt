@@ -56,9 +56,6 @@ object ApiClient {
                 sanitizeHeader { header -> header == HttpHeaders.Authorization }
             }
 
-            // Guest モード時の access token 期限切れ refresh
-            TokenRefreshInterceptor(guestAuthService, secureSessionStore).install(this)
-
             // デフォルトリクエスト設定
             defaultRequest {
                 url(ApiRoutes.BASE_URL)
@@ -69,6 +66,9 @@ object ApiClient {
                 val bearer = AuthTokenProvider.currentToken()
                 bearer?.let { header("Authorization", "Bearer $it") }
             }
+        }.also {
+            // Guest モード時の access token 期限切れ refresh
+            TokenRefreshInterceptor(guestAuthService, secureSessionStore).install(it)
         }
     }
 }
