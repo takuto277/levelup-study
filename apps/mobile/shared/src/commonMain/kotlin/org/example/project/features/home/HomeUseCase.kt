@@ -1,5 +1,6 @@
 package org.example.project.features.home
 
+import org.example.project.core.session.SessionMode
 import org.example.project.core.session.UserSessionStore
 import org.example.project.domain.model.MasterStudyGenre
 import org.example.project.domain.model.User
@@ -90,6 +91,10 @@ class HomeUseCase(
     private suspend fun ensureUser(): User {
         return if (UserSessionStore.userId != null) {
             userRepository.getCurrentUser()
+        } else if (UserSessionStore.sessionMode == SessionMode.GUEST) {
+            // Guest モードでセッション初期化が失敗している状態。createUser すると
+            // 認証なしで作られたユーザーに後続リクエストが 401 になるため、ここで失敗させる。
+            error("Guest セッションが初期化されていません。Supabase 設定を確認するか Seed モードに切り替えてください。")
         } else {
             userRepository.createUser("冒険者")
         }

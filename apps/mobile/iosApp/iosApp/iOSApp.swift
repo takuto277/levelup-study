@@ -8,13 +8,13 @@ struct iOSApp: App {
 
     init() {
         KoinHelperKt.doInitKoin()
-        // DEBUG: seed.sql の user1 (00000000-...-001) を毎回セッションに固定（forceSeedUserId）。
+        // DEBUG: 保存されている SessionMode を復元。未保存なら Seed（互換性維持）。
         // Supabase の auth ユーザー UUID とは別。seed-remote / seed は public.users にこの固定 ID を入れる。
         // make run の DATABASE_URL は seed を流した DB と同じ .env にすること。
-        // RELEASE: Supabase ログイン後の userId / JWT に任せる（本番 API 試験時はこちら）
+        // RELEASE: 常に Guest モード相当（Seed 固定を外す）
 #if DEBUG
-        // seed.sql / seed-remote の user1 と常に一致（KeyValueStore の古い UUID を残さない）
-        KoinHelperKt.setDevSession(useSeedUser: true, forceSeedUserId: true)
+        let isDebug = true
+        KoinHelperKt.initializeSessionMode(isDebug: isDebug)
         // 保存されたデバッグ環境を復元。未保存なら dev（http://localhost:8080）がデフォルト
         let savedEnv = UserSessionStore.shared.getDebugEnvironment() ?? "dev"
         switch savedEnv {
@@ -24,14 +24,20 @@ struct iOSApp: App {
             ApiRoutes.shared.BASE_URL = "http://localhost:8080"
         }
         DevJwtSelector.shared.selectForEnvironment(envName: savedEnv)
+        SupabaseConfigSelector.shared.selectForEnvironment(envName: savedEnv)
 #else
-        KoinHelperKt.setDevSession(useSeedUser: false, forceSeedUserId: false)
+        let isDebug = false
+        KoinHelperKt.initializeSessionMode(isDebug: isDebug)
 #endif
+        // Guest Session を初期化（Release では必須、Debug Guest 時も実行）
+        KoinHelperKt.initializeSessionManagerAsync(isDebug: isDebug)
     }
 
     var body: some Scene {
         WindowGroup {
-            MainTabView()
+            SessionGateView {
+                MainTabView()
+            }
         }
     }
 }

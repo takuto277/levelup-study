@@ -1,6 +1,10 @@
 package org.example.project.di
 
 import org.example.project.core.network.ApiClient
+import org.example.project.core.session.GuestAuthService
+import org.example.project.core.session.SecureSessionStore
+import org.example.project.core.session.SessionManager
+import org.example.project.core.session.UserSessionStore
 import org.example.project.data.remote.gateway.CharacterGateway
 import org.example.project.data.remote.gateway.DungeonGateway
 import org.example.project.data.remote.gateway.GachaGateway
@@ -48,7 +52,12 @@ import org.koin.dsl.module
 val sharedModule = module {
 
     // ── Network ─────────────────────────────────
-    single { ApiClient.create() }
+    single { ApiClient.create(UserSessionStore.isDebugBuild(), get(), get()) }
+
+    // ── Session ─────────────────────────────────
+    single { SecureSessionStore() }
+    single { GuestAuthService() }
+    single { SessionManager(get(), get(), get()) }
 
     // ── Gateway ─────────────────────────────────
     singleOf(::UserGateway)
@@ -87,6 +96,6 @@ val sharedModule = module {
     factoryOf(::StudyViewModel)
     factoryOf(::StudyQuestViewModel)
     /** SwiftUI が再合成するたびに新インスタンス＋init Refresh になるのを避けるため single */
-    single { SettingsViewModel(get(), get()) }
+    single { SettingsViewModel(get(), get(), get()) }
     factoryOf(::CollectionViewModel)
 }

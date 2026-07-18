@@ -1,6 +1,7 @@
 package org.example.project.data.repository
 
 import kotlinx.serialization.json.Json
+import org.example.project.core.network.NetworkException
 import org.example.project.core.network.NetworkResult
 import org.example.project.core.network.getOrThrow
 import org.example.project.core.session.UserSessionStore
@@ -49,7 +50,7 @@ class UserRepositoryImpl(
     override suspend fun getOrCreateAuthUser(): User? {
         return when (val result = gateway.getOrCreateAuthUser()) {
             is NetworkResult.Success -> result.data.toDomain()
-            else -> null
+            is NetworkResult.Error -> throw NetworkException(result.code, result.message)
         }
     }
 
@@ -105,6 +106,11 @@ class UserRepositoryImpl(
     override fun updateCachedUser(user: User) {
         cachedUser = user
         persistUserOffline(user)
+    }
+
+    override fun clearCache() {
+        cachedUser = null
+        kv.remove(keyCachedUser)
     }
 
     private fun debugLogSyncFromServer(hint: String) {

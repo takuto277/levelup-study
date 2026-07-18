@@ -97,6 +97,19 @@ struct SettingsScreenView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
+            Text("セッション")
+                .font(.subheadline.weight(.semibold))
+            Picker("セッション", selection: Binding<String>(
+                get: { state?.sessionMode.name().lowercased() ?? "seed" },
+                set: { newValue in
+                    vm.setSessionModeFromPlatform(modeName: newValue)
+                }
+            )) {
+                Text("Seed").tag("seed")
+                Text("Guest").tag("guest")
+            }
+            .pickerStyle(.segmented)
+
             Text("石: \(state?.stones ?? 0)")
                 .font(.subheadline.weight(.semibold))
             HStack(spacing: 8) {
