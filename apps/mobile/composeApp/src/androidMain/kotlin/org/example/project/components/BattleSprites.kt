@@ -122,7 +122,7 @@ fun PlayerSprite(
             LaunchedEffect(mode) {
                 currentFrame = 0
                 for (i in 1 until frames.size) {
-                    delay(80)
+                    delay(60)
                     currentFrame = i
                 }
             }
@@ -137,7 +137,7 @@ fun PlayerSprite(
             LaunchedEffect(mode) {
                 currentFrame = 0
                 for (i in 1 until frames.size) {
-                    delay(100)
+                    delay(60)
                     currentFrame = i
                 }
             }

@@ -51,10 +51,10 @@ private struct PlayerSpriteView: View {
     private var interval: TimeInterval {
         switch mode {
         case .idle: return 0.6
-        case .prep: return 0.1
-        case .attack: return 0.08
+        case .prep: return 0.06
+        case .attack: return 0.06
         case .rest: return 0
-        case .walking: return 0.32
+        case .walking: return 0.3
         }
     }
 
@@ -71,32 +71,51 @@ private struct PlayerSpriteView: View {
             Text("🧙‍♂️")
                 .font(.system(size: size * 0.42))
                 .frame(width: size, height: size)
-        } else if frames.count == 1 || (!isOneShot && currentFrame >= frames.count) {
-            Image(frames[isOneShot ? currentFrame : 0])
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size)
         } else {
-            Image(frames[min(currentFrame, frames.count - 1)])
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size)
-                .onAppear {
-                    currentFrame = 0
-                }
-                .onChange(of: mode) { _ in
-                    currentFrame = 0
-                }
-                .onReceive(Timer.publish(every: interval, on: .main, in: .common).autoconnect()) { _ in
-                    if currentFrame < frames.count - 1 {
+            PlayerAnimInner(
+                frames: frames,
+                interval: interval,
+                isOneShot: isOneShot,
+                mode: mode,
+                size: size
+            )
+        }
+    }
+}
+
+private struct PlayerAnimInner: View {
+    let frames: [String]
+    let interval: TimeInterval
+    let isOneShot: Bool
+    let mode: PlayerSpriteView.SpriteMode
+    let size: CGFloat
+    
+    @State private var currentFrame: Int = 0
+    @State private var taskId: Int = 0
+
+    var body: some View {
+        Image(frames[min(currentFrame, frames.count - 1)])
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .task(id: taskId) {
+                currentFrame = 0
+                if isOneShot {
+                    for _ in 1..<frames.count {
+                        try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
                         currentFrame += 1
-                    } else if !isOneShot {
-                        currentFrame = 0
+                    }
+                } else {
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                        currentFrame = (currentFrame + 1) % frames.count
                     }
                 }
-        }
+            }
+            .onChange(of: mode) { _ in
+                taskId += 1
+            }
     }
 }
 
