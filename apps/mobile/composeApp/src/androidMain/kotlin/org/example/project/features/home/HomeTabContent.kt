@@ -39,6 +39,8 @@ import kotlin.math.roundToInt
 import org.example.project.domain.model.MasterStudyGenre
 import org.example.project.data.local.TutorialTopics
 import org.example.project.components.TutorialHintRow
+import org.example.project.components.PlayerSprite
+import org.example.project.components.PlayerSpriteMode
 @Composable
 fun HomeTabContent(
     studyMinutes: Int,
@@ -66,12 +68,6 @@ fun HomeTabContent(
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "home")
-    val bounceY by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = -12f,
-        animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "bounce"
-    )
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.7f,
@@ -127,7 +123,6 @@ fun HomeTabContent(
 
         HomeCharacterHero(
             message = homeState.characterMessage,
-            bounceY = bounceY,
             glowAlpha = glowAlpha,
             breathScale = breathScale,
             homeState = homeState,
@@ -195,7 +190,6 @@ private fun HeaderCapsule(emoji: String, caption: String, value: String) {
 @Composable
 private fun HomeCharacterHero(
     message: String,
-    bounceY: Float,
     glowAlpha: Float,
     breathScale: Float,
     homeState: HomeUiState,
@@ -233,24 +227,21 @@ private fun HomeCharacterHero(
             Spacer(modifier = Modifier.height(8.dp))
 
             val context = LocalContext.current
-            val playerIdleRes = remember {
-                context.resources.getIdentifier("sprite_player_idle_1", "drawable", context.packageName)
+            val hasSprite = remember {
+                context.resources.getIdentifier("sprite_player_idle_1", "drawable", context.packageName) != 0
             }
+
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.clickable(onClick = onTapCharacter)
             ) {
-            if (playerIdleRes != 0) {
-                Image(
-                    painter = painterResource(playerIdleRes),
-                    contentDescription = "Player",
-                    modifier = Modifier
-                        .size(160.dp)
-                        .offset(y = bounceY.dp),
-                    contentScale = ContentScale.Fit
+            if (hasSprite) {
+                PlayerSprite(
+                    mode = PlayerSpriteMode.Idle,
+                    size = 160.dp
                 )
             } else {
-                Text("🧙‍♂️", fontSize = 100.sp, modifier = Modifier.offset(y = bounceY.dp))
+                Text("🧙‍♂️", fontSize = 100.sp)
             }
 
             Spacer(modifier = Modifier.height(4.dp))
