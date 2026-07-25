@@ -4,6 +4,9 @@ All prompts use ChatGPT (DALL-E). Attach `sprite_player_idle_1.png` as reference
 
 `[CHARACTER]` の部分を任意のキャラクター説明に置き換える。
 
+**重要**: 全フレームでキャラクターの足元の高さと位置を揃えること。
+基準画像（idle_1）の足元ラインに全フレームを合わせる。
+
 ## idle 1（基準画像）
 
 ```
@@ -39,7 +42,7 @@ Pale skin, glowing red eyes, silver hair peeking from hood.
 Based on the attached character sprite.
 Idle animation frame 2 of 2, gentle exhale.
 Body sinks 1 pixel, chest slightly down. Arms relaxed, sword unchanged.
-96x96, same pixel art style and colors, facing right. Dark background. No text.
+96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## prep 1
@@ -48,7 +51,7 @@ Body sinks 1 pixel, chest slightly down. Arms relaxed, sword unchanged.
 Based on the attached character sprite.
 Prepare frame 1 of 2, gripping sword tighter.
 Knees slightly bent, sword rising to shoulder level.
-96x96, same pixel art style and colors, facing right. Dark background. No text.
+96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## prep 2
@@ -57,7 +60,7 @@ Knees slightly bent, sword rising to shoulder level.
 Based on the attached character sprite.
 Prepare frame 2 of 2, full wind-up.
 Sword pulled back behind right shoulder, body leaning forward.
-96x96, same pixel art style and colors, facing right. Dark background. No text.
+96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 1
@@ -66,7 +69,7 @@ Sword pulled back behind right shoulder, body leaning forward.
 Based on the attached character sprite.
 Attack frame 1 of 5, forward lunge step.
 Right foot steps forward, sword beginning to swing from behind.
-96x96, same pixel art style and colors, facing right. Dark background. No text.
+96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 2
@@ -75,7 +78,7 @@ Right foot steps forward, sword beginning to swing from behind.
 Based on the attached character sprite.
 Attack frame 2 of 5, sword mid-swing at 45° diagonal slash.
 Body rotated forward, thin white arc line tracing sword path.
-96x96, same pixel art style and colors, facing right. Dark background. No text.
+96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 3
@@ -84,7 +87,7 @@ Body rotated forward, thin white arc line tracing sword path.
 Based on the attached character sprite.
 Attack frame 3 of 5, peak impact. Sword slashing across center horizontally.
 Bright slash effect line, dynamic action pose.
-96x96, same pixel art style and colors, facing right. Dark background. No text.
+96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 4
@@ -93,7 +96,7 @@ Bright slash effect line, dynamic action pose.
 Based on the attached character sprite.
 Attack frame 4 of 5, follow-through. Sword extended fully left/down.
 Cape flowing, body momentum carrying through.
-96x96, same pixel art style and colors, facing right. Dark background. No text.
+96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 5
@@ -102,7 +105,7 @@ Cape flowing, body momentum carrying through.
 Based on the attached character sprite.
 Attack frame 5 of 5, recovery. Sword lowering, body straightening.
 Returning toward idle stance. Cape settling.
-96x96, same pixel art style and colors, facing right. Dark background. No text.
+96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## rest 1
@@ -111,7 +114,7 @@ Returning toward idle stance. Cape settling.
 Based on the attached character sprite.
 Rest pose, sitting on the ground cross-legged,
 sword resting across lap, eyes closed, breathing deeply.
-96x96, same pixel art style and colors, facing right. Dark background. No text.
+96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## walk 1
@@ -120,7 +123,7 @@ sword resting across lap, eyes closed, breathing deeply.
 Based on the attached character sprite.
 Walk frame 1 of 2, left foot stepping forward.
 Sword held at side, slight forward lean, cape trailing lightly.
-96x96, same pixel art style and colors, facing right. Dark background. No text.
+96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## walk 2
@@ -129,7 +132,7 @@ Sword held at side, slight forward lean, cape trailing lightly.
 Based on the attached character sprite.
 Walk frame 2 of 2, right foot stepping forward.
 Sword held at side, body slightly lifted, cape swaying back.
-96x96, same pixel art style and colors, facing right. Dark background. No text.
+96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## File Mapping
