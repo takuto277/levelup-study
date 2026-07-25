@@ -115,31 +115,48 @@ fun PlayerSprite(
             )
         }
 
-        PlayerSpriteMode.Idle -> {
-            val frames = collectFrameIds(context, "sprite_player_idle")
+        PlayerSpriteMode.Attack -> {
+            val frames = collectFrameIds(context, "sprite_player_attack")
             if (frames.isEmpty()) return
-            FrameAnimator(frames = frames, intervalMs = 600) { id ->
-                Image(painter = painterResource(id), contentDescription = null,
-                    modifier = modifier.size(size), contentScale = ContentScale.Fit)
+            var currentFrame by remember { mutableIntStateOf(0) }
+            LaunchedEffect(mode) {
+                currentFrame = 0
+                for (i in 1 until frames.size) {
+                    delay(80)
+                    currentFrame = i
+                }
             }
+            Image(painter = painterResource(frames[currentFrame]), contentDescription = null,
+                modifier = modifier.size(size), contentScale = ContentScale.Fit)
         }
 
         PlayerSpriteMode.Prep -> {
             val frames = collectFrameIds(context, "sprite_player_prep")
             if (frames.isEmpty()) return
-            FrameAnimator(frames = frames, intervalMs = 100, loop = false) { id ->
-                Image(painter = painterResource(id), contentDescription = null,
-                    modifier = modifier.size(size), contentScale = ContentScale.Fit)
+            var currentFrame by remember { mutableIntStateOf(0) }
+            LaunchedEffect(mode) {
+                currentFrame = 0
+                for (i in 1 until frames.size) {
+                    delay(100)
+                    currentFrame = i
+                }
             }
+            Image(painter = painterResource(frames[currentFrame]), contentDescription = null,
+                modifier = modifier.size(size), contentScale = ContentScale.Fit)
         }
 
-        PlayerSpriteMode.Attack -> {
-            val frames = collectFrameIds(context, "sprite_player_attack")
+        PlayerSpriteMode.Idle -> {
+            val frames = collectFrameIds(context, "sprite_player_idle")
             if (frames.isEmpty()) return
-            FrameAnimator(frames = frames, intervalMs = 80, loop = false) { id ->
-                Image(painter = painterResource(id), contentDescription = null,
-                    modifier = modifier.size(size), contentScale = ContentScale.Fit)
+            var currentFrame by remember { mutableIntStateOf(0) }
+            LaunchedEffect(mode) {
+                while (true) {
+                    delay(600)
+                    currentFrame = (currentFrame + 1) % frames.size
+                }
             }
+            Image(painter = painterResource(frames[currentFrame]), contentDescription = null,
+                modifier = modifier.size(size), contentScale = ContentScale.Fit)
         }
 
         PlayerSpriteMode.Rest -> {
@@ -232,6 +249,32 @@ private fun FrameAnimator(
             else (currentFrame + 1).coerceAtMost(frames.size - 1)
         }
     }
+    content(frames[currentFrame])
+}
+
+/** Attack/Prep 用: 毎回再生成される key で LaunchedEffect を走らせ、一連の再生を保証 */
+@Composable
+private fun OneShotAnimator(
+    frames: List<Int>,
+    intervalMs: Long,
+    content: @Composable (Int) -> Unit
+) {
+    if (frames.isEmpty()) return
+    if (frames.size == 1) {
+        content(frames.first())
+        return
+    }
+    val triggerKey = remember { mutableIntStateOf(0) }
+    var currentFrame by remember { mutableIntStateOf(0) }
+    LaunchedEffect(triggerKey.intValue) {
+        currentFrame = 0
+        for (i in 1 until frames.size) {
+            delay(intervalMs)
+            currentFrame = i
+        }
+    }
+    // triggerKey を毎回進めて新しい LaunchedEffect を起こす
+    LaunchedEffect(Unit) { triggerKey.intValue++ }
     content(frames[currentFrame])
 }
 
