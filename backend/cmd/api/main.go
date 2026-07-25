@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -52,6 +53,13 @@ func main() {
 		if mw.DebugAPILogVerboseEnabled() {
 			log.Println("🌱 DEBUG_API_LOG_VERBOSE: 各リクエストの続けて req/resp 要約行を出します（機密に注意。オフは DEBUG_API_LOG_VERBOSE=false）")
 		}
+	}
+
+	// --- Supabase JWKS の初期化（ES256/RS256 対応）---
+	supabaseRef := extractSupabaseProjectRef(os.Getenv("SUPABASE_URL"), os.Getenv("DATABASE_URL"))
+	if supabaseRef != "" {
+		mw.InitJWKS(supabaseRef)
+		log.Printf("🔑 Supabase JWKS: %s.supabase.co", supabaseRef)
 	}
 
 	// --- データベース接続 ---
@@ -110,4 +118,21 @@ func main() {
 	if err := http.ListenAndServe(":"+port, r); err != nil {
 		log.Fatalf("❌ サーバー起動失敗: %v", err)
 	}
+}
+
+// extractSupabaseProjectRef — SUPABASE_URL または DATABASE_URL からプロジェクト参照を抽出
+func extractSupabaseProjectRef(supabaseURL, databaseURL string) string {
+	if supabaseURL != "" {
+		re := regexp.MustCompile(`https://([a-z0-9]+)\.supabase\.co`)
+		if m := re.FindStringSubmatch(supabaseURL); len(m) >= 2 {
+			return m[1]
+		}
+	}
+	if databaseURL != "" {
+		re := regexp.MustCompile(`postgres\.([a-z0-9]+)@`)
+		if m := re.FindStringSubmatch(databaseURL); len(m) >= 2 {
+			return m[1]
+		}
+	}
+	return ""
 }
