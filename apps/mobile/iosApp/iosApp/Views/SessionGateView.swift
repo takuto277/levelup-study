@@ -50,6 +50,22 @@ struct SessionGateView<Content: View>: View {
                         }
                         .padding(.top, 8)
                     }
+
+                    Spacer().frame(height: 24)
+
+                    Button(action: {
+                        KoinHelperKt.switchToSeedModeAsync()
+                    }) {
+                        Text("Seed モードに戻す")
+                            .font(.subheadline)
+                            .foregroundColor(textSecondary)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(textSecondary.opacity(0.4), lineWidth: 1)
+                            )
+                    }
                 }
             }
         }
