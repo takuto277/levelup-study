@@ -2,19 +2,35 @@
 
 All prompts use ChatGPT (DALL-E). Attach `sprite_player_idle_1.png` as reference image for consistency.
 
+`[CHARACTER]` の部分を任意のキャラクター説明に置き換える。
+
 ## idle 1（基準画像）
 
 ```
 Pixel art game sprite, 96x96 pixels.
-Character description: female holy knight, long flowing red hair,
-wearing elegant silver-white plate armor with gold trim and a crimson cape.
-Holding a longsword in right hand, a small shield on left arm.
-Expression calm and noble, gentle light glowing from armor.
+Character description: [CHARACTER]
 Pose: standing, idle battle-ready, facing right (looking rightward),
 sword held at side.
 Style: 16-bit retro JRPG, crisp pixel edges, no anti-aliasing, 32 colors max.
 Solid dark background (will be removed later).
 No text, no watermark, no UI elements.
+```
+
+---
+
+**[CHARACTER] 記入例:**
+
+```
+female holy knight, long flowing red hair,
+wearing elegant silver-white plate armor with gold trim and a crimson cape.
+Holding a longsword in right hand, a small shield on left arm.
+Expression calm and noble, gentle light glowing from armor.
+```
+
+```
+male dark mage, hooded black robe with purple trim,
+floating dark tome in left hand, wispy shadow energy.
+Pale skin, glowing red eyes, silver hair peeking from hood.
 ```
 
 ## idle 2
@@ -93,8 +109,8 @@ Returning toward idle stance. Cape settling.
 
 ```
 Based on the attached character sprite.
-Rest pose, sword tip resting on ground. Both hands on sword pommel.
-Slightly hunched, catching breath after battle.
+Rest pose, sitting on the ground cross-legged,
+sword resting across lap, eyes closed, breathing deeply.
 96x96, same pixel art style and colors, facing right. Dark background. No text.
 ```
 
