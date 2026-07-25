@@ -15,7 +15,6 @@ import platform.CoreFoundation.kCFBooleanTrue
 import platform.Foundation.CFBridgingRelease
 import platform.Foundation.CFBridgingRetain
 import platform.Foundation.NSData
-import platform.Foundation.NSCopyingProtocol
 import platform.Foundation.NSMutableDictionary
 import platform.Foundation.NSString
 import platform.Foundation.NSUTF8StringEncoding
@@ -40,9 +39,14 @@ actual class SecureSessionStore {
     private val service: String
         get() = "${bundleIdentifier()}.levelup.secure-session"
 
-    init {
-        println("[SecureSessionStore] Init: kSecClass=$kSecClass kSecClassGenericPassword=$kSecClassGenericPassword kSecAttrService=$kSecAttrService kSecAttrAccount=$kSecAttrAccount kSecValueData=$kSecValueData")
-    }
+    // CFString 定数は CFBridgingRelease で NSString に変換しておく
+    private val attrClass: Any get() = CFBridgingRelease(kSecClass) ?: error("kSecClass is null")
+    private val attrClassGeneric: Any get() = CFBridgingRelease(kSecClassGenericPassword) ?: error("kSecClassGenericPassword is null")
+    private val attrService: Any get() = CFBridgingRelease(kSecAttrService) ?: error("kSecAttrService is null")
+    private val attrAccount: Any get() = CFBridgingRelease(kSecAttrAccount) ?: error("kSecAttrAccount is null")
+    private val attrValueData: Any get() = CFBridgingRelease(kSecValueData) ?: error("kSecValueData is null")
+    private val attrReturnData: Any get() = CFBridgingRelease(kSecReturnData) ?: error("kSecReturnData is null")
+    private val attrMatchLimit: Any get() = CFBridgingRelease(kSecMatchLimit) ?: error("kSecMatchLimit is null")
 
     actual suspend fun save(environmentKey: String, session: StoredGuestSession) {
         val json = Json.encodeToString(session)
@@ -50,13 +54,12 @@ actual class SecureSessionStore {
 
         remove(environmentKey)
 
-        @Suppress("UNCHECKED_CAST")
-        val dict = NSMutableDictionary().apply {
-            setObject(kSecClassGenericPassword, kSecClass as NSCopyingProtocol)
-            setObject(service, kSecAttrService as NSCopyingProtocol)
-            setObject(keyFor(environmentKey), kSecAttrAccount as NSCopyingProtocol)
-            setObject(data, kSecValueData as NSCopyingProtocol)
-        }
+        val dict = NSMutableDictionary()
+        dict[attrClass] = attrClassGeneric
+        dict[attrService] = service
+        dict[attrAccount] = keyFor(environmentKey)
+        dict[attrValueData] = data
+
         val cfDict = CFBridgingRetain(dict) as CFDictionaryRef
         val status = SecItemAdd(cfDict, null)
         CFRelease(cfDict)
@@ -67,14 +70,12 @@ actual class SecureSessionStore {
     }
 
     actual suspend fun load(environmentKey: String): StoredGuestSession? {
-        @Suppress("UNCHECKED_CAST")
-        val dict = NSMutableDictionary().apply {
-            setObject(kSecClassGenericPassword, kSecClass as NSCopyingProtocol)
-            setObject(service, kSecAttrService as NSCopyingProtocol)
-            setObject(keyFor(environmentKey), kSecAttrAccount as NSCopyingProtocol)
-            setObject(kCFBooleanTrue, kSecReturnData as NSCopyingProtocol)
-            setObject(kSecMatchLimitOne, kSecMatchLimit as NSCopyingProtocol)
-        }
+        val dict = NSMutableDictionary()
+        dict[attrClass] = attrClassGeneric
+        dict[attrService] = service
+        dict[attrAccount] = keyFor(environmentKey)
+        dict[attrReturnData] = true
+        dict[attrMatchLimit] = kSecMatchLimitOne as Any
 
         memScoped {
             val result = alloc<CFTypeRefVar>()
@@ -83,21 +84,18 @@ actual class SecureSessionStore {
             CFRelease(cfDict)
             if (status != errSecSuccess) return null
 
-            val data = CFBridgingRelease(result.value) as? NSData ?: return null
-            val json = data.toKotlinString() ?: return null
+            val nsData = CFBridgingRelease(result.value) as? NSData ?: return null
+            val json = nsData.toKotlinString() ?: return null
             return Json.decodeFromString(json)
         }
     }
 
     actual suspend fun remove(environmentKey: String) {
-        @Suppress("UNCHECKED_CAST")
-        val dict = NSMutableDictionary().apply {
-            setObject(kSecClassGenericPassword, kSecClass as NSCopyingProtocol)
-            setObject(service, kSecAttrService as NSCopyingProtocol)
-            setObject(keyFor(environmentKey), kSecAttrAccount as NSCopyingProtocol)
-        }
-        println("[SecureSessionStore] Delete dict: $dict")
-        println("[SecureSessionStore] Delete dict keys: ${dict.allKeys()}")
+        val dict = NSMutableDictionary()
+        dict[attrClass] = attrClassGeneric
+        dict[attrService] = service
+        dict[attrAccount] = keyFor(environmentKey)
+
         val cfDict = CFBridgingRetain(dict) as CFDictionaryRef
         val status = SecItemDelete(cfDict)
         CFRelease(cfDict)
