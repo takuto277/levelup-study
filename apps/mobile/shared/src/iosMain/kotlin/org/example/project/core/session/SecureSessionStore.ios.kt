@@ -96,6 +96,8 @@ actual class SecureSessionStore {
             setObject(service, kSecAttrService as NSCopyingProtocol)
             setObject(keyFor(environmentKey), kSecAttrAccount as NSCopyingProtocol)
         }
+        println("[SecureSessionStore] Delete dict: $dict")
+        println("[SecureSessionStore] Delete dict keys: ${dict.allKeys()}")
         val cfDict = CFBridgingRetain(dict) as CFDictionaryRef
         val status = SecItemDelete(cfDict)
         CFRelease(cfDict)
