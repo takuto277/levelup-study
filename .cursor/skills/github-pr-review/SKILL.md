@@ -1,10 +1,7 @@
 ---
 name: github-pr-review
-description: >
-  Use this when asked to review a specific GitHub Pull Request and leave review comments on the PR itself.
-  Trigger this skill when the user provides a PR number, PR URL, owner/repo#number, or branch-like target and says casual review requests like "@codex #123 のPRレビューして", "@codex owner/repo#123 をレビューして", "feature/foo のPRレビューして", "レビューして", "PRレビューして", or "このPR見て"; when the user explicitly asks you to review and comment on a GitHub PR instead of only summarizing findings in chat; or when the user asks to recheck feedback previously posted by this skill. Also manages PR review state labels such as `PRレビュー修正待ち`, `PRレビュー/再レビュー待ち`, and `review:まーじOK`.
+description: 'Use this when asked to review a specific GitHub Pull Request and leave review comments on the PR itself. Trigger this skill when the user provides a PR number, PR URL, owner/repo#number, or branch-like target and says casual review requests like "@codex #123 のPRレビューして", "@codex owner/repo#123 をレビューして", "feature/foo のPRレビューして", "レビューして", "PRレビューして", or "このPR見て"; when the user explicitly asks you to review and comment on a GitHub PR instead of only summarizing findings in chat; or when the user asks to recheck feedback previously posted by this skill. Also manages PR review state labels such as `PRレビュー修正待ち`, `PRレビュー/再レビュー待ち`, and `review:まーじOK`.'
 ---
-
 # 概要
 
 指定された GitHub Pull Request をレビューし、可能な限り差分上の適切な位置へレビューコメントを付けるためのスキル。

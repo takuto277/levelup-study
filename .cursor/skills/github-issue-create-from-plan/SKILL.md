@@ -1,11 +1,7 @@
 ---
 name: github-issue-create-from-plan
-description: >
-  ユーザーから設計やプラン作成を求められ、その合意後にGitHub Issueを作成する時に使う。
-  まずプランを作成して提示し、現在モードが plan の場合は切替案内を出し、edit または auto の場合はそのまま `gh issue create` を実行する。
-  Issue作成後は人間向けHTMLも作成するか確認し、承諾された場合だけ `html-artifact-format` に従ってHTMLを生成する。
+description: ユーザーから設計やプラン作成を求められ、その合意後にGitHub Issueを作成する時に使う。 まずプランを作成して提示し、現在モードが plan の場合は切替案内を出し、edit または auto の場合はそのまま `gh issue create` を実行する。 Issue作成後は人間向けHTMLも作成するか確認し、承諾された場合だけ `html-artifact-format` に従ってHTMLを生成する。
 ---
-
 # 概要
 
 設計を先に固め、その内容をGitHub Issueへ落とし込むためのスキル。現在モードに応じて、plan では実行前の切替案内を出し、edit または auto では余計な案内を挟まず Issue 作成まで進める。Issue 作成後は、人間がレビュー・共有しやすいHTMLも作るか確認する。

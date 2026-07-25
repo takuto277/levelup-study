@@ -3,6 +3,8 @@
   "targets": [
     "cursor",
     "claudecode",
+    "opencode",
+    "codexcli",
     "antigravity"
   ],
   "features": [

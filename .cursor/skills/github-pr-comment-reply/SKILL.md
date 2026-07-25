@@ -1,12 +1,7 @@
 ---
 name: github-pr-comment-reply
-description: >
-  Use this when asked to reply to an existing GitHub Pull Request review comment
-  or PR conversation comment. Trigger this skill when the user provides a
-  comment URL or comment ID, or asks to find a comment on the current PR and
-  post a reply on GitHub.
+description: Use this when asked to reply to an existing GitHub Pull Request review comment or PR conversation comment. Trigger this skill when the user provides a comment URL or comment ID, or asks to find a comment on the current PR and post a reply on GitHub.
 ---
-
 # 概要
 
 既存の GitHub PR コメントへ返信するためのスキル。

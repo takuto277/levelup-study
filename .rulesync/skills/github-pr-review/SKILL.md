@@ -1,0 +1,179 @@
+---
+name: github-pr-review
+description: >
+  Use this when asked to review a specific GitHub Pull Request and leave review comments on the PR itself.
+  Trigger this skill when the user provides a PR number, PR URL, owner/repo#number, or branch-like target and says casual review requests like "@codex #123 のPRレビューして", "@codex owner/repo#123 をレビューして", "feature/foo のPRレビューして", "レビューして", "PRレビューして", or "このPR見て"; when the user explicitly asks you to review and comment on a GitHub PR instead of only summarizing findings in chat; or when the user asks to recheck feedback previously posted by this skill. Also manages PR review state labels such as `PRレビュー修正待ち`, `PRレビュー/再レビュー待ち`, and `review:まーじOK`.
+---
+
+# 概要
+
+指定された GitHub Pull Request をレビューし、可能な限り差分上の適切な位置へレビューコメントを付けるためのスキル。
+チャット上の総評ではなく、GitHub PR 上へ実際にコメントを残す運用を前提にする。
+レビュー結果として指摘がない場合も、`APPROVE` ではなく `COMMENT` review として、PR 上へ指摘なしの review comment を残す。
+通常レビューで指摘がある時は `PRレビュー修正待ち`、指摘がない時または再チェックで未解決指摘がすべて解消済みになった時は `review:まーじOK` で状態を見える化する。
+
+# 使用タイミング
+
+- ユーザーが GitHub PR の URL または PR 番号を指定してレビューを依頼した時
+- `@codex #123 のPRレビューして`、`@codex owner/repo#123 をレビューして`、`feature/foo のPRレビューして` のように、bot mention や自然文と対象PRが混ざった依頼を受けた時
+- PR 文脈で「レビューして」「このPR見て」など短くレビューを依頼した時
+- ユーザーが「GitHub 上にコメントしてほしい」と明示した時
+- チャット要約だけでなく、PR へ inline comment を残すことが成果物として求められている時
+- このスキルで指摘コメントを投稿した後、ユーザーが FB 対応完了後の再確認を依頼した時
+
+# 前提と禁止事項
+
+- GitHub 連携は取得・投稿・再チェックを含め、すべて `gh` CLI / `gh api` で行う。GitHub コネクタは使わない。
+- レビュー開始前に `gh auth status` が成功することを確認する。投稿する場合は対象リポジトリへコメント権限があることも確認する。
+- レビュー投稿者が自分自身のアカウントになるため、PR を `APPROVE` しない。
+- `gh pr review --approve`、`gh api` の `APPROVE` review event、その他 PR approval 相当の操作は絶対に実行しない。
+- 外部書き込みが禁止された評価・dry-run・read-only・コメント権限不足の環境では投稿しない。取得できる範囲で PR 差分や既存コメントを読み、コメント候補と未投稿理由を報告する。
+- コメント本文はファイルまたは JSON 入力で渡し、バッククォート、`$()`、引用符、改行を含む Markdown をシェル引数へ直接埋め込まない。
+- すべてのコメントに、AI エージェントによる投稿だと分かる識別用メタ情報を必ず入れる。
+- すべての指摘コメントの先頭には、現行形式の重要度ラベルをちょうど 1 つ付ける。
+- 改行を含む本文は実改行で扱い、文字列としての `\n` を投稿しない。
+
+# 入力と出力
+
+## 入力
+
+- PR 番号、PR URL、`owner/repo#number`、`owner/repo` と PR 番号、ブランチ名、または現在ブランチに紐づく PR
+- レビュー対象リポジトリのローカル checkout
+- `gh` CLI が利用可能で、対象リポジトリへコメント権限のある認証が済んでいること
+- 必要に応じてユーザーから指定される観点や除外範囲
+
+## 出力
+
+- GitHub PR 上の inline review comments
+- 差分箇所に紐づけられない指摘がある場合のみ、代替としての overall review comment
+- 指摘がない場合は、指摘なしを伝える overall review comment
+- 指摘あり、指摘なし、再チェック結果を示す PR レビュー状態ラベルの更新
+- ユーザーへの簡潔な報告
+
+# Agentが行うこと
+
+1. 対象 PR とレビュー対象リポジトリを特定する。
+2. PR の概要、差分、既存コメントを取得する。
+3. 差分を読み、バグ・仕様逸脱・保守性低下・テスト不足を優先して指摘候補を作る。
+4. 各指摘を原則として差分上の行へ inline comment として紐づける。
+5. コメント文を簡潔に整え、重要度ラベルと AI 識別メタ情報を付ける。
+6. 重複投稿を避けたうえで GitHub PR にコメントを投稿する。指摘がない場合も、指摘なしの review comment を投稿する。
+7. 投稿結果に応じて PR レビュー状態ラベルを更新する。
+8. 投稿結果と未解決事項をユーザーへ報告する。
+9. ユーザーが再チェックを促した場合は、元の指摘が改善されたか確認する。
+
+参照マップ:
+
+- Step 3, コメント分類: `references/review-criteria.md`
+- Step 5, 6, 本文フォーマット: `references/posting-rules.md`
+- Step 6, API 例: `references/posting-api.md`
+- Step 7, レビュー状態ラベル運用: `references/review-state-labels.md`
+- Step 9, 再チェックと Resolve: `references/recheck.md`
+
+# ステップの詳細
+
+## 1. PR を特定する
+
+- 入力から `@codex` などの bot mention、助詞、依頼文を取り除き、PR URL、`owner/repo#number`、`#number`、数字だけの PR 番号、ブランチ名候補の順に対象を抽出する。
+- ユーザーが PR URL を渡した場合は URL から `owner/repo` と PR 番号を読み取る。
+- ユーザーが `owner/repo#number` を渡した場合は、その `owner/repo` と PR 番号を対象にする。
+- ユーザーが PR 番号だけを渡した場合は、現在の git remote から対象リポジトリを推定する。
+- ユーザーがブランチ名らしき文字列を渡した場合は、`gh pr view "$BRANCH_OR_REF" --json number,url,title,headRefName,baseRefName` を試す。
+- ユーザーが PR URL、番号、ブランチ名を渡していない場合は、現在ブランチ名から対象 PR を特定する。
+  - `git branch --show-current` で現在ブランチを取得する。
+  - `gh pr view "$BRANCH" --json number,url,title,headRefName,baseRefName` を試す。
+  - 見つからない場合は `gh pr view --json number,url,title,headRefName,baseRefName` を試す。
+- 対象 PR が特定できたら、以降の手順で使う `OWNER`、`REPO`、`PR_NUMBER`、`HEAD_REF` を控える。
+- 対象リポジトリが現在 checkout の remote と異なる場合は、以降の `gh pr view` / `gh pr diff` には `-R "$OWNER/$REPO"` を付け、`gh api` では `repos/$OWNER/$REPO/...` を使う。
+- どちらでも対象 PR が特定できない場合のみ、レビュー対象 PR をユーザーへ確認する。
+
+## 2. PR 情報を取得する
+
+- `gh auth status` を実行し、認証と対象権限を確認する。
+- `gh pr view "$PR_NUMBER" --json title,body,url,baseRefName,headRefName,headRefOid,files` で PR の概要と変更ファイル一覧を確認する。
+- コメント本文の言語を、PR の説明文、説明文が空または判別不能なら PR タイトル、それでも判別不能なら日本語に決める。
+- `gh pr diff "$PR_NUMBER"` で差分を取得する。
+- `gh api` または `gh pr view --comments` を使い、既存の review comments と overall comments を確認する。
+- 既存コメントに同じ論点がある場合は重複投稿しない。同じ入力条件・失敗モード・修正方針を扱う指摘は同一論点として扱う。
+
+## 3. 差分をレビューする
+
+- レビュー観点と重要度ラベルの詳細は `references/review-criteria.md` を読む。
+- まず正しさ、仕様逸脱、セキュリティ、データ破壊、例外処理漏れを優先して確認する。
+- 次に設計、一貫性、可読性、保守性、テスト不足を確認する。
+- 問題がない箇所に無理にコメントしない。
+- 「改善案はあるが任意」の論点より、「修正しないと不具合になる」論点を優先する。
+- 指摘候補が 0 件の場合は、無理に指摘を作らず、指摘なしとして扱う。
+
+## 4. コメント位置を決める
+
+- 原則として、該当する差分行に対して inline comment を付ける。
+- 各指摘は、可能な限り個別の差分箇所へコメントする。
+- 直接その行に付けられない場合は、同じ hunk 内で最も近い差分行に付ける。
+- ファイル全体への指摘、複数ファイルをまたぐ設計指摘、削除済み行や GitHub API 制約で差分箇所に付けられない指摘だけ overall review comment へ落とす。
+- overall review comment は inline comment の代替手段であり、総評や要約のためには使わない。
+- 例外として、指摘がない場合だけ、指摘なしを伝える overall review comment を投稿する。
+
+## 5. コメント文を作る
+
+- 投稿前に `references/posting-rules.md` を読み、コメント本文と AI エージェント識別メタ情報を整える。
+- 1コメント1論点を守る。
+- 何が問題か、なぜ問題か、必要ならどう直すかを短く書く。
+- `must` 以外は、必須ではなく推奨・質問・提案だと伝わる表現にする。
+- 指摘なしの review comment は指摘コメントではないため、重要度ラベルを付けない。AI エージェント識別メタ情報は必ず付ける。
+- 指摘なしの review comment は、確認した範囲で指摘がないことだけを簡潔に書き、PR approval と誤解される表現を避ける。
+- 投稿前に、コメント本文へ AI 識別メタ情報が入っていることと、文字列としての `\n` が残らないことを確認する。
+
+## 6. コメントを投稿する
+
+- 複数コメントがある場合は、可能なら pending review としてまとめて送信する。
+- コメント投稿は `gh` CLI / `gh api` だけを使い、GitHub コネクタは使わない。
+- inline review comment の投稿は、原則として `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews` を使う。
+- review 作成 API で inline comment を送る場合は、`commit_id`、`body`、`event: "COMMENT"`、`comments[].path`、`comments[].side`、`comments[].line`、`comments[].body` を指定する。
+- 具体的な payload 例と `jq` での作成例は `references/posting-api.md` を読む。
+- `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments` は、返信や単発コメントなど自然な場合だけ使う。
+- CLI や API の制約、または指摘の性質上 inline comment ができない場合のみ、overall review comment を使う。
+- 指摘がない場合は、`event: "COMMENT"` と `body` だけを指定した review comment を投稿する。`APPROVE` は使わない。
+- 投稿後は `gh api` または `gh pr view --comments` で、意図した本文が実際に投稿されていることを確認する。
+
+## 7. レビュー状態ラベルを更新する
+
+- `references/review-state-labels.md` を読み、レビュー投稿結果に応じて `PRレビュー修正待ち`、`review:まーじOK`、未更新のいずれにするか決める。
+- 指摘コメントを 1 件以上投稿した場合は `PRレビュー修正待ち` を付け、`PRレビュー/再レビュー待ち` と `review:まーじOK` を外す。
+- 指摘なしの review comment を投稿した場合は `review:まーじOK` を付け、`PRレビュー/再レビュー待ち` と `PRレビュー修正待ち` を外す。
+- ラベル操作に失敗してもレビュー投稿は巻き戻さず、失敗理由を最終報告に残す。
+
+## 8. ユーザーへ報告する
+
+- 投稿したコメント件数を伝える。
+- 指摘がない場合は、指摘なしの review comment を投稿したことを伝える。
+- `[must]` がある場合は、その有無だけ簡潔に伝える。
+- PR レビュー状態ラベルを `PRレビュー修正待ち` / `review:まーじOK` / 未更新のどれにしたかを伝える。
+- 権限不足、`gh` 未認証、差分取得失敗などで未実施部分があれば明記する。
+- 対象 PR の URL または番号、投稿した指摘の要約を簡潔に残す。
+- overall review comment を使った場合は、inline comment にできなかった理由を伝える。
+
+## 9. FB対応後に再チェックする
+
+- 詳細手順は `references/recheck.md` を読む。
+- この会話でこのスキルが以前に投稿したレビュー指摘だけを再チェック対象にする。
+- 最新状態を確認するため、PR 情報と差分を再取得する。
+- `pullRequest.reviewThreads` を取得し、前回投稿コメントと review thread ID / resolved 状態を対応付ける。
+- 既に resolved の thread はスキップし、未解決 thread だけを確認する。
+- `resolved` は返信して Resolve、`partial` / `unresolved` は該当スレッドへ追加コメント、`unknown` は理由を報告して Resolve しない。
+- 必要なら `git fetch` する。ローカル checkout が古く判断に影響する場合は、その旨を報告する。ユーザーの未コミット変更は上書きしない。
+- 再チェックコメントにも AI エージェント識別メタ情報を必ず付け、PR approval 相当の操作は実行しない。
+- 再チェック完了後のラベル更新は `references/review-state-labels.md` に従う。
+
+# 品質チェック
+
+- `description` を読むだけで、このスキルの起動条件がわかる
+- PR 情報の取得、差分レビュー、コメント投稿、報告までの手順が上から順に実行できる
+- GitHub の inline comment 制約に合い、GitHub コネクタを使わず `gh` CLI / `gh api` だけで完結する
+- コメント本文の言語を PR 説明文またはタイトルから決める手順が含まれている
+- コメント重複の回避と、指摘ありの overall review comment を差分箇所に紐づけられない指摘の代替に限定する手順が含まれている
+- 指摘がない場合に、PR approval ではなく `COMMENT` review として指摘なしの review comment を投稿する手順が含まれている
+- 指摘あり・指摘なし・再チェック結果に応じて PR レビュー状態ラベルを更新する手順が含まれている
+- FB対応後の再チェックで、未改善の指摘へ再コメントし、改善済みの指摘へ返信して Resolve する手順が含まれている
+- PR approval に相当する操作を決して実行しないルールが含まれている
+- AI エージェント識別メタ情報と現行形式ラベル、実改行とファイル/JSON 入力のルールが含まれている
