@@ -40,6 +40,10 @@ actual class SecureSessionStore {
     private val service: String
         get() = "${bundleIdentifier()}.levelup.secure-session"
 
+    init {
+        println("[SecureSessionStore] Init: kSecClass=$kSecClass kSecClassGenericPassword=$kSecClassGenericPassword kSecAttrService=$kSecAttrService kSecAttrAccount=$kSecAttrAccount kSecValueData=$kSecValueData")
+    }
+
     actual suspend fun save(environmentKey: String, session: StoredGuestSession) {
         val json = Json.encodeToString(session)
         val data = json.toNSData() ?: throw IllegalStateException("Failed to encode session data")
