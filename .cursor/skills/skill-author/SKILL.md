@@ -1,11 +1,7 @@
 ---
 name: skill-author
-description: >
-  Used when creating or improving SKILL.md files.
-  Triggered by "create a skill", "write a SKILL.md", "turn this workflow into a skill",
-  or when reviewing/improving existing skills.
+description: Used when creating or improving SKILL.md files. Triggered by "create a skill", "write a SKILL.md", "turn this workflow into a skill", or when reviewing/improving existing skills.
 ---
-
 # 概要
 
 このスキルは他のスキル（SKILL.mdファイル）の設計、作成、改善のためのもの。

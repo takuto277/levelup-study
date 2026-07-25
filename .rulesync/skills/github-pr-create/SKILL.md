@@ -1,0 +1,178 @@
+---
+name: github-pr-create
+description: Use when asked to create or open a GitHub PR, including casual requests like "PRまでお願い", "PRまで", "pushしてPR", "PR作って", or "PR open". Handles PR body generation and gh-based PR creation.
+---
+
+## 概要
+`gh` CLI を使って GitHub に PR を作成する。PR 作成・本文更新では GitHub コネクタを使わない。会話内に完成済みの `PR_BODY` がない場合でも、このスキル内のテンプレートに従ってその場で本文を生成してから PR を作成する。
+
+## 事前確認
+
+- `gh auth status` が成功することを確認する
+- 現在のブランチが `main` `master` `develop` 系なら、そのまま PR を作らず先に作業ブランチを作る
+- `BASE..HEAD` にコミットがない場合は、先にコミットを作る
+- 未追跡ファイルや無関係な変更は勝手に追加・コミットしない
+- PR 本文や更新本文は必ずファイル経由で渡す。Markdown を `--body "..."` や `--field body="$(cat ...)"` のようにシェル引数へ直接埋め込まない
+
+## 実行手順
+
+### 1. 品質チェックを実行する
+
+会話の流れの中で未実施の品質チェックがあれば、PR作成前に実行する。実行コマンドは `AGENTS.md` や `package.json` など、プロジェクトで使われている標準的な設定ファイルから解決する。コマンドが見つからない場合はスキップする。
+
+#### Format
+
+- 会話内でまだ `format` 系のコマンドが実行されていなければ、CI のフォーマット漏れ検知前の最後の確認として、プロジェクトの format コマンドを実行する
+- format によって差分が発生した場合は、差分内容を確認し、この PR に含めるべき整形差分だけを `git add` + `git commit` する
+- 無関係な未コミット変更や未追跡ファイルは追加しない
+
+#### Lint / TypeCheck
+
+- 会話内でまだ `lint` / `typecheck` / `tsc` 系のコマンドが実行されていなければ、プロジェクトに存在する lint / typecheck / tsc コマンドを実行する
+- エラーがあれば修正して再実行する（修正できない場合はユーザーに報告して中断）
+
+#### Test
+
+- 会話内でまだ test コマンドが実行されていなければ、プロジェクトの test コマンドを実行する
+- 失敗があれば修正して再実行する（修正できない場合はユーザーに報告して中断）
+
+### 2. PR 本文を用意する
+
+- 会話内に完成済みの `PR_BODY` がある場合は、それを優先して使う
+- `PR_BODY` がない場合は、現在の変更内容から以下の構造で本文を生成する
+
+````markdown
+## Issues
+
+- Close {IssueId}  <!-- Issue をクローズする場合 -->
+- Refs {IssueId}   <!-- 関連付けのみでクローズしない場合 -->
+
+## 背景
+
+この変更が必要な背景・目的・モチベーション。
+
+## 実装の意図・技術選定
+
+- なぜこの実装方法・ライブラリ・アーキテクチャを選んだのか
+- 導入したライブラリは何をするものか（初学者にもわかる言葉で）
+- 各技術用語には初出時に簡単な説明を添える
+
+## 概要
+
+この PR で行う変更の簡潔な説明。
+
+## 変更内容
+
+- 変更 1
+- 変更 2
+
+## 確認項目
+
+- [ ] フォーマット
+- [ ] リント / 型チェック
+- [ ] テスト
+- [ ] 項目（必要に応じて追加）
+
+## 詳細（任意）
+
+技術的な詳細、実装メモなど
+````
+
+- 本文生成時は次のガイドラインに従う:
+  - 明確で簡潔な言葉を使用する
+  - *何を* と *なぜ* に焦点を当てる
+  - Issue をクローズする場合、`Issues` セクションは `- Close {IssueId}` の形式にする
+  - Issue をクローズしない場合、`Issues` セクションは `- Refs {IssueId}` の形式にする
+  - `概要` は 2〜3 文以内に収める
+  - `確認項目` は手順 1 で実施した品質チェックの結果を反映させる（実施済みなら `[x]`、未実施なら `[ ]`）
+  - `詳細` は必要な場合のみ追加する
+
+### 3. gh で PR を作成する
+
+```bash
+# 変数設定
+BRANCH=$(git branch --show-current)
+BASE="${BASE_BRANCH:-main}"
+
+# gh 認証確認
+gh auth status
+
+# 保護ブランチ上では止める
+case "$BRANCH" in
+  main|master|develop)
+    echo "Create or switch to a work branch before opening a PR."
+    exit 1
+    ;;
+esac
+
+# PR対象のコミットがない場合は止める
+if [ -z "$(git log --oneline "${BASE}..HEAD")" ]; then
+  echo "No commits to include in the PR. Commit your changes first."
+  exit 1
+fi
+
+# リモート確認＆プッシュ（必要時）
+if [ -z "$(git ls-remote --heads origin $BRANCH)" ]; then
+  git push -u origin $BRANCH
+fi
+
+# PR作成（PR_BODY は既存入力またはその場で生成）
+FILE=$(mktemp)
+trap 'rm -f "$FILE"' EXIT
+cat > "$FILE" << 'EOF'
+${PR_BODY}
+EOF
+
+gh pr create --base "$BASE" --body-file "$FILE" --title "${PR_TITLE}" ${WEB:+--web}
+
+# 作成結果の確認
+gh pr view "$BRANCH" --json title,body,url
+```
+
+## 入力
+- **PR_BODY**: 会話履歴や事前生成済み本文（任意。未指定時はその場で生成）
+- **PR_TITLE**: タイトル（未指定時は推定またはユーザー確認）
+- **BASE_BRANCH**: ベースブランチ（default: main）
+- **WEB**: ブラウザで開く場合は`--web`を追加
+
+## エラー対応
+- **gh未インストール/未認証**: `gh auth login` を促す
+- **main/master/develop 上で作業中**: 先に作業ブランチを作る
+- **コミットが未作成**: 先にコミットを作る
+- **Push失敗**: エラー内容を表示して手動対応を促す
+- **既存PRがある**: `gh pr view "$BRANCH" --json title,url` で既存PRを確認する
+- **本文更新が必要**: `gh pr edit --body-file "$FILE"` を試し、GraphQL の Projects classic など `gh pr edit` 側の取得エラーで失敗した場合は `gh api repos/<owner>/<repo>/pulls/<number> --method PATCH --field body=@"$FILE"` を使う
+- **GitHub コネクタが権限不足になる場合**: コネクタと `gh` の認証主体は別物なので、PR 作成・本文更新は `gh` / `gh api` で継続する
+
+## 注意
+
+- Markdown を含む PR 本文は `gh pr create --body` に直接埋め込まず、必ず `--body-file` を使う
+- バッククォート、`$()`、引用符、改行を含む本文はシェルに解釈されるため、`--body "..."`、`--field body="$(cat "$FILE")"`、未クォートの heredoc を使わない
+- `gh api` で本文を渡す場合は `--field body=@"$FILE"` のようにファイル参照で渡す
+- 作成後は `gh pr view --json title,body,url` でタイトル・本文・URL を確認する
+- 作成後は github-pr-review の `review-state-labels.md` に従い、`PRレビュー/再レビュー待ち` を付け、他の PR レビュー状態ラベルを外す
+- **作成直後に [github-pr-self-review](../github-pr-self-review/SKILL.md) を必ず実行**（完了報告の前）
+
+## LevelUp Study 向け
+
+[LEVELUP.md](../LEVELUP.md) を読む。
+
+- PR 前の品質確認は `./scripts/validate-pr.sh`（[AGENTS.md](../../../AGENTS.md)）。結果を `Verification` に記載
+- `docs/tasks/pr-body-{slug}.md` を生成してから `gh pr create --body-file` する
+- Auto open PR workflow は廃止。push 後も PR は必ず `gh pr create` で作成
+- **PR タイトルは日本語で**（`feat(scope): 日本語タイトル`）。本文の見出しも日本語（`## 概要`, `## 変更内容`, `## 確認項目`）。英語の Conventional Commit prefix（`feat:`, `fix:`, `docs:` など）は prefix として残す
+- **PR 本文には必ず「実装の意図・技術選定」セクションを含め、初学者にもわかる言葉で書く。**
+  このリポジトリは学習目的のプロジェクトであり、読み手は Web や KMP に不慣れな初学者を想定する。
+  PR 本文で以下を説明すること:
+  - なぜその実装方法・ライブラリ・アーキテクチャを選んだのか
+  - 導入したライブラリは何ができるものか（一言で）
+  - 専門用語は避けるか、初出時に簡単な説明を添える
+  例:
+  ```markdown
+  ## 実装の意図・技術選定
+
+  - **GORM を選んだ理由**: Go の ORM。SQL を直接書かずに Go の構造体で DB 操作ができる。
+    AutoMigrate 機能でスキーマ変更が楽になるため採用。
+  - **chi ルーター**: Go の軽量 HTTP ルーター。標準ライブラリに近い書き味で、
+    ミドルウェアのスタックが簡単。初学者でも構造が追いやすい。
+  ```

@@ -2,7 +2,6 @@
 name: github-pr-create
 description: Use when asked to create or open a GitHub PR, including casual requests like "PRまでお願い", "PRまで", "pushしてPR", "PR作って", or "PR open". Handles PR body generation and gh-based PR creation.
 ---
-
 ## 概要
 `gh` CLI を使って GitHub に PR を作成する。PR 作成・本文更新では GitHub コネクタを使わない。会話内に完成済みの `PR_BODY` がない場合でも、このスキル内のテンプレートに従ってその場で本文を生成してから PR を作成する。
 
@@ -50,6 +49,12 @@ description: Use when asked to create or open a GitHub PR, including casual requ
 ## 背景
 
 この変更が必要な背景・目的・モチベーション。
+
+## 実装の意図・技術選定
+
+- なぜこの実装方法・ライブラリ・アーキテクチャを選んだのか
+- 導入したライブラリは何をするものか（初学者にもわかる言葉で）
+- 各技術用語には初出時に簡単な説明を添える
 
 ## 概要
 
@@ -155,3 +160,18 @@ gh pr view "$BRANCH" --json title,body,url
 - `docs/tasks/pr-body-{slug}.md` を生成してから `gh pr create --body-file` する
 - Auto open PR workflow は廃止。push 後も PR は必ず `gh pr create` で作成
 - **PR タイトルは日本語で**（`feat(scope): 日本語タイトル`）。本文の見出しも日本語（`## 概要`, `## 変更内容`, `## 確認項目`）。英語の Conventional Commit prefix（`feat:`, `fix:`, `docs:` など）は prefix として残す
+- **PR 本文には必ず「実装の意図・技術選定」セクションを含め、初学者にもわかる言葉で書く。**
+  このリポジトリは学習目的のプロジェクトであり、読み手は Web や KMP に不慣れな初学者を想定する。
+  PR 本文で以下を説明すること:
+  - なぜその実装方法・ライブラリ・アーキテクチャを選んだのか
+  - 導入したライブラリは何ができるものか（一言で）
+  - 専門用語は避けるか、初出時に簡単な説明を添える
+  例:
+  ```markdown
+  ## 実装の意図・技術選定
+
+  - **GORM を選んだ理由**: Go の ORM。SQL を直接書かずに Go の構造体で DB 操作ができる。
+    AutoMigrate 機能でスキーマ変更が楽になるため採用。
+  - **chi ルーター**: Go の軽量 HTTP ルーター。標準ライブラリに近い書き味で、
+    ミドルウェアのスタックが簡単。初学者でも構造が追いやすい。
+  ```
