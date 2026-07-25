@@ -148,6 +148,7 @@ fun PlayerSprite(
             var currentFrame by remember { mutableIntStateOf(0) }
             LaunchedEffect(mode) {
                 currentFrame = 0
+                slideX.snapTo(0f)
                 for (i in 1 until frames.size) {
                     delay(60)
                     currentFrame = i

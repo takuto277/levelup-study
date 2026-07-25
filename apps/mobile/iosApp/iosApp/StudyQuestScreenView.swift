@@ -34,6 +34,8 @@ private struct PlayerSpriteView: View {
         case attack
         case rest
         case walking(phaseTick: Int64)
+
+        var isAttack: Bool { if case .attack = self { return true }; return false }
     }
 
     @State private var currentFrame: Int = 0
@@ -100,17 +102,21 @@ private struct PlayerAnimInner: View {
             .interpolation(.none)
             .scaledToFit()
             .frame(width: size, height: size)
-            .offset(x: attackOffset)
+            .offset(x: mode.isAttack ? attackOffset : 0)
             .task(id: taskId) {
                 attackOffset = 0
                 currentFrame = 0
                 if isOneShot {
-                    withAnimation(.easeOut(duration: 0.15)) { attackOffset = 24 }
+                    if mode.isAttack {
+                        withAnimation(.easeOut(duration: 0.15)) { attackOffset = 24 }
+                    }
                     for _ in 1..<frames.count {
                         try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
                         currentFrame += 1
                     }
-                    withAnimation(.easeOut(duration: 0.2)) { attackOffset = 0 }
+                    if mode.isAttack {
+                        withAnimation(.easeOut(duration: 0.2)) { attackOffset = 0 }
+                    }
                 } else {
                     while !Task.isCancelled {
                         try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
