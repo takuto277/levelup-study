@@ -1,8 +1,11 @@
 package org.example.project.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,8 +14,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /** プレイヤー表示モード（歩き / 待機 / 攻撃準備 / 攻撃 / 休憩） */
 enum class PlayerSpriteMode {
@@ -86,6 +92,8 @@ fun PlayerSprite(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val slideX = remember { Animatable(0f) }
 
     when (mode) {
         PlayerSpriteMode.Walking -> {
@@ -121,13 +129,17 @@ fun PlayerSprite(
             var currentFrame by remember { mutableIntStateOf(0) }
             LaunchedEffect(mode) {
                 currentFrame = 0
+                scope.launch { slideX.animateTo(24f, tween(150)) }
                 for (i in 1 until frames.size) {
                     delay(60)
                     currentFrame = i
                 }
+                scope.launch { slideX.animateTo(0f, tween(200)) }
             }
             Image(painter = painterResource(frames[currentFrame]), contentDescription = null,
-                modifier = modifier.size(size), contentScale = ContentScale.Fit)
+                modifier = modifier
+                    .offset { IntOffset(slideX.value.roundToInt(), 0) }
+                    .size(size), contentScale = ContentScale.Fit)
         }
 
         PlayerSpriteMode.Prep -> {
