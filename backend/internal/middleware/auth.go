@@ -165,17 +165,21 @@ func JWTAuth(jwtSecret string) func(http.Handler) http.Handler {
 						return nil, fmt.Errorf("想定外の署名方式: %v", t.Header["alg"])
 					}
 					return []byte(jwtSecret), nil
-				case "ES256", "ES384", "ES512", "RS256", "RS384", "RS512":
-					kid, _ := t.Header["kid"].(string)
-					keys, err := fetchJWKS()
-					if err != nil {
-						return nil, fmt.Errorf("JWKS取得エラー: %w", err)
+			case "ES256", "ES384", "ES512", "RS256", "RS384", "RS512":
+				kid, _ := t.Header["kid"].(string)
+				keys, err := fetchJWKS()
+				if err != nil {
+					return nil, fmt.Errorf("JWKS取得エラー: %w", err)
+				}
+				key, ok := keys[kid]
+				if !ok {
+					var availableKids []string
+					for k := range keys {
+						availableKids = append(availableKids, k)
 					}
-					key, ok := keys[kid]
-					if !ok {
-						return nil, fmt.Errorf("JWKS にキー %s が見つかりません", kid)
-					}
-					return key, nil
+					return nil, fmt.Errorf("JWKS にキー %s が見つかりません（利用可能: %v）", kid, availableKids)
+				}
+				return key, nil
 				default:
 					return nil, fmt.Errorf("未対応の署名方式: %v", t.Header["alg"])
 				}
