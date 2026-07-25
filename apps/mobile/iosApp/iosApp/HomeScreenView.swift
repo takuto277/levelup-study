@@ -281,17 +281,12 @@ struct HomeScreenView: View {
                 Spacer().frame(height: 6)
                 Group {
                     if UIImage(named: "sprite_player_idle_1") != nil {
-                        Image("sprite_player_idle_1")
-                            .resizable()
-                            .interpolation(.none)
-                            .scaledToFit()
+                        IdleSpriteView()
                             .frame(width: 160, height: 160)
                     } else {
                         Text("🧙‍♂️").font(.system(size: 90))
                     }
                 }
-                    .offset(y: isBouncing ? -10 : 0)
-                    .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: isBouncing)
                     .onAppear { isBouncing = true }
                     .onTapGesture {
                         homeViewModel.onIntent(intent: HomeIntentTapMainCharacter())
@@ -466,4 +461,26 @@ private struct Triangle: Shape {
     func path(in rect: CGRect) -> Path {
         Path { p in p.move(to: CGPoint(x: rect.midX - 7, y: 0)); p.addLine(to: CGPoint(x: rect.midX, y: rect.maxY)); p.addLine(to: CGPoint(x: rect.midX + 7, y: 0)); p.closeSubpath() }
     }
+}
+
+private struct IdleSpriteView: View {
+    @State private var frame: Int = 0
+    private let timer = Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        let name = frame == 0 ? "sprite_player_idle_1" : "sprite_player_idle_2"
+        if UIImage(named: "sprite_player_idle_2") != nil {
+            Image(name)
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .onReceive(timer) { _ in frame = frame == 0 ? 1 : 0 }
+        } else {
+            Image("sprite_player_idle_1")
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+        }
+    }
+}
 }

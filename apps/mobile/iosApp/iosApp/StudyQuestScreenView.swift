@@ -8,45 +8,108 @@ private func hasSpriteAsset(_ name: String) -> Bool {
     UIImage(named: name) != nil
 }
 
+private func collectFrames(prefix: String) -> [String] {
+    (1...8).compactMap { frame in
+        let name = "\(prefix)_\(frame)"
+        return UIImage(named: name) != nil ? name : nil
+    }
+}
+
 private func playerWalkFrameNames() -> [String] {
-    ["sprite_player_walk_1", "sprite_player_walk_2"].filter { UIImage(named: $0) != nil }
+    collectFrames(prefix: "sprite_player_walk")
 }
 
 private func hasPlayerWalkSprites() -> Bool {
     !playerWalkFrameNames().isEmpty
 }
 
+/// アニメーション付きプレイヤースプライト
+private struct PlayerSpriteView: View {
+    let mode: SpriteMode
+    let size: CGFloat
+
+    enum SpriteMode {
+        case idle
+        case prep
+        case attack
+        case rest
+        case walking(phaseTick: Int64)
+    }
+
+    @State private var currentFrame: Int = 0
+
+    private var prefix: String {
+        switch mode {
+        case .idle: return "sprite_player_idle"
+        case .prep: return "sprite_player_prep"
+        case .attack: return "sprite_player_attack"
+        case .rest: return "sprite_player_rest"
+        case .walking: return "sprite_player_walk"
+        }
+    }
+
+    private var interval: TimeInterval {
+        switch mode {
+        case .idle: return 0.6
+        case .prep: return 0.1
+        case .attack: return 0.08
+        case .rest: return 0
+        case .walking: return 0.32
+        }
+    }
+
+    private var isOneShot: Bool {
+        switch mode {
+        case .prep, .attack: return true
+        default: return false
+        }
+    }
+
+    var body: some View {
+        let frames = collectFrames(prefix: prefix)
+        if frames.isEmpty {
+            Text("🧙‍♂️")
+                .font(.system(size: size * 0.42))
+                .frame(width: size, height: size)
+        } else if frames.count == 1 || (!isOneShot && currentFrame >= frames.count) {
+            Image(frames[isOneShot ? currentFrame : 0])
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: size, height: size)
+        } else {
+            Image(frames[min(currentFrame, frames.count - 1)])
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: size, height: size)
+                .onAppear {
+                    currentFrame = 0
+                }
+                .onChange(of: mode) { _ in
+                    currentFrame = 0
+                }
+                .onReceive(Timer.publish(every: interval, on: .main, in: .common).autoconnect()) { _ in
+                    if currentFrame < frames.count - 1 {
+                        currentFrame += 1
+                    } else if !isOneShot {
+                        currentFrame = 0
+                    }
+                }
+        }
+    }
+}
+
 private func playerPrepAssetName() -> String? {
-    if UIImage(named: "sprite_player_prep_1") != nil { return "sprite_player_prep_1" }
+    let frames = collectFrames(prefix: "sprite_player_prep")
+    if let first = frames.first { return first }
     if UIImage(named: "sprite_player_idle_1") != nil { return "sprite_player_idle_1" }
     return playerWalkFrameNames().first
 }
 
 @ViewBuilder
 private func breakScenePlayerSprite(size: CGFloat) -> some View {
-    if hasSpriteAsset("sprite_player_rest_1") {
-        Image("sprite_player_rest_1")
-            .resizable()
-            .interpolation(.none)
-            .scaledToFit()
-            .frame(width: size, height: size)
-    } else if hasSpriteAsset("sprite_player_idle_1") {
-        Image("sprite_player_idle_1")
-            .resizable()
-            .interpolation(.none)
-            .scaledToFit()
-            .frame(width: size, height: size)
-    } else if let prep = playerPrepAssetName() {
-        Image(prep)
-            .resizable()
-            .interpolation(.none)
-            .scaledToFit()
-            .frame(width: size, height: size)
-    } else {
-        Text("🧙‍♂️")
-            .font(.system(size: size * 0.42))
-            .frame(width: size, height: size)
-    }
+    PlayerSpriteView(mode: .rest, size: size)
 }
 
 /// 冒険ヘッダー用。未設定・general・総合は「総合」
@@ -148,118 +211,28 @@ struct DungeonBackgroundView: View {
 @ViewBuilder
 private func iosCombatPlayerSprite(phaseTick: Int64, lastDamage: Int32, size: CGFloat) -> some View {
     let m = combatTurnMod(phaseTick)
-    if m == 0 {
-        if lastDamage > 0, UIImage(named: "sprite_player_attack_1") != nil {
-            Image("sprite_player_attack_1")
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size, alignment: .bottom)
-        } else if UIImage(named: "sprite_player_idle_1") != nil {
-            Image("sprite_player_idle_1")
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size, alignment: .bottom)
-        } else if let prep = playerPrepAssetName() {
-            Image(prep)
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size, alignment: .bottom)
-        } else {
-            Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
+    let mode: PlayerSpriteView.SpriteMode = {
+        switch m {
+        case 0: return lastDamage > 0 ? .attack : .idle
+        case 2: return .prep
+        default: return .idle
         }
-    } else if m == 1 {
-        if UIImage(named: "sprite_player_idle_1") != nil {
-            Image("sprite_player_idle_1")
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size, alignment: .bottom)
-        } else if let prep = playerPrepAssetName() {
-            Image(prep)
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size, alignment: .bottom)
-        } else {
-            Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
-        }
-    } else if let prep = playerPrepAssetName() {
-        Image(prep)
-            .resizable()
-            .interpolation(.none)
-            .scaledToFit()
-            .frame(width: size, height: size, alignment: .bottom)
-    } else if UIImage(named: "sprite_player_idle_1") != nil {
-        Image("sprite_player_idle_1")
-            .resizable()
-            .interpolation(.none)
-            .scaledToFit()
-            .frame(width: size, height: size, alignment: .bottom)
-    } else {
-        Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
-    }
+    }()
+    PlayerSpriteView(mode: mode, size: size)
 }
 
 /// 訓練場: 毎ターン mod==0 で攻撃スプライト（lastDamage に依存しない）
 @ViewBuilder
 private func iosTrainingPlayerSprite(phaseTick: Int64, size: CGFloat) -> some View {
     let m = combatTurnMod(phaseTick)
-    if m == 0 {
-        if UIImage(named: "sprite_player_attack_1") != nil {
-            Image("sprite_player_attack_1")
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size, alignment: .bottom)
-        } else if UIImage(named: "sprite_player_idle_1") != nil {
-            Image("sprite_player_idle_1")
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size, alignment: .bottom)
-        } else if let prep = playerPrepAssetName() {
-            Image(prep)
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size, alignment: .bottom)
-        } else {
-            Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
+    let mode: PlayerSpriteView.SpriteMode = {
+        switch m {
+        case 0: return .attack
+        case 2: return .prep
+        default: return .idle
         }
-    } else if m == 1 {
-        if UIImage(named: "sprite_player_idle_1") != nil {
-            Image("sprite_player_idle_1")
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size, alignment: .bottom)
-        } else if let prep = playerPrepAssetName() {
-            Image(prep)
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size, alignment: .bottom)
-        } else {
-            Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
-        }
-    } else if let prep = playerPrepAssetName() {
-        Image(prep)
-            .resizable()
-            .interpolation(.none)
-            .scaledToFit()
-            .frame(width: size, height: size, alignment: .bottom)
-    } else if UIImage(named: "sprite_player_idle_1") != nil {
-        Image("sprite_player_idle_1")
-            .resizable()
-            .interpolation(.none)
-            .scaledToFit()
-            .frame(width: size, height: size, alignment: .bottom)
-    } else {
-        Text("🧙‍♂️").font(.system(size: 52)).frame(width: size, height: size, alignment: .bottom)
-    }
+    }()
+    PlayerSpriteView(mode: mode, size: size)
 }
 
 /// 訓練場シーン（ResultBuilder の switch 内でローカル let を避けるため分離）
