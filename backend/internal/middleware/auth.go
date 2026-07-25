@@ -99,10 +99,16 @@ func fetchJWKS() (map[string]interface{}, error) {
 	for _, k := range result.Keys {
 		switch k.Kty {
 		case "EC":
-			x := new(big.Int)
-			y := new(big.Int)
-			x.SetString(k.X, 0)
-			y.SetString(k.Y, 0)
+			xBytes, err := base64.RawURLEncoding.DecodeString(k.X)
+			if err != nil {
+				continue
+			}
+			yBytes, err := base64.RawURLEncoding.DecodeString(k.Y)
+			if err != nil {
+				continue
+			}
+			x := new(big.Int).SetBytes(xBytes)
+			y := new(big.Int).SetBytes(yBytes)
 			var curve elliptic.Curve
 			switch k.Crv {
 			case "P-256":
