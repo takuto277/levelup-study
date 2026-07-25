@@ -27,48 +27,43 @@ var (
 	InitialWeaponID    = uuid.MustParse("b0000000-0000-0000-0000-000000000009") // 鉄の剣 ★3
 )
 
-// CreateInitialData — 新規ユーザーに初期キャラ・武器・パーティを付与する
-func (r *UserRepository) CreateInitialData(userID uuid.UUID) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		now := time.Now()
-
-		weaponID := uuid.New()
-		weapon := &model.UserWeapon{
-			ID:         weaponID,
-			UserID:     userID,
-			WeaponID:   InitialWeaponID,
-			Level:      1,
-			ObtainedAt: now,
+// UpsertWithInitialData — ユーザー作成 + 初期データ付与を 1 トランザクションで行う
+func (r *UserRepository) UpsertWithInitialData(user *model.User) (bool, error) {
+	created := false
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		var existing model.User
+		if err := tx.Where("id = ?", user.ID).First(&existing).Error; err == nil {
+			return nil // 既存ユーザー
 		}
-		if err := tx.Create(weapon).Error; err != nil {
+		if err := tx.Create(user).Error; err != nil {
+			return err
+		}
+		created = true
+
+		now := time.Now()
+		weaponID := uuid.New()
+		if err := tx.Create(&model.UserWeapon{
+			ID: weaponID, UserID: user.ID, WeaponID: InitialWeaponID, Level: 1, ObtainedAt: now,
+		}).Error; err != nil {
 			return err
 		}
 
 		charID := uuid.New()
-		character := &model.UserCharacter{
-			ID:               charID,
-			UserID:           userID,
-			CharacterID:      InitialCharacterID,
-			Level:            1,
-			EquippedWeaponID: &weaponID,
-			ObtainedAt:       now,
-		}
-		if err := tx.Create(character).Error; err != nil {
+		if err := tx.Create(&model.UserCharacter{
+			ID: charID, UserID: user.ID, CharacterID: InitialCharacterID, Level: 1, EquippedWeaponID: &weaponID, ObtainedAt: now,
+		}).Error; err != nil {
 			return err
 		}
 
-		slot := &model.UserPartySlot{
-			ID:              uuid.New(),
-			UserID:          userID,
-			SlotPosition:    1,
-			UserCharacterID: charID,
-		}
-		if err := tx.Create(slot).Error; err != nil {
+		if err := tx.Create(&model.UserPartySlot{
+			ID: uuid.New(), UserID: user.ID, SlotPosition: 1, UserCharacterID: charID,
+		}).Error; err != nil {
 			return err
 		}
 
 		return nil
 	})
+	return created, err
 }
 
 // Create — 新規ユーザーを作成する
