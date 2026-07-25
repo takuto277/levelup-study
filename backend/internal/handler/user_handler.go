@@ -189,11 +189,16 @@ func (h *UserHandler) GetOrCreateUser(w http.ResponseWriter, r *http.Request) {
 			ID:          userID,
 			DisplayName: "New User",
 		}
-		if err := h.repo.Upsert(user); err != nil {
+		created, err := h.repo.UpsertWithInitialData(user)
+		if err != nil {
 			respondError(w, http.StatusInternalServerError, "ユーザー作成に失敗しました")
 			return
 		}
-		respondJSON(w, http.StatusCreated, user)
+		if created {
+			respondJSON(w, http.StatusCreated, user)
+		} else {
+			respondJSON(w, http.StatusOK, user)
+		}
 		return
 	}
 	respondJSON(w, http.StatusOK, user)

@@ -1,9 +1,12 @@
 package repository
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/takuto277/levelup-study/backend/internal/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // ============================================================
@@ -17,6 +20,58 @@ type UserRepository struct {
 // NewUserRepository — コンストラクタ
 func NewUserRepository(db *gorm.DB) *UserRepository {
 	return &UserRepository{db: db}
+}
+
+// 初期キャラ・武器の固定 UUID（seed.sql のマスタデータと一致）
+var (
+	InitialCharacterID = uuid.MustParse("a0000000-0000-0000-0000-000000000010") // 見習い戦士タロウ ★3
+	InitialWeaponID    = uuid.MustParse("b0000000-0000-0000-0000-000000000009") // 鉄の剣 ★3
+)
+
+// UpsertWithInitialData — ユーザー作成 + 初期データ付与を 1 トランザクションで行う。
+// ON CONFLICT DO NOTHING により同時リクエスト時も冪等に動作する。
+func (r *UserRepository) UpsertWithInitialData(user *model.User) (bool, error) {
+	created := false
+
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		result := tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "id"}},
+			DoNothing: true,
+		}).Create(user)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return nil // 既存ユーザー、または並行リクエスト側が作成済み
+		}
+
+		created = true
+		now := time.Now()
+
+		weaponID := uuid.New()
+		if err := tx.Create(&model.UserWeapon{
+			ID: weaponID, UserID: user.ID, WeaponID: InitialWeaponID, Level: 1, ObtainedAt: now,
+		}).Error; err != nil {
+			return err
+		}
+
+		charID := uuid.New()
+		if err := tx.Create(&model.UserCharacter{
+			ID: charID, UserID: user.ID, CharacterID: InitialCharacterID, Level: 1, EquippedWeaponID: &weaponID, ObtainedAt: now,
+		}).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Create(&model.UserPartySlot{
+			ID: uuid.New(), UserID: user.ID, SlotPosition: 1, UserCharacterID: charID,
+		}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	return created, err
 }
 
 // Create — 新規ユーザーを作成する
