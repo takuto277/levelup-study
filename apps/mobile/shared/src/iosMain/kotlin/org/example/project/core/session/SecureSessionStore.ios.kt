@@ -8,10 +8,15 @@ import kotlinx.cinterop.ptr
 import kotlinx.cinterop.value
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import platform.CoreFoundation.CFDictionaryRef
-import platform.CoreFoundation.CFTypeRefVar
+import platform.CoreFoundation.CFDictionaryAddValue
+import platform.CoreFoundation.CFDictionaryCreateMutable
 import platform.CoreFoundation.CFRelease
+import platform.CoreFoundation.CFTypeRef
+import platform.CoreFoundation.CFTypeRefVar
+import platform.CoreFoundation.kCFAllocatorDefault
 import platform.CoreFoundation.kCFBooleanTrue
+import platform.CoreFoundation.kCFTypeDictionaryKeyCallBacks
+import platform.CoreFoundation.kCFTypeDictionaryValueCallBacks
 import platform.Foundation.CFBridgingRelease
 import platform.Foundation.CFBridgingRetain
 import platform.Foundation.NSData
@@ -41,57 +46,79 @@ actual class SecureSessionStore {
     actual suspend fun save(environmentKey: String, session: StoredGuestSession) {
         val json = Json.encodeToString(session)
         val nsData = json.toNSData() ?: throw IllegalStateException("Failed to encode session data")
-        val dictRef = CFBridgingRetain(nsData)
+        val dataRef = CFBridgingRetain(nsData)
+        val serviceRef = CFBridgingRetain(service)
+        val accountRef = CFBridgingRetain(keyFor(environmentKey))
+
         try {
             remove(environmentKey)
-            val query = CFBridgingRetain(mapOf<Any, Any>(
-                kSecClass as Any to kSecClassGenericPassword as Any,
-                kSecAttrService as Any to service as Any,
-                kSecAttrAccount as Any to keyFor(environmentKey) as Any,
-                kSecValueData as Any to dictRef as Any,
-            )) as CFDictionaryRef
-            val status = SecItemAdd(query, null)
-            CFRelease(query)
-            println("[SecureSessionStore] SecItemAdd status=$status service=$service account=${keyFor(environmentKey)}")
+
+            val dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 4, kCFTypeDictionaryKeyCallBacks, kCFTypeDictionaryValueCallBacks)
+            CFDictionaryAddValue(dict, kSecClass as CFTypeRef?, kSecClassGenericPassword as CFTypeRef?)
+            CFDictionaryAddValue(dict, kSecAttrService as CFTypeRef?, serviceRef)
+            CFDictionaryAddValue(dict, kSecAttrAccount as CFTypeRef?, accountRef)
+            CFDictionaryAddValue(dict, kSecValueData as CFTypeRef?, dataRef)
+
+            val status = SecItemAdd(dict, null)
+            CFRelease(dict)
+            println("[SecureSessionStore] SecItemAdd status=$status")
             if (status != errSecSuccess) {
                 throw IllegalStateException("Keychain save failed: $status")
             }
         } finally {
-            CFRelease(dictRef)
+            CFRelease(dataRef)
+            CFRelease(serviceRef)
+            CFRelease(accountRef)
         }
     }
 
     actual suspend fun load(environmentKey: String): StoredGuestSession? {
-        memScoped {
-            val result = alloc<CFTypeRefVar>()
-            val query = CFBridgingRetain(mapOf<Any, Any>(
-                kSecClass as Any to kSecClassGenericPassword as Any,
-                kSecAttrService as Any to service as Any,
-                kSecAttrAccount as Any to keyFor(environmentKey) as Any,
-                kSecReturnData as Any to kCFBooleanTrue as Any,
-                kSecMatchLimit as Any to kSecMatchLimitOne as Any,
-            )) as CFDictionaryRef
-            val status = SecItemCopyMatching(query, result.ptr)
-            CFRelease(query)
-            if (status != errSecSuccess) return null
+        val serviceRef = CFBridgingRetain(service)
+        val accountRef = CFBridgingRetain(keyFor(environmentKey))
 
-            val data = CFBridgingRelease(result.value) as? NSData ?: return null
-            val json = data.toKotlinString() ?: return null
-            return Json.decodeFromString(json)
+        return try {
+            memScoped {
+                val result = alloc<CFTypeRefVar>()
+
+                val dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 5, kCFTypeDictionaryKeyCallBacks, kCFTypeDictionaryValueCallBacks)
+                CFDictionaryAddValue(dict, kSecClass as CFTypeRef?, kSecClassGenericPassword as CFTypeRef?)
+                CFDictionaryAddValue(dict, kSecAttrService as CFTypeRef?, serviceRef)
+                CFDictionaryAddValue(dict, kSecAttrAccount as CFTypeRef?, accountRef)
+                CFDictionaryAddValue(dict, kSecReturnData as CFTypeRef?, kCFBooleanTrue as CFTypeRef?)
+                CFDictionaryAddValue(dict, kSecMatchLimit as CFTypeRef?, kSecMatchLimitOne as CFTypeRef?)
+
+                val status = SecItemCopyMatching(dict, result.ptr)
+                CFRelease(dict)
+                if (status != errSecSuccess) null
+                else {
+                    val data = CFBridgingRelease(result.value) as? NSData
+                    val json = data?.toKotlinString() ?: return null
+                    Json.decodeFromString(json)
+                }
+            }
+        } finally {
+            CFRelease(serviceRef)
+            CFRelease(accountRef)
         }
     }
 
     actual suspend fun remove(environmentKey: String) {
-        println("[SecureSessionStore] kSecClass=$kSecClass kSecAttrService=$kSecAttrService kSecAttrAccount=$kSecAttrAccount kSecClassGenericPassword=$kSecClassGenericPassword")
-        val query = CFBridgingRetain(mapOf<Any, Any>(
-            kSecClass as Any to kSecClassGenericPassword as Any,
-            kSecAttrService as Any to service as Any,
-            kSecAttrAccount as Any to keyFor(environmentKey) as Any,
-        )) as CFDictionaryRef
-        println("[SecureSessionStore] query retained, calling SecItemDelete...")
-        val status = SecItemDelete(query)
-        CFRelease(query)
-        println("[SecureSessionStore] SecItemDelete status=$status")
+        val serviceRef = CFBridgingRetain(service)
+        val accountRef = CFBridgingRetain(keyFor(environmentKey))
+
+        try {
+            val dict = CFDictionaryCreateMutable(kCFAllocatorDefault, 3, kCFTypeDictionaryKeyCallBacks, kCFTypeDictionaryValueCallBacks)
+            CFDictionaryAddValue(dict, kSecClass as CFTypeRef?, kSecClassGenericPassword as CFTypeRef?)
+            CFDictionaryAddValue(dict, kSecAttrService as CFTypeRef?, serviceRef)
+            CFDictionaryAddValue(dict, kSecAttrAccount as CFTypeRef?, accountRef)
+
+            val status = SecItemDelete(dict)
+            CFRelease(dict)
+            println("[SecureSessionStore] SecItemDelete status=$status")
+        } finally {
+            CFRelease(serviceRef)
+            CFRelease(accountRef)
+        }
     }
 
     private fun keyFor(environmentKey: String): String = "guest_session_$environmentKey"
