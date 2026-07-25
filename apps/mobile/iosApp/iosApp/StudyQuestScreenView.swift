@@ -34,8 +34,6 @@ private struct PlayerSpriteView: View {
         case attack
         case rest
         case walking(phaseTick: Int64)
-
-        var isAttack: Bool { if case .attack = self { return true }; return false }
     }
 
     @State private var currentFrame: Int = 0
@@ -60,24 +58,19 @@ private struct PlayerSpriteView: View {
         }
     }
 
-    private var isOneShot: Bool {
-        switch mode {
-        case .prep, .attack: return true
-        default: return false
-        }
-    }
-
     var body: some View {
         let frames = collectFrames(prefix: prefix)
         if frames.isEmpty {
             Text("🧙‍♂️")
                 .font(.system(size: size * 0.42))
                 .frame(width: size, height: size)
+        } else if case .attack = mode {
+            AttackAnimView(frames: frames, interval: interval, size: size)
         } else {
-            PlayerAnimInner(
+            LoopAnimView(
                 frames: frames,
                 interval: interval,
-                isOneShot: isOneShot,
+                isOneShot: mode == .prep,
                 mode: mode,
                 size: size
             )
@@ -85,16 +78,14 @@ private struct PlayerSpriteView: View {
     }
 }
 
-private struct PlayerAnimInner: View {
+private struct AttackAnimView: View {
     let frames: [String]
     let interval: TimeInterval
-    let isOneShot: Bool
-    let mode: PlayerSpriteView.SpriteMode
     let size: CGFloat
-    
+
     @State private var currentFrame: Int = 0
-    @State private var taskId: Int = 0
     @State private var attackOffset: CGFloat = 0
+    @State private var taskId: Int = 0
 
     var body: some View {
         Image(frames[min(currentFrame, frames.count - 1)])
@@ -102,20 +93,43 @@ private struct PlayerAnimInner: View {
             .interpolation(.none)
             .scaledToFit()
             .frame(width: size, height: size)
-            .offset(x: mode.isAttack ? attackOffset : 0)
+            .offset(x: attackOffset)
             .task(id: taskId) {
+                currentFrame = 0
                 attackOffset = 0
+                withAnimation(.easeOut(duration: 0.15)) { attackOffset = 24 }
+                for _ in 1..<frames.count {
+                    try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                    currentFrame += 1
+                }
+                withAnimation(.easeOut(duration: 0.2)) { attackOffset = 0 }
+            }
+            .onAppear { taskId += 1 }
+    }
+}
+
+private struct LoopAnimView: View {
+    let frames: [String]
+    let interval: TimeInterval
+    let isOneShot: Bool
+    let mode: PlayerSpriteView.SpriteMode
+    let size: CGFloat
+
+    @State private var currentFrame: Int = 0
+    @State private var taskId: Int = 0
+
+    var body: some View {
+        Image(frames[min(currentFrame, frames.count - 1)])
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .task(id: taskId) {
                 currentFrame = 0
                 if isOneShot {
-                    if mode.isAttack {
-                        withAnimation(.easeOut(duration: 0.15)) { attackOffset = 24 }
-                    }
                     for _ in 1..<frames.count {
                         try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
                         currentFrame += 1
-                    }
-                    if mode.isAttack {
-                        withAnimation(.easeOut(duration: 0.2)) { attackOffset = 0 }
                     }
                 } else {
                     while !Task.isCancelled {
