@@ -36,6 +36,8 @@ private struct PlayerSpriteView: View {
         case walking(phaseTick: Int64)
     }
 
+    extension SpriteMode: Equatable {}
+
     @State private var currentFrame: Int = 0
 
     private var prefix: String {
