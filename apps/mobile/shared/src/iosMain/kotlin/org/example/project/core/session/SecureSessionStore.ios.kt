@@ -10,9 +10,11 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import platform.CoreFoundation.CFDictionaryRef
 import platform.CoreFoundation.CFTypeRefVar
+import platform.CoreFoundation.CFRelease
 import platform.Foundation.CFBridgingRelease
 import platform.Foundation.CFBridgingRetain
 import platform.Foundation.NSData
+import platform.Foundation.NSMutableDictionary
 import platform.Foundation.NSString
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.create
@@ -48,35 +50,33 @@ actual class SecureSessionStore {
 
         remove(environmentKey)
 
-        val query = mapOf<Any?, Any?>(
-            kSecClass to kSecClassGenericPassword,
-            kSecAttrService to service,
-            kSecAttrAccount to keyFor(environmentKey),
-            kSecValueData to data,
-        )
-        @Suppress("UNCHECKED_CAST")
+        val query = NSMutableDictionary().apply {
+            setObject(kSecClassGenericPassword as Any, kSecClass as Any)
+            setObject(service, kSecAttrService as Any)
+            setObject(keyFor(environmentKey), kSecAttrAccount as Any)
+            setObject(data, kSecValueData as Any)
+        }
         val cfQuery = CFBridgingRetain(query) as CFDictionaryRef
         val status = SecItemAdd(cfQuery, null)
-        CFBridgingRelease(cfQuery)
+        CFRelease(cfQuery)
         if (status != errSecSuccess) {
             throw IllegalStateException("Keychain save failed: $status")
         }
     }
 
     actual suspend fun load(environmentKey: String): StoredGuestSession? {
-        val query = mapOf<Any?, Any?>(
-            kSecClass to kSecClassGenericPassword,
-            kSecAttrService to service,
-            kSecAttrAccount to keyFor(environmentKey),
-            kSecReturnData to true,
-            kSecMatchLimit to kSecMatchLimitOne,
-        )
+        val query = NSMutableDictionary().apply {
+            setObject(kSecClassGenericPassword as Any, kSecClass as Any)
+            setObject(service, kSecAttrService as Any)
+            setObject(keyFor(environmentKey), kSecAttrAccount as Any)
+            setObject(true, kSecReturnData as Any)
+            setObject(kSecMatchLimitOne, kSecMatchLimit as Any)
+        }
         memScoped {
             val result = alloc<CFTypeRefVar>()
-            @Suppress("UNCHECKED_CAST")
             val cfQuery = CFBridgingRetain(query) as CFDictionaryRef
             val status = SecItemCopyMatching(cfQuery, result.ptr)
-            CFBridgingRelease(cfQuery)
+            CFRelease(cfQuery)
             if (status != errSecSuccess) return null
 
             val data = CFBridgingRelease(result.value) as? NSData ?: return null
@@ -86,15 +86,14 @@ actual class SecureSessionStore {
     }
 
     actual suspend fun remove(environmentKey: String) {
-        val query = mapOf<Any?, Any?>(
-            kSecClass to kSecClassGenericPassword,
-            kSecAttrService to service,
-            kSecAttrAccount to keyFor(environmentKey),
-        )
-        @Suppress("UNCHECKED_CAST")
+        val query = NSMutableDictionary().apply {
+            setObject(kSecClassGenericPassword as Any, kSecClass as Any)
+            setObject(service, kSecAttrService as Any)
+            setObject(keyFor(environmentKey), kSecAttrAccount as Any)
+        }
         val cfQuery = CFBridgingRetain(query) as CFDictionaryRef
         SecItemDelete(cfQuery)
-        CFBridgingRelease(cfQuery)
+        CFRelease(cfQuery)
     }
 
     private fun keyFor(environmentKey: String): String = "guest_session_$environmentKey"
