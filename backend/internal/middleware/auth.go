@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -55,20 +56,24 @@ func JWTAuth(jwtSecret string) func(http.Handler) http.Handler {
 			}
 			tokenString := parts[1]
 
-			// --- トークン検証 ---
-			token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
-				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("想定外の署名方式: %v", t.Header["alg"])
-				}
-				return []byte(jwtSecret), nil
-			})
-			if err != nil || !token.Valid {
-				if DebugAPILogEnabled() {
-					APIDebugPrintf("[API] auth JWT invalid or parse error %s %s: %v", r.Method, r.URL.Path, err)
-				}
-				http.Error(w, `{"error":"無効なトークンです"}`, http.StatusUnauthorized)
-				return
+		// --- トークン検証 ---
+		token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("想定外の署名方式: %v", t.Header["alg"])
 			}
+			return []byte(jwtSecret), nil
+		})
+		if err != nil || !token.Valid {
+			errMsg := "不明なエラー"
+			if err != nil {
+				errMsg = err.Error()
+			} else if !token.Valid {
+				errMsg = "トークンが無効です（期限切れまたは署名不一致）"
+			}
+			log.Printf("[auth] JWT検証失敗: %s (token preview: %.20s..., secret len=%d)", errMsg, tokenString, len(jwtSecret))
+			http.Error(w, fmt.Sprintf(`{"error":"無効なトークンです","detail":"%s"}`, errMsg), http.StatusUnauthorized)
+			return
+		}
 
 			// --- sub クレームを取得 ---
 			claims, ok := token.Claims.(jwt.MapClaims)

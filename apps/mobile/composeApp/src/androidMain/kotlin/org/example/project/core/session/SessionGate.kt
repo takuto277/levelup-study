@@ -1,9 +1,14 @@
 package org.example.project.core.session
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -11,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
 /**
@@ -28,7 +34,16 @@ fun SessionGate(
     when (state) {
         is SessionState.Initializing -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(24.dp))
+                    OutlinedButton(onClick = { scope.launch { sessionManager.switchMode(SessionMode.SEED) } }) {
+                        Text("Seed モードに戻す")
+                    }
+                }
             }
         }
         is SessionState.Ready -> {
@@ -42,8 +57,17 @@ fun SessionGate(
                 else -> ""
             }
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Button(onClick = { scope.launch { sessionManager.retry() } }) {
-                    Text("セッション初期化に失敗しました。再試行\n$message")
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Button(onClick = { scope.launch { sessionManager.retry() } }) {
+                        Text("セッション初期化に失敗しました。再試行\n$message")
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(onClick = { scope.launch { sessionManager.switchMode(SessionMode.SEED) } }) {
+                        Text("Seed モードに戻す")
+                    }
                 }
             }
         }

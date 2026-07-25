@@ -32,6 +32,7 @@ class SessionManager(
         UserSessionStore.setDebugBuild(isDebug)
         // 平文保存されていた既存 auth_token を削除（移行用）
         UserSessionStore.clearLegacyPlainAuthToken()
+        println("[SessionManager] initialize isDebug=$isDebug mode=${UserSessionStore.sessionMode}")
         when {
             !isDebug -> initializeGuest()
             UserSessionStore.sessionMode == SessionMode.SEED -> initializeSeed()
@@ -53,6 +54,7 @@ class SessionManager(
      * 永続化された Guest Session は削除しない（Guest → Seed → Guest で元のユーザーに戻せるように）。
      */
     suspend fun switchMode(mode: SessionMode) {
+        println("[SessionManager] switchMode to $mode")
         clearCurrentSession()
         UserSessionStore.setSessionMode(mode)
         when (mode) {
@@ -78,26 +80,34 @@ class SessionManager(
 
     private suspend fun initializeGuest() {
         _state.value = SessionState.Initializing
+        println("[SessionManager] Guest 初期化開始 envKey=${environmentKey()} ApiRoutes=${ApiRoutes.BASE_URL}")
         try {
             val envKey = environmentKey()
             val stored = secureSessionStore.load(envKey)
             val session = if (stored != null) {
+                println("[SessionManager] 保存済みセッションあり userId=${stored.userId}")
                 // 有効期限が近いか切れていれば refresh
                 val now = Clock.System.now().epochSeconds
                 if (now >= stored.expiresAtEpochSeconds - REFRESH_MARGIN_SECONDS) {
+                    println("[SessionManager] トークン期限切れのため refresh 実行")
                     guestAuthService.refreshSession(stored.refreshToken)
                 } else {
                     stored.toGuestSession()
                 }
             } else {
+                println("[SessionManager] 保存済みセッションなし 匿名サインイン実行")
                 guestAuthService.signInAnonymously()
             }
+            println("[SessionManager] セッション取得完了 userId=${session.userId}")
             secureSessionStore.save(envKey, session.toStored(envKey))
             UserSessionStore.setSession(session.userId, session.accessToken, session.expiresAtEpochSeconds)
             // public.users を冪等に作成・取得。失敗は初期化エラーとして伝播する。
+            println("[SessionManager] getOrCreateAuthUser 実行")
             userRepository.getOrCreateAuthUser()
             _state.value = SessionState.Ready(SessionMode.GUEST, session.userId)
+            println("[SessionManager] Guest 初期化完了 Ready")
         } catch (e: Exception) {
+            println("[SessionManager] Guest 初期化失敗: ${e.message}")
             _state.value = SessionState.RecoverableError(SessionError.InitializationFailed(e))
         }
     }

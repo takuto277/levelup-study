@@ -106,6 +106,15 @@ fun retrySessionManagerAsync() {
 }
 
 /**
+ * iOS 向け: Seed モードに切り替えて初期化し直す。
+ */
+fun switchToSeedModeAsync() {
+    helperScope.launch {
+        getSessionManager().switchMode(SessionMode.SEED)
+    }
+}
+
+/**
  * Debug ビルド用: [SessionMode] を切り替える。
  * Release では何もしない。
  */
