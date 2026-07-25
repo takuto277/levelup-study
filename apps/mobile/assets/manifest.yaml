@@ -11,6 +11,11 @@ battle_assets:
     mode: idle
     frame: 1
     required: false
+  - file: sprite_player_idle_2.png
+    kind: player
+    mode: idle
+    frame: 2
+    required: false
   - file: sprite_player_walk_1.png
     kind: player
     mode: walk
@@ -26,10 +31,35 @@ battle_assets:
     mode: attack
     frame: 1
     required: false
+  - file: sprite_player_attack_2.png
+    kind: player
+    mode: attack
+    frame: 2
+    required: false
+  - file: sprite_player_attack_3.png
+    kind: player
+    mode: attack
+    frame: 3
+    required: false
+  - file: sprite_player_attack_4.png
+    kind: player
+    mode: attack
+    frame: 4
+    required: false
+  - file: sprite_player_attack_5.png
+    kind: player
+    mode: attack
+    frame: 5
+    required: false
   - file: sprite_player_prep_1.png
     kind: player
     mode: prep
     frame: 1
+    required: false
+  - file: sprite_player_prep_2.png
+    kind: player
+    mode: prep
+    frame: 2
     required: false
   - file: sprite_player_rest_1.png
     kind: player
