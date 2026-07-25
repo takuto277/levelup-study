@@ -8,13 +8,13 @@ import kotlinx.cinterop.ptr
 import kotlinx.cinterop.value
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import platform.CoreFoundation.kCFBooleanTrue
 import platform.CoreFoundation.CFDictionaryRef
 import platform.CoreFoundation.CFTypeRefVar
 import platform.CoreFoundation.CFRelease
 import platform.Foundation.CFBridgingRelease
 import platform.Foundation.CFBridgingRetain
 import platform.Foundation.NSData
-import platform.Foundation.NSMutableDictionary
 import platform.Foundation.NSString
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.create
@@ -23,6 +23,8 @@ import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
 import platform.Security.errSecSuccess
+import platform.Security.kSecAttrAccessible
+import platform.Security.kSecAttrAccessibleWhenUnlocked
 import platform.Security.kSecAttrAccount
 import platform.Security.kSecAttrService
 import platform.Security.kSecClass
@@ -34,9 +36,6 @@ import platform.Security.kSecValueData
 
 /**
  * iOS 実装: Keychain に Guest Session を保存する。
- *
- * service は Bundle ID ベースの固定値、account は環境別キーとする。
- * 平文フォールバックは行わない。
  */
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 actual class SecureSessionStore {
@@ -50,12 +49,15 @@ actual class SecureSessionStore {
 
         remove(environmentKey)
 
-        val query = NSMutableDictionary().apply {
-            setObject(kSecClassGenericPassword as Any, kSecClass as Any)
-            setObject(service, kSecAttrService as Any)
-            setObject(keyFor(environmentKey), kSecAttrAccount as Any)
-            setObject(data, kSecValueData as Any)
-        }
+        @Suppress("UNCHECKED_CAST")
+        val query = mapOf<Any?, Any?>(
+            kSecClass to kSecClassGenericPassword,
+            kSecAttrService to service,
+            kSecAttrAccount to keyFor(environmentKey),
+            kSecValueData to data,
+            kSecAttrAccessible to kSecAttrAccessibleWhenUnlocked,
+        )
+
         val cfQuery = CFBridgingRetain(query) as CFDictionaryRef
         val status = SecItemAdd(cfQuery, null)
         CFRelease(cfQuery)
@@ -65,13 +67,15 @@ actual class SecureSessionStore {
     }
 
     actual suspend fun load(environmentKey: String): StoredGuestSession? {
-        val query = NSMutableDictionary().apply {
-            setObject(kSecClassGenericPassword as Any, kSecClass as Any)
-            setObject(service, kSecAttrService as Any)
-            setObject(keyFor(environmentKey), kSecAttrAccount as Any)
-            setObject(true, kSecReturnData as Any)
-            setObject(kSecMatchLimitOne, kSecMatchLimit as Any)
-        }
+        @Suppress("UNCHECKED_CAST")
+        val query = mapOf<Any?, Any?>(
+            kSecClass to kSecClassGenericPassword,
+            kSecAttrService to service,
+            kSecAttrAccount to keyFor(environmentKey),
+            kSecReturnData to kCFBooleanTrue,
+            kSecMatchLimit to kSecMatchLimitOne,
+        )
+
         memScoped {
             val result = alloc<CFTypeRefVar>()
             val cfQuery = CFBridgingRetain(query) as CFDictionaryRef
@@ -86,11 +90,13 @@ actual class SecureSessionStore {
     }
 
     actual suspend fun remove(environmentKey: String) {
-        val query = NSMutableDictionary().apply {
-            setObject(kSecClassGenericPassword as Any, kSecClass as Any)
-            setObject(service, kSecAttrService as Any)
-            setObject(keyFor(environmentKey), kSecAttrAccount as Any)
-        }
+        @Suppress("UNCHECKED_CAST")
+        val query = mapOf<Any?, Any?>(
+            kSecClass to kSecClassGenericPassword,
+            kSecAttrService to service,
+            kSecAttrAccount to keyFor(environmentKey),
+        )
+
         val cfQuery = CFBridgingRetain(query) as CFDictionaryRef
         SecItemDelete(cfQuery)
         CFRelease(cfQuery)
