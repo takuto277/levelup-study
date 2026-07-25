@@ -82,11 +82,13 @@ actual class SecureSessionStore {
     }
 
     actual suspend fun remove(environmentKey: String) {
+        println("[SecureSessionStore] kSecClass=$kSecClass kSecAttrService=$kSecAttrService kSecAttrAccount=$kSecAttrAccount kSecClassGenericPassword=$kSecClassGenericPassword")
         val query = CFBridgingRetain(mapOf<Any, Any>(
             kSecClass as Any to kSecClassGenericPassword as Any,
             kSecAttrService as Any to service as Any,
             kSecAttrAccount as Any to keyFor(environmentKey) as Any,
         )) as CFDictionaryRef
+        println("[SecureSessionStore] query retained, calling SecItemDelete...")
         val status = SecItemDelete(query)
         CFRelease(query)
         println("[SecureSessionStore] SecItemDelete status=$status")
