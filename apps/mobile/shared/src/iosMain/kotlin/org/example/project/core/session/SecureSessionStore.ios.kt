@@ -49,17 +49,14 @@ actual class SecureSessionStore {
 
         remove(environmentKey)
 
-        @Suppress("UNCHECKED_CAST")
-        val query = mapOf<Any?, Any?>(
-            kSecClass to kSecClassGenericPassword,
-            kSecAttrService to service,
+        val query = keychainQuery(
             kSecAttrAccount to keyFor(environmentKey),
             kSecValueData to data,
-            kSecAttrAccessible to kSecAttrAccessibleWhenUnlocked,
         )
 
         val cfQuery = CFBridgingRetain(query) as CFDictionaryRef
         val status = SecItemAdd(cfQuery, null)
+        println("[SecureSessionStore] SecItemAdd status=$status service=$service account=${keyFor(environmentKey)} dataLen=${data.length}")
         CFRelease(cfQuery)
         if (status != errSecSuccess) {
             throw IllegalStateException("Keychain save failed: $status")
@@ -67,10 +64,7 @@ actual class SecureSessionStore {
     }
 
     actual suspend fun load(environmentKey: String): StoredGuestSession? {
-        @Suppress("UNCHECKED_CAST")
-        val query = mapOf<Any?, Any?>(
-            kSecClass to kSecClassGenericPassword,
-            kSecAttrService to service,
+        val query = keychainQuery(
             kSecAttrAccount to keyFor(environmentKey),
             kSecReturnData to kCFBooleanTrue,
             kSecMatchLimit to kSecMatchLimitOne,
@@ -90,16 +84,22 @@ actual class SecureSessionStore {
     }
 
     actual suspend fun remove(environmentKey: String) {
-        @Suppress("UNCHECKED_CAST")
-        val query = mapOf<Any?, Any?>(
-            kSecClass to kSecClassGenericPassword,
-            kSecAttrService to service,
+        val query = keychainQuery(
             kSecAttrAccount to keyFor(environmentKey),
         )
 
         val cfQuery = CFBridgingRetain(query) as CFDictionaryRef
-        SecItemDelete(cfQuery)
+        val status = SecItemDelete(cfQuery)
         CFRelease(cfQuery)
+        println("[SecureSessionStore] SecItemDelete status=$status")
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun keychainQuery(vararg pairs: Pair<Any?, Any?>): Map<Any?, Any?> {
+        return mapOf<Any?, Any?>(*pairs) + mapOf(
+            kSecClass to kSecClassGenericPassword,
+            kSecAttrService to service,
+        ) as Map<Any?, Any?>
     }
 
     private fun keyFor(environmentKey: String): String = "guest_session_$environmentKey"
