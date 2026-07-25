@@ -129,12 +129,14 @@ fun PlayerSprite(
             var currentFrame by remember { mutableIntStateOf(0) }
             LaunchedEffect(mode) {
                 currentFrame = 0
-                scope.launch { slideX.animateTo(24f, tween(150)) }
+                slideX.snapTo(0f)
                 for (i in 1 until frames.size) {
                     delay(60)
                     currentFrame = i
+                    // 斬撃の瞬間（2-3コマ目）に一瞬スライド
+                    if (i == 2) scope.launch { slideX.animateTo(20f, tween(50)) }
                 }
-                scope.launch { slideX.animateTo(0f, tween(200)) }
+                scope.launch { slideX.animateTo(0f, tween(120)) }
             }
             Image(painter = painterResource(frames[currentFrame]), contentDescription = null,
                 modifier = modifier

@@ -97,12 +97,13 @@ private struct AttackAnimView: View {
             .task(id: taskId) {
                 currentFrame = 0
                 attackOffset = 0
-                withAnimation(.easeOut(duration: 0.15)) { attackOffset = 24 }
-                for _ in 1..<frames.count {
+                // 斬撃の瞬間に一瞬スライド
+                for i in 1..<frames.count {
                     try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-                    currentFrame += 1
+                    currentFrame = i
+                    if i == 2 { withAnimation(.easeOut(duration: 0.05)) { attackOffset = 20 } }
                 }
-                withAnimation(.easeOut(duration: 0.2)) { attackOffset = 0 }
+                withAnimation(.easeOut(duration: 0.12)) { attackOffset = 0 }
             }
             .onAppear { taskId += 1 }
     }
