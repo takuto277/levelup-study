@@ -28,15 +28,16 @@ var (
 )
 
 // UpsertWithInitialData — ユーザー作成 + 初期データ付与を 1 トランザクションで行う
+// FirstOrCreate により同時リクエスト時も冪等に動作する
 func (r *UserRepository) UpsertWithInitialData(user *model.User) (bool, error) {
 	created := false
 	err := r.db.Transaction(func(tx *gorm.DB) error {
-		var existing model.User
-		if err := tx.Where("id = ?", user.ID).First(&existing).Error; err == nil {
-			return nil // 既存ユーザー
+		result := tx.Where("id = ?", user.ID).FirstOrCreate(user)
+		if result.Error != nil {
+			return result.Error
 		}
-		if err := tx.Create(user).Error; err != nil {
-			return err
+		if result.RowsAffected == 0 {
+			return nil // 既存ユーザー
 		}
 		created = true
 
