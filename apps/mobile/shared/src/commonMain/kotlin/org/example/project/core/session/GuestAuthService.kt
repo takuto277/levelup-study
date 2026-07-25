@@ -23,6 +23,8 @@ class GuestAuthService {
     private fun createClient(): SupabaseClient {
         val url = SupabaseConfigSelector.currentUrl
         val key = SupabaseConfigSelector.currentAnonKey
+        println("[GuestAuth] Supabase URL: $url")
+        println("[GuestAuth] Anon key prefix: ${key.take(20)}...")
         require(url.isNotBlank() && key.isNotBlank()) {
             "Supabase URL / anon key が設定されていません。local.properties または環境変数を確認してください（現在環境: ${ApiRoutes.BASE_URL}）。"
         }
@@ -44,10 +46,13 @@ class GuestAuthService {
      * 匿名ユーザーを新規作成し、セッションを返す。
      */
     suspend fun signInAnonymously(): GuestSession {
+        println("[GuestAuth] 匿名サインイン開始...")
         val client = createClient()
         client.auth.signInAnonymously()
-        return client.auth.currentSessionOrNull()?.toGuestSession()
+        val session = client.auth.currentSessionOrNull()
             ?: error("匿名サインイン後にセッションが取得できません")
+        println("[GuestAuth] 匿名サインイン成功 userId=${session.user?.id}")
+        return session.toGuestSession()
     }
 
     /**
