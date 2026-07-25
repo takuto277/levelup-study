@@ -36,8 +36,6 @@ private struct PlayerSpriteView: View {
         case walking(phaseTick: Int64)
     }
 
-    extension SpriteMode: Equatable {}
-
     @State private var currentFrame: Int = 0
 
     private var prefix: String {
@@ -101,6 +99,8 @@ private struct PlayerSpriteView: View {
         }
     }
 }
+
+extension PlayerSpriteView.SpriteMode: Equatable {}
 
 private func playerPrepAssetName() -> String? {
     let frames = collectFrames(prefix: "sprite_player_prep")
