@@ -193,6 +193,10 @@ func (h *UserHandler) GetOrCreateUser(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusInternalServerError, "ユーザー作成に失敗しました")
 			return
 		}
+		if err := h.repo.CreateInitialData(userID); err != nil {
+			respondError(w, http.StatusInternalServerError, "初期データ作成に失敗しました")
+			return
+		}
 		respondJSON(w, http.StatusCreated, user)
 		return
 	}

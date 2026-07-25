@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/takuto277/levelup-study/backend/internal/model"
 	"gorm.io/gorm"
@@ -17,6 +19,56 @@ type UserRepository struct {
 // NewUserRepository — コンストラクタ
 func NewUserRepository(db *gorm.DB) *UserRepository {
 	return &UserRepository{db: db}
+}
+
+// 初期キャラ・武器の固定 UUID（seed.sql のマスタデータと一致）
+var (
+	InitialCharacterID = uuid.MustParse("a0000000-0000-0000-0000-000000000010") // 見習い戦士タロウ ★3
+	InitialWeaponID    = uuid.MustParse("b0000000-0000-0000-0000-000000000009") // 鉄の剣 ★3
+)
+
+// CreateInitialData — 新規ユーザーに初期キャラ・武器・パーティを付与する
+func (r *UserRepository) CreateInitialData(userID uuid.UUID) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+
+		weaponID := uuid.New()
+		weapon := &model.UserWeapon{
+			ID:         weaponID,
+			UserID:     userID,
+			WeaponID:   InitialWeaponID,
+			Level:      1,
+			ObtainedAt: now,
+		}
+		if err := tx.Create(weapon).Error; err != nil {
+			return err
+		}
+
+		charID := uuid.New()
+		character := &model.UserCharacter{
+			ID:               charID,
+			UserID:           userID,
+			CharacterID:      InitialCharacterID,
+			Level:            1,
+			EquippedWeaponID: &weaponID,
+			ObtainedAt:       now,
+		}
+		if err := tx.Create(character).Error; err != nil {
+			return err
+		}
+
+		slot := &model.UserPartySlot{
+			ID:              uuid.New(),
+			UserID:          userID,
+			SlotPosition:    1,
+			UserCharacterID: charID,
+		}
+		if err := tx.Create(slot).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 // Create — 新規ユーザーを作成する
