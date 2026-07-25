@@ -129,7 +129,7 @@ func extractSupabaseProjectRef(supabaseURL, databaseURL string) string {
 		}
 	}
 	if databaseURL != "" {
-		re := regexp.MustCompile(`postgres\.([a-z0-9]+)@`)
+		re := regexp.MustCompile(`postgres\.([a-z0-9]+)[^@]*@`)
 		if m := re.FindStringSubmatch(databaseURL); len(m) >= 2 {
 			return m[1]
 		}
