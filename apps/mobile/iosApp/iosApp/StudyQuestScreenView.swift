@@ -349,7 +349,6 @@ private struct BattleConfrontationIOSView: View {
     let approach: CGFloat
     let phaseTick: Int64
     let hasPlayerSprites: Bool
-    let playerWalkFrames: [String]
     let enemyFirstFrameName: String?
     let enemyEmoji: String
     let lastDamage: Int32
@@ -394,8 +393,8 @@ private struct BattleConfrontationIOSView: View {
                                     .padding(.leading, 16)
                                     .padding(.bottom, adventureFloorInset)
                                     .offset(x: playerLeft + strikeNudge)
-                            } else if !playerWalkFrames.isEmpty {
-                                AnimatedSpriteView(frames: playerWalkFrames, interval: 0.32, size: 118)
+                            } else if hasPlayerSprites {
+                                PlayerSpriteView(mode: .walking(phaseTick: phaseTick), size: 118)
                                     .padding(.leading, 16)
                                     .padding(.bottom, adventureFloorInset)
                                     .offset(x: playerLeft)
@@ -1208,12 +1207,12 @@ struct StudyQuestScreenView: View {
             }
 
             switch phase {
-            case .walking:
+                case .walking:
                 VStack {
                     Spacer()
                     HStack(alignment: .bottom) {
                         if hasPlayerSprites {
-                            AnimatedSpriteView(frames: playerWalkFrameNames(), interval: 0.32, size: 118)
+                            PlayerSpriteView(mode: .walking(phaseTick: 0), size: 118)
                                 .padding(.leading, 16)
                                 .padding(.bottom, adventureFloorInset)
                         } else {
@@ -1235,7 +1234,6 @@ struct StudyQuestScreenView: View {
                     approach: confrontationApproach,
                     phaseTick: uiState.adventurePhaseTick,
                     hasPlayerSprites: hasPlayerSprites,
-                    playerWalkFrames: playerWalkFrameNames(),
                     enemyFirstFrameName: enemyFrames.first,
                     enemyEmoji: uiState.enemyEmoji,
                     lastDamage: uiState.lastDamage,
@@ -1249,7 +1247,6 @@ struct StudyQuestScreenView: View {
                     approach: confrontationApproach,
                     phaseTick: uiState.adventurePhaseTick,
                     hasPlayerSprites: hasPlayerSprites,
-                    playerWalkFrames: playerWalkFrameNames(),
                     enemyFirstFrameName: enemyFrames.first,
                     enemyEmoji: uiState.enemyEmoji,
                     lastDamage: uiState.lastDamage,
@@ -1264,7 +1261,6 @@ struct StudyQuestScreenView: View {
                     approach: 1,
                     phaseTick: uiState.adventurePhaseTick,
                     hasPlayerSprites: hasPlayerSprites,
-                    playerWalkFrames: playerWalkFrameNames(),
                     enemyFirstFrameName: enemyFrames.first,
                     enemyEmoji: uiState.enemyEmoji,
                     lastDamage: uiState.lastDamage,
