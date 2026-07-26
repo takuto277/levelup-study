@@ -258,46 +258,351 @@ fun getSpriteSheetFilePath(characterId: String, spriteSheetUrl: String, callback
 
 ただし、長期的には shared ViewModel 側で表示状態を持ち、SwiftUI は state を購読するほうがよい。
 
-## 9. 実装ステップ
+## 9. 実装計画
 
-### Phase 1: API とモデル
+実装は 5 PR に分ける。DB / API / shared cache を先に固め、UI 適用はホーム・パーティから始める。戦闘画面は位相アニメーションの回帰が大きいため最後に回す。
 
-1. migration 追加
-2. `MasterCharacter.SpriteSheetURL` 追加
-3. `seed.sql` の INSERT カラム追加
-4. `openapi.yaml` 追加
-5. mobile DTO / domain 追加
-6. backend / mobile の既存テスト更新
+### PR 1: API / モデル / seed
 
-### Phase 2: shared cache
+目的: `sprite_sheet_url` を DB からモバイル domain model まで通す。まだ CDN ダウンロードや UI 表示は入れない。
 
-1. `SpriteSheetCache` expect/actual 追加
-2. metadata 保存・読込・URL hash 実装
-3. `SpriteSheetLoader` 追加
-4. Koin `SharedModule` に `single { SpriteSheetCache() }` と loader を登録
-5. commonTest で cache hit/miss 判定、URL変更、NoUrl、サイズ超過をテスト
+変更ファイル候補:
 
-### Phase 3: Android UI
+- `backend/db/migrations/000002_add_character_sprite_sheet_url.up.sql`
+- `backend/db/migrations/000002_add_character_sprite_sheet_url.down.sql`
+- `backend/db/seed.sql`
+- `backend/internal/model/models.go`
+- `backend/api/openapi.yaml`
+- `apps/mobile/shared/src/commonMain/kotlin/org/example/project/domain/model/Character.kt`
+- `apps/mobile/shared/src/commonMain/kotlin/org/example/project/data/remote/dto/CharacterDto.kt`
+- 影響する backend / shared tests
 
-1. `SpriteSheet.kt` に file decode を追加
-2. `PlayerSprite` または新規 `CharacterSprite` に sheet source を渡せるようにする
-3. ホーム / パーティ詳細から適用
-4. ダウンロード中は既存バンドル表示
+実装手順:
 
-### Phase 4: iOS UI
+1. migration を追加する。
 
-1. Swift helper で sprite sheet crop 実装
-2. KMP loader から file path を取得
-3. ホーム / パーティ詳細から適用
-4. ダウンロード中は既存バンドル表示
+   ```sql
+   ALTER TABLE m_characters
+     ADD COLUMN sprite_sheet_url text;
+   ```
 
-### Phase 5: 戦闘画面適用
+   down migration は以下。
 
-1. `StudyQuest` のメインキャラクター表示へ sheet source を渡す
-2. phaseTick と mode に合わせて cached sheet の frame を表示
-3. Android / iOS の見た目差分を確認
+   ```sql
+   ALTER TABLE m_characters
+     DROP COLUMN IF EXISTS sprite_sheet_url;
+   ```
 
-## 10. 受け入れ条件
+2. `backend/internal/model/models.go` の `MasterCharacter` に nullable field を追加する。
+
+   ```go
+   SpriteSheetURL *string `gorm:"type:text" json:"sprite_sheet_url"`
+   ```
+
+3. `backend/db/seed.sql` の `m_characters` INSERT に `sprite_sheet_url` カラムを追加する。
+   - まずは全キャラ `NULL` でよい。
+   - Supabase CDN の実URLが決まったら、対象キャラだけ URL を入れる。
+
+4. `backend/api/openapi.yaml` の `MasterCharacter` schema に `sprite_sheet_url` を追加する。
+   - `required` には入れない。
+   - `nullable: true` にする。
+
+5. mobile shared の DTO / domain に `spriteSheetUrl` を追加し、mapper で受け渡す。
+
+   ```kotlin
+   @SerialName("sprite_sheet_url") val spriteSheetUrl: String? = null
+   ```
+
+   ```kotlin
+   val spriteSheetUrl: String? = null
+   ```
+
+6. JSON parse test がある場合は、`sprite_sheet_url` あり・なしの両方を確認する。
+
+完了条件:
+
+- Backend の master/user character response に `sprite_sheet_url` が含まれる。
+- `sprite_sheet_url` 未設定でも既存 API / mobile parse が壊れない。
+- この PR では UI の見た目は変えない。
+
+### PR 2: shared cache / downloader
+
+目的: CDN URL からスプライトシートを取得し、platform cache に保存して file path を返せるようにする。まだ主要画面への表示適用は最小限に留める。
+
+変更ファイル候補:
+
+- `apps/mobile/shared/src/commonMain/kotlin/org/example/project/features/sprite/SpriteSheetCache.kt`
+- `apps/mobile/shared/src/androidMain/kotlin/org/example/project/features/sprite/SpriteSheetCache.android.kt`
+- `apps/mobile/shared/src/iosMain/kotlin/org/example/project/features/sprite/SpriteSheetCache.ios.kt`
+- `apps/mobile/shared/src/commonMain/kotlin/org/example/project/features/sprite/SpriteSheetLoader.kt`
+- `apps/mobile/shared/src/commonMain/kotlin/org/example/project/features/sprite/SpriteSheetModels.kt`
+- `apps/mobile/shared/src/commonMain/kotlin/org/example/project/di/SharedModule.kt`
+- `apps/mobile/shared/src/commonTest/kotlin/org/example/project/features/sprite/SpriteSheetLoaderTest.kt`
+- `apps/mobile/shared/src/commonTest/kotlin/org/example/project/features/sprite/SpriteSheetCacheKeyTest.kt`
+
+実装手順:
+
+1. common model を追加する。
+
+   ```kotlin
+   data class CachedSpriteSheet(
+       val characterId: String,
+       val sourceUrl: String,
+       val filePath: String,
+       val byteSize: Long,
+   )
+
+   @Serializable
+   data class SpriteSheetCacheMetadata(
+       val characterId: String,
+       val sourceUrl: String,
+       val urlHash: String,
+       val fileName: String,
+       val byteSize: Long,
+       val cachedAtEpochMillis: Long,
+       val schemaVersion: Int = 1,
+   )
+   ```
+
+2. URL hash helper を commonMain に置く。
+   - SHA-256 が commonMain で扱いづらければ、最初は URL 文字列の percent-safe encode か、既存 dependency を確認してから実装する。
+   - ただし保存名は必ず URL 由来の識別子を含める。
+
+3. `expect class SpriteSheetCache()` を追加する。
+
+   ```kotlin
+   expect class SpriteSheetCache() {
+       suspend fun get(characterId: String, sourceUrl: String): CachedSpriteSheet?
+       suspend fun save(characterId: String, sourceUrl: String, bytes: ByteArray): CachedSpriteSheet
+       suspend fun remove(characterId: String)
+       suspend fun clear()
+   }
+   ```
+
+4. Android actual を実装する。
+   - 保存先: `context.filesDir/sprite_sheets/`
+   - context 取得は既存 `KeyValueStore.android.kt` と同じ platform context 管理を使う。
+   - `metadata/{characterId}.json` と `images/{characterId}-{urlHash}.png` のように分けると扱いやすい。
+   - `save` は `.tmp` に書き込んでから rename する。
+
+5. iOS actual を実装する。
+   - 保存先: `NSCachesDirectory/sprite_sheets/`
+   - `metadata/{characterId}.json` と `images/{characterId}-{urlHash}.png` を保存する。
+   - cache directory が消えていたら再作成する。
+
+6. `SpriteSheetLoader` を追加する。
+
+   ```kotlin
+   class SpriteSheetLoader(
+       private val client: HttpClient,
+       private val cache: SpriteSheetCache,
+   ) {
+       suspend fun load(characterId: String, spriteSheetUrl: String?): SpriteSheetLoadResult
+   }
+   ```
+
+   `load` の処理順:
+   - null / blank は `NoUrl`
+   - `https://` 以外は `Failed`
+   - cache hit なら `Hit`
+   - Ktor で bytes を取得
+   - 最大サイズ超過なら `Failed`
+   - `cache.save`
+   - `Downloaded`
+
+7. single-flight を入れる。
+   - 同一 `characterId + urlHash` の download は `Mutex` でまとめる。
+   - lock 中にもう一度 cache hit を確認する。
+
+8. `SharedModule.kt` に登録する。
+
+   ```kotlin
+   single { SpriteSheetCache() }
+   singleOf(::SpriteSheetLoader)
+   ```
+
+9. commonTest を追加する。
+   - `spriteSheetUrl == null` は `NoUrl`
+   - `http://` は `Failed`
+   - cache hit なら download しない
+   - URL が変わると miss になる
+   - size limit 超過は保存しない
+
+完了条件:
+
+- `SpriteSheetLoader.load(characterId, url)` で file path を取得できる。
+- URL 変更時に古い cache を hit しない。
+- shared unit test が通る。
+
+### PR 3: Android ホーム / パーティ適用
+
+目的: Android で cached sprite sheet を表示できる UI component を追加し、まずホームとパーティに適用する。
+
+変更ファイル候補:
+
+- `apps/mobile/composeApp/src/androidMain/kotlin/org/example/project/components/SpriteSheet.kt`
+- `apps/mobile/composeApp/src/androidMain/kotlin/org/example/project/components/CharacterSprite.kt`
+- `apps/mobile/composeApp/src/androidMain/kotlin/org/example/project/features/home/HomeTabContent.kt`
+- `apps/mobile/composeApp/src/androidMain/kotlin/org/example/project/features/party/PartyScreenView.kt`
+- `apps/mobile/shared/src/commonMain/kotlin/org/example/project/features/home/HomeUiState.kt`
+- `apps/mobile/shared/src/commonMain/kotlin/org/example/project/features/home/HomeViewModel.kt`
+- `apps/mobile/shared/src/commonMain/kotlin/org/example/project/features/party/PartyViewModel.kt`
+
+実装手順:
+
+1. `SpriteSheet.kt` に file decode を追加する。
+
+   ```kotlin
+   @Composable
+   fun rememberSheetFromFile(filePath: String?): Bitmap?
+   ```
+
+   - `filePath == null` なら null
+   - decode 失敗なら null
+   - `remember(filePath)` で再 decode を抑える
+
+2. cached sheet 用の frame painter を既存 `framePainter` で使い回す。
+   - sheet サイズが `576 x 192` 未満なら null fallback する。
+   - 96px cell 前提を定数化する。
+
+3. `CharacterSprite` composable を追加する。
+
+   ```kotlin
+   @Composable
+   fun CharacterSprite(
+       character: MasterCharacter?,
+       mode: PlayerSpriteMode,
+       size: Dp,
+       modifier: Modifier = Modifier,
+   )
+   ```
+
+   初期実装では内部で `SpriteSheetLoader` を呼ぶより、ViewModel から `filePath` を渡すほうがテストしやすい。Compose component は「filePath があれば sheet、なければ `PlayerSprite`」の描画に集中させる。
+
+4. ViewModel 側で main character の `spriteSheetUrl` を見て loader を起動する。
+   - `HomeUiState` に `mainCharacterSpriteSheetPath: String?` を追加する。
+   - `PartyUiState` は詳細表示対象 / 一覧表示対象に必要な path map を持たせる。
+   - 失敗時は state に error を出さず、ログだけにして default sprite 表示を維持する。
+
+5. `HomeTabContent.kt` のメインキャラクター表示を `CharacterSprite` へ置き換える。
+   - `spriteSheetUrl` 未設定なら既存 `PlayerSprite(Idle)` と同じ表示。
+
+6. `PartyScreenView.kt` のメインカード / 詳細画面から適用する。
+   - 一覧全件で一斉 download しない。
+   - 最初はメインキャラと詳細表示中キャラだけ download する。
+
+完了条件:
+
+- Android ホームで CDN sheet が cache hit すると idle 表示へ使われる。
+- ダウンロード中 / 失敗 / URLなしでは既存 default sprite が出る。
+- パーティ一覧表示で最大30件の同時ダウンロードを起こさない。
+
+### PR 4: iOS ホーム / パーティ適用
+
+目的: iOS で cached sprite sheet を表示できる helper を追加し、ホームとパーティに適用する。
+
+変更ファイル候補:
+
+- `apps/mobile/iosApp/iosApp/SpriteSheetImage.swift`
+- `apps/mobile/iosApp/iosApp/HomeScreenView.swift`
+- `apps/mobile/iosApp/iosApp/PartyScreenView.swift`
+- `apps/mobile/shared/src/commonMain/kotlin/org/example/project/di/KoinHelper.kt`
+- 必要に応じて shared ViewModel / UiState
+
+実装手順:
+
+1. Swift helper を追加する。
+
+   ```swift
+   enum SpriteSheetFrame: Int {
+       case idle1 = 0
+       case idle2 = 1
+       case prep1 = 2
+       case prep2 = 3
+       case attack1 = 4
+       case attack2 = 5
+       case attack3 = 6
+       case attack4 = 7
+       case attack5 = 8
+       case walk1 = 9
+       case walk2 = 10
+       case rest1 = 11
+   }
+   ```
+
+2. `UIImage(contentsOfFile:)` と `cgImage.cropping(to:)` で frame を切り出す。
+   - `scale` を考慮して pixel rect で切る。
+   - sheet が小さい / decode 不能なら nil を返す。
+
+3. `CachedCharacterSpriteView` を追加する。
+   - `filePath` と mode を受け取り、取れなければ既存 `IdleSpriteView` / `PlayerSpriteView` に fallback する。
+
+4. Swift から shared loader を呼ぶ導線を決める。
+   - 推奨: Android と同じく shared ViewModel state に file path を持たせる。
+   - つなぎとして `KoinHelper` に callback wrapper を追加してもよいが、画面ごとの lifecycle 管理に注意する。
+
+5. `HomeScreenView.swift` のメインキャラクター表示に適用する。
+
+6. `PartyScreenView.swift` のメインカード / 詳細画面に適用する。
+
+完了条件:
+
+- iOS ホームで CDN sheet が cache hit すると idle 表示へ使われる。
+- ダウンロード中 / 失敗 / URLなしでは既存 default sprite が出る。
+- SwiftUI 再描画で download が連打されない。
+
+### PR 5: 戦闘画面適用
+
+目的: Android / iOS の StudyQuest 戦闘表示を cached sprite sheet に対応させる。
+
+変更ファイル候補:
+
+- `apps/mobile/composeApp/src/androidMain/kotlin/org/example/project/features/study/StudyQuestScreenView.kt`
+- `apps/mobile/iosApp/iosApp/StudyQuestScreenView.swift`
+- `apps/mobile/shared/src/commonMain/kotlin/org/example/project/features/study/StudyQuestUiState.kt`
+- `apps/mobile/shared/src/commonMain/kotlin/org/example/project/features/study/StudyQuestViewModel.kt`
+
+実装手順:
+
+1. `StudyQuestUiState` にメインキャラの `spriteSheetPath` または sprite source を追加する。
+
+2. `StudyQuestViewModel` でパーティ先頭キャラの `spriteSheetUrl` を解決し、loader を呼ぶ。
+   - quest 開始時に1回だけ試す。
+   - 失敗しても quest は続行し、default sprite に fallback する。
+
+3. Android `BattleConfrontationLayer` / `TrainingGroundLayer` / break scene で cached sheet を使えるようにする。
+   - mode と frame range は既存 `PlayerSpriteMode` に合わせる。
+   - cached sheet がない場合は既存 `PlayerSprite` をそのまま使う。
+
+4. iOS `PlayerSpriteView` を cached sheet source に対応させる。
+   - `frames: [UIImage]` または `filePath + mode` を受ける形に拡張する。
+   - 既存 imageset fallback は残す。
+
+5. 位相ごとの期待表示を確認する。
+   - walking: walk 1/2 loop
+   - idle: idle 1/2 loop
+   - prep: prep 1/2 one-shot
+   - attack: attack 1..5 one-shot
+   - rest: rest 1
+
+完了条件:
+
+- Android / iOS の戦闘中プレイヤーが cached sheet で mode 別に動く。
+- default sprite fallback が維持される。
+- StudyQuest の既存 phase 表示が崩れない。
+
+## 10. 実装時の判断ルール
+
+- 最初の表示適用はホームとパーティ詳細に限定する。パーティ一覧30件の一括 download は避ける。
+- `sprite_sheet_url` は nullable のまま扱う。未設定は正常系。
+- cache file path は UI state に出してよいが、URL や download error の詳細は UI 表示しない。
+- CDN download 失敗で画面全体を error にしない。常に default sprite fallback で継続する。
+- URL が変わったら必ず別 cache として扱う。
+- 破損 PNG は cache hit 扱いにしない。decode 失敗時は該当 cache を削除して再取得できる状態にする。
+- KMP shared から Android `Bitmap` / iOS `UIImage` は返さない。shared は file path まで。
+- SwiftUI / Compose の Composable 内で無制限に download を開始しない。ViewModel または lifecycle を制御できる箇所から呼ぶ。
+
+## 11. 受け入れ条件
 
 - `sprite_sheet_url` が設定されたキャラクターは、初回表示後に CDN からスプライトシートを取得してローカル保存される。
 - 2回目以降の表示ではネットワークなしでもキャッシュ済みシートを使える。
@@ -306,7 +611,44 @@ fun getSpriteSheetFilePath(characterId: String, spriteSheetUrl: String, callback
 - Android / iOS で同じ frame index 定義を使い、idle / walk / prep / attack / rest が崩れない。
 - CI の Backend test、Mobile Android compile、Mobile unit test、iOS build が通る。
 
-## 11. 検証計画
+## 12. テストケース
+
+### Backend
+
+- `MasterCharacter` JSON に `sprite_sheet_url` が含まれる。
+- `sprite_sheet_url == null` の既存 seed でも API response が成立する。
+- migration up/down が通る。
+
+### shared
+
+- `SpriteSheetLoader.load(characterId, null)` returns `NoUrl`
+- `SpriteSheetLoader.load(characterId, "")` returns `NoUrl`
+- `http://...` is rejected
+- cache hit の場合は HTTP client が呼ばれない
+- URL A の cache があっても URL B では miss になる
+- download 成功時に metadata と PNG が保存される
+- download 失敗時に tmp file が残らない
+- size limit 超過時に保存しない
+- 同一 characterId + URL の同時 load で download が1回になる
+
+### Android
+
+- `rememberSheetFromFile(null)` は null
+- 存在しない file path は null
+- 破損 PNG は null
+- 576x192 の sheet から frame index 0 / 8 / 11 を切り出せる
+- cached sheet path があると `CharacterSprite` が sheet を使う
+- path がないと default `PlayerSprite` へ fallback する
+
+### iOS
+
+- 存在しない file path は nil
+- 破損 PNG は nil
+- 576x192 の sheet から frame index 0 / 8 / 11 を切り出せる
+- SwiftUI 再描画で loader が連打されない
+- path がないと existing imageset fallback を使う
+
+## 13. 検証計画
 
 ### Backend
 
@@ -339,7 +681,7 @@ cd apps/mobile && ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
 - CDN URL を変更すると再取得される
 - 不正 URL / 404 / 破損 PNG でクラッシュせずフォールバックする
 
-## 12. リスクと対策
+## 14. リスクと対策
 
 | リスク | 対策 |
 |--------|------|
@@ -350,7 +692,7 @@ cd apps/mobile && ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
 | CDN URL が漏れる | ログに URL を出さず、公開 CDN 前提の URL だけを扱う |
 | 実装範囲が広すぎる | Phase 1/2 を先に入れ、UI 適用はホーム/パーティから段階導入する |
 
-## 13. オープン事項
+## 15. オープン事項
 
 1. Supabase Storage の bucket / path 命名規則
    - 例: `character-sprites/{characterId}/sheet-v1.png`
@@ -361,7 +703,7 @@ cd apps/mobile && ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
 4. 最初に適用する UI
    - 推奨はホームとパーティ詳細。戦闘画面は Phase 5 で適用する。
 
-## 14. 結論
+## 16. 結論
 
 実装は一気に全画面へ入れず、まず API / モデル / shared cache を固める。そのうえでホーム・パーティに cached sheet 表示を導入し、最後に戦闘画面へ広げる。
 
