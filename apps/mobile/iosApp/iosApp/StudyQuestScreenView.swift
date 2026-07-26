@@ -4,19 +4,19 @@ import UIKit
 
 // MARK: - Sprite Helpers
 
-private let SPRITE_COLS = 6
-private let SPRITE_CELL: CGFloat = 96
+private let spriteCols = 6
+private let spriteCell: CGFloat = 96
 
 /// スプライトシートから指定フレームを切り出す
 private func spriteFrame(_ frameIndex: Int) -> UIImage? {
     guard let sheet = UIImage(named: "sprite_player_sheet"),
           let cg = sheet.cgImage else { return nil }
-    let col = frameIndex % SPRITE_COLS
-    let row = frameIndex / SPRITE_COLS
-    let rect = CGRect(x: CGFloat(col) * SPRITE_CELL,
-                      y: CGFloat(row) * SPRITE_CELL,
-                      width: SPRITE_CELL,
-                      height: SPRITE_CELL)
+    let col = frameIndex % spriteCols
+    let row = frameIndex / spriteCols
+    let rect = CGRect(x: CGFloat(col) * spriteCell,
+                      y: CGFloat(row) * spriteCell,
+                      width: spriteCell,
+                      height: spriteCell)
     guard let cropped = cg.cropping(to: rect) else { return nil }
     return UIImage(cgImage: cropped, scale: sheet.scale, orientation: sheet.imageOrientation)
 }
