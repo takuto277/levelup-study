@@ -93,24 +93,101 @@ fun PlayerSprite(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val slideX = remember { Animatable(0f) }
+    val sheet = SpriteSheet.rememberSheet()
+
+    if (sheet == null) {
+        Text("🧙‍♂️", fontSize = (size.value * 0.42f).sp, modifier = modifier)
+        return
+    }
 
     when (mode) {
         PlayerSpriteMode.Walking -> {
-            val id1 = drawableId(context, "sprite_player_walk_1")
-            val id2 = drawableId(context, "sprite_player_walk_2")
-            val frames = listOfNotNull(
-                id1.takeIf { it != 0 },
-                id2.takeIf { it != 0 }
-            ).distinct()
-            if (frames.isEmpty()) return
+            val frames = SpriteSheet.walkFrames
+            var currentFrame by remember { mutableIntStateOf(frames.first) }
+            LaunchedEffect(Unit) {
+                while (true) {
+                    delay(320L)
+                    currentFrame = if (currentFrame >= frames.last) frames.first
+                    else currentFrame + 1
+                }
+            }
+            Image(
+                painter = SpriteSheet.framePainter(sheet, currentFrame),
+                contentDescription = null,
+                modifier = modifier.size(size),
+                contentScale = ContentScale.Fit
+            )
+        }
 
-            var currentFrame by remember { mutableIntStateOf(0) }
-            if (frames.size > 1) {
-                LaunchedEffect(Unit) {
-                    while (true) {
-                        delay(320L)
-                        currentFrame = (currentFrame + 1) % frames.size
-                    }
+        PlayerSpriteMode.Idle -> {
+            val frames = SpriteSheet.idleFrames
+            var currentFrame by remember { mutableIntStateOf(frames.first) }
+            LaunchedEffect(mode) {
+                while (true) {
+                    delay(600)
+                    currentFrame = if (currentFrame >= frames.last) frames.first
+                    else currentFrame + 1
+                }
+            }
+            Image(
+                painter = SpriteSheet.framePainter(sheet, currentFrame),
+                contentDescription = null,
+                modifier = modifier.size(size),
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        PlayerSpriteMode.Prep -> {
+            val frames = SpriteSheet.prepFrames
+            var currentFrame by remember { mutableIntStateOf(frames.first) }
+            LaunchedEffect(mode) {
+                currentFrame = frames.first
+                for (i in frames) {
+                    delay(60)
+                    currentFrame = i
+                }
+            }
+            Image(
+                painter = SpriteSheet.framePainter(sheet, currentFrame),
+                contentDescription = null,
+                modifier = modifier.size(size),
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        PlayerSpriteMode.Attack -> {
+            var currentFrame by remember { mutableIntStateOf(SpriteSheet.attackFrames.first) }
+            LaunchedEffect(mode) {
+                slideX.snapTo(0f)
+                var i = 0
+                for (frame in SpriteSheet.attackFrames) {
+                    delay(60)
+                    currentFrame = frame
+                    if (i == 1) scope.launch { slideX.animateTo(20f, tween(50)) }
+                    i++
+                }
+                scope.launch { slideX.animateTo(0f, tween(120)) }
+            }
+            Image(
+                painter = SpriteSheet.framePainter(sheet, currentFrame),
+                contentDescription = null,
+                modifier = modifier
+                    .offset { IntOffset(slideX.value.roundToInt(), 0) }
+                    .size(size),
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        PlayerSpriteMode.Rest -> {
+            Image(
+                painter = SpriteSheet.framePainter(sheet, SpriteSheet.restFrame),
+                contentDescription = null,
+                modifier = modifier.size(size),
+                contentScale = ContentScale.Fit
+            )
+        }
+    }
+}
                 }
             }
 
