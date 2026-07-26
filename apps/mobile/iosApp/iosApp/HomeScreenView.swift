@@ -64,10 +64,10 @@ struct HomeScreenView: View {
     @State private var newGenreLabel = ""
     @State private var genrePendingDelete: MasterStudyGenre? = nil
     @State private var showSettings = false
-
+    
     private let homeViewModel = KoinHelperKt.getHomeViewModel()
     @State private var homeState: HomeUiState?
-
+    
     init() {
         _showStudySheet = State(initialValue: false)
         _studyMinutes = State(initialValue: HomeStudyMinutesPersisted.load())
@@ -77,12 +77,12 @@ struct HomeScreenView: View {
         _newGenreLabel = State(initialValue: "")
         _homeState = State(initialValue: nil)
     }
-
+    
     private var genreList: [(slug: String, emoji: String, label: String)] {
         let fromServer = (homeState?.genres ?? []).map { (slug: $0.slug, emoji: $0.emoji, label: $0.label) }
         return fromServer.isEmpty ? [("general", "📚", "総合")] : fromServer
     }
-
+    
     var body: some View {
         VStack(spacing: 0) {
             TutorialHintBanner(topic: "home_start_study", emoji: "\u{1F3AF}", message: "ジャンルを選んで「勉強開始」をタップ！")
@@ -152,7 +152,7 @@ struct HomeScreenView: View {
             HomeStudyMinutesPersisted.save(newValue)
         }
     }
-
+    
     // MARK: - ダンジョン / ジャンル（横スクロール・勉強時間はヘッダー）
     private var adventureContextRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -177,7 +177,7 @@ struct HomeScreenView: View {
             .padding(.vertical, 6)
         }
     }
-
+    
     private func contextStatChip(title: String, value: String, hint: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.system(size: 9)).foregroundColor(textSub).lineLimit(1)
@@ -190,7 +190,7 @@ struct HomeScreenView: View {
         .padding(.horizontal, 10).padding(.vertical, 8)
         .background(bgCard).cornerRadius(12)
     }
-
+    
     private var genreMenuChip: some View {
         let selected = genreList.first { $0.slug == selectedGenreSlug } ?? genreList.first!
         return Menu {
@@ -217,7 +217,7 @@ struct HomeScreenView: View {
             .background(bgCard).cornerRadius(12)
         }
     }
-
+    
     // MARK: - Header
     private var homeHeader: some View {
         HStack {
@@ -230,9 +230,9 @@ struct HomeScreenView: View {
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
             .background(bgCard).cornerRadius(14)
-
+            
             Spacer(minLength: 8)
-
+            
             HStack(spacing: 6) {
                 Text("💎").font(.system(size: 16))
                 VStack(alignment: .leading, spacing: 1) {
@@ -242,7 +242,7 @@ struct HomeScreenView: View {
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
             .background(bgCard).cornerRadius(14)
-
+            
             Button(action: { showSettings = true }) {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 18, weight: .semibold))
@@ -256,14 +256,14 @@ struct HomeScreenView: View {
         }
         .padding(16)
     }
-
+    
     // MARK: - Character
     private var characterArea: some View {
         ZStack {
             Circle()
                 .fill(RadialGradient(colors: [accentBlue.opacity(0.2), accentIndigo.opacity(0.08), .clear], center: .center, startRadius: 20, endRadius: 140))
                 .frame(width: 260, height: 260)
-
+            
             VStack(spacing: 0) {
                 VStack(spacing: 0) {
                     HStack(spacing: 6) {
@@ -275,28 +275,23 @@ struct HomeScreenView: View {
                     }
                     .padding(.horizontal, 16).padding(.vertical, 10)
                     .background(bgCard).cornerRadius(18)
-
+                    
                     Triangle().fill(bgCard).frame(width: 14, height: 8)
                 }
                 Spacer().frame(height: 6)
                 Group {
                     if UIImage(named: "sprite_player_idle_1") != nil {
-                        Image("sprite_player_idle_1")
-                            .resizable()
-                            .interpolation(.none)
-                            .scaledToFit()
+                        IdleSpriteView()
                             .frame(width: 160, height: 160)
                     } else {
                         Text("🧙‍♂️").font(.system(size: 90))
                     }
                 }
-                    .offset(y: isBouncing ? -10 : 0)
-                    .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: isBouncing)
-                    .onAppear { isBouncing = true }
-                    .onTapGesture {
-                        homeViewModel.onIntent(intent: HomeIntentTapMainCharacter())
-                    }
-
+                .onAppear { isBouncing = true }
+                .onTapGesture {
+                    homeViewModel.onIntent(intent: HomeIntentTapMainCharacter())
+                }
+                
                 Spacer().frame(height: 4)
                 HStack(spacing: 6) {
                     Text(homeState?.mainCharacter?.character?.name ?? "冒険者").font(.system(size: 15, weight: .bold)).foregroundColor(textW)
@@ -311,7 +306,7 @@ struct HomeScreenView: View {
             homeViewModel.onIntent(intent: HomeIntentTapMainCharacter())
         }
     }
-
+    
     // MARK: - Time（1〜60 分、Android と同じ ± ルール）
     private var timeSelector: some View {
         VStack(spacing: 8) {
@@ -345,12 +340,12 @@ struct HomeScreenView: View {
         }
         .padding(.horizontal, 32)
     }
-
+    
     // MARK: - Genre manage sheet（追加・削除）
     private var sortedGenresForSheet: [MasterStudyGenre] {
         (homeState?.genres ?? []).sorted { $0.sortOrder < $1.sortOrder }
     }
-
+    
     private var genreManageSheet: some View {
         NavigationView {
             List {
@@ -373,7 +368,7 @@ struct HomeScreenView: View {
                     .cornerRadius(14)
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(accentCyan.opacity(0.35), lineWidth: 1))
                     .listRowBackground(Color.clear)
-
+                    
                     Button(action: {
                         guard !newGenreLabel.isEmpty else { return }
                         homeViewModel.onIntent(intent: HomeIntentAddGenre(label: newGenreLabel, emoji: "", colorHex: "#6B7280"))
@@ -398,7 +393,7 @@ struct HomeScreenView: View {
                     .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                     .listRowBackground(Color.clear)
                 }
-
+                
                 Section {
                     ForEach(sortedGenresForSheet, id: \.id) { g in
                         Text(g.label)
@@ -439,7 +434,7 @@ struct HomeScreenView: View {
             }
         }
     }
-
+    
     // MARK: - Start Button
     private var startButton: some View {
         let training = homeState?.isTrainingStudySession == true
@@ -449,21 +444,42 @@ struct HomeScreenView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-            .background(
-                LinearGradient(
-                    colors: training ? [accentIndigo, accentBlue] : fireGradient,
-                    startPoint: .leading,
-                    endPoint: .trailing
+                .background(
+                    LinearGradient(
+                        colors: training ? [accentIndigo, accentBlue] : fireGradient,
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
                 )
-            )
-            .cornerRadius(22).shadow(color: Color(hex: 0xF59E0B).opacity(0.4), radius: 10, y: 5)
+                .cornerRadius(22).shadow(color: Color(hex: 0xF59E0B).opacity(0.4), radius: 10, y: 5)
         }
         .padding(.horizontal, 32)
     }
-}
-
-private struct Triangle: Shape {
-    func path(in rect: CGRect) -> Path {
-        Path { p in p.move(to: CGPoint(x: rect.midX - 7, y: 0)); p.addLine(to: CGPoint(x: rect.midX, y: rect.maxY)); p.addLine(to: CGPoint(x: rect.midX + 7, y: 0)); p.closeSubpath() }
+    
+    private struct Triangle: Shape {
+        func path(in rect: CGRect) -> Path {
+            Path { p in p.move(to: CGPoint(x: rect.midX - 7, y: 0)); p.addLine(to: CGPoint(x: rect.midX, y: rect.maxY)); p.addLine(to: CGPoint(x: rect.midX + 7, y: 0)); p.closeSubpath() }
+        }
+    }
+    
+    private struct IdleSpriteView: View {
+        @State private var frame: Int = 0
+        private let timer = Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()
+        
+        var body: some View {
+            let name = frame == 0 ? "sprite_player_idle_1" : "sprite_player_idle_2"
+            if UIImage(named: "sprite_player_idle_2") != nil {
+                Image(name)
+                    .resizable()
+                    .interpolation(.none)
+                    .scaledToFit()
+                    .onReceive(timer) { _ in frame = frame == 0 ? 1 : 0 }
+            } else {
+                Image("sprite_player_idle_1")
+                    .resizable()
+                    .interpolation(.none)
+                    .scaledToFit()
+            }
+        }
     }
 }

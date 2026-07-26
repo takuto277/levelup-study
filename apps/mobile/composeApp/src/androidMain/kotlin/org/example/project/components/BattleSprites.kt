@@ -1,8 +1,11 @@
 package org.example.project.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,18 +14,21 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
-/** プレイヤー表示モード（歩き2コマ / 待機 / 攻撃準備 / 攻撃） */
+/** プレイヤー表示モード（歩き / 待機 / 攻撃準備 / 攻撃 / 休憩） */
 enum class PlayerSpriteMode {
     /** `sprite_player_walk_1` と `sprite_player_walk_2` を交互 */
     Walking,
-    /** `sprite_player_idle_1`（無ければ prep） */
+    /** `sprite_player_idle_1` と `sprite_player_idle_2` を交互 */
     Idle,
-    /** `sprite_player_prep_1`（無ければ idle） */
+    /** `sprite_player_prep_1` と `sprite_player_prep_2` を順再生 */
     Prep,
-    /** `sprite_player_attack_1` */
+    /** `sprite_player_attack_1` 〜 `sprite_player_attack_5` を順再生 */
     Attack,
     /** `sprite_player_rest_1`（無ければ idle / prep / walk） */
     Rest
@@ -85,6 +91,8 @@ fun PlayerSprite(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val slideX = remember { Animatable(0f) }
 
     when (mode) {
         PlayerSpriteMode.Walking -> {
@@ -114,41 +122,55 @@ fun PlayerSprite(
             )
         }
 
-        PlayerSpriteMode.Idle -> {
-            val idleId = drawableId(context, "sprite_player_idle_1").takeIf { it != 0 }
-                ?: drawableId(context, "sprite_player_prep_1")
-            if (idleId == 0) return
-            Image(
-                painter = painterResource(idleId),
-                contentDescription = null,
-                modifier = modifier.size(size),
-                contentScale = ContentScale.Fit
-            )
+        PlayerSpriteMode.Attack -> {
+            val frames = collectFrameIds(context, "sprite_player_attack")
+            if (frames.isEmpty()) return
+            var currentFrame by remember { mutableIntStateOf(0) }
+            LaunchedEffect(mode) {
+                currentFrame = 0
+                slideX.snapTo(0f)
+                for (i in 1 until frames.size) {
+                    delay(60)
+                    currentFrame = i
+                    // 斬撃の瞬間（2-3コマ目）に一瞬スライド
+                    if (i == 2) scope.launch { slideX.animateTo(20f, tween(50)) }
+                }
+                scope.launch { slideX.animateTo(0f, tween(120)) }
+            }
+            Image(painter = painterResource(frames[currentFrame]), contentDescription = null,
+                modifier = modifier
+                    .offset { IntOffset(slideX.value.roundToInt(), 0) }
+                    .size(size), contentScale = ContentScale.Fit)
         }
 
         PlayerSpriteMode.Prep -> {
-            val prepId = drawableId(context, "sprite_player_prep_1").takeIf { it != 0 }
-                ?: drawableId(context, "sprite_player_idle_1").takeIf { it != 0 }
-                ?: drawableId(context, "sprite_player_walk_1").takeIf { it != 0 }
-                ?: drawableId(context, "sprite_player_walk_2")
-            if (prepId == 0) return
-            Image(
-                painter = painterResource(prepId),
-                contentDescription = null,
-                modifier = modifier.size(size),
-                contentScale = ContentScale.Fit
-            )
+            val frames = collectFrameIds(context, "sprite_player_prep")
+            if (frames.isEmpty()) return
+            var currentFrame by remember { mutableIntStateOf(0) }
+            LaunchedEffect(mode) {
+                currentFrame = 0
+                slideX.snapTo(0f)
+                for (i in 1 until frames.size) {
+                    delay(60)
+                    currentFrame = i
+                }
+            }
+            Image(painter = painterResource(frames[currentFrame]), contentDescription = null,
+                modifier = modifier.size(size), contentScale = ContentScale.Fit)
         }
 
-        PlayerSpriteMode.Attack -> {
-            val attackId = drawableId(context, "sprite_player_attack_1")
-            if (attackId == 0) return
-            Image(
-                painter = painterResource(attackId),
-                contentDescription = null,
-                modifier = modifier.size(size),
-                contentScale = ContentScale.Fit
-            )
+        PlayerSpriteMode.Idle -> {
+            val frames = collectFrameIds(context, "sprite_player_idle")
+            if (frames.isEmpty()) return
+            var currentFrame by remember { mutableIntStateOf(0) }
+            LaunchedEffect(mode) {
+                while (true) {
+                    delay(600)
+                    currentFrame = (currentFrame + 1) % frames.size
+                }
+            }
+            Image(painter = painterResource(frames[currentFrame]), contentDescription = null,
+                modifier = modifier.size(size), contentScale = ContentScale.Fit)
         }
 
         PlayerSpriteMode.Rest -> {
@@ -215,6 +237,60 @@ fun hasPartyPlayerSprite(context: android.content.Context): Boolean =
     drawableId(context, "sprite_player_idle_1") != 0 ||
         drawableId(context, "sprite_player_prep_1") != 0 ||
         drawableId(context, "sprite_player_walk_1") != 0
+
+private fun collectFrameIds(context: android.content.Context, prefix: String): List<Int> {
+    return (1..8).mapNotNull { frame ->
+        drawableId(context, "${prefix}_$frame").takeIf { it != 0 }
+    }
+}
+
+@Composable
+private fun FrameAnimator(
+    frames: List<Int>,
+    intervalMs: Long,
+    loop: Boolean = true,
+    content: @Composable (Int) -> Unit
+) {
+    if (frames.size < 2) {
+        content(frames.first())
+        return
+    }
+    var currentFrame by remember { mutableIntStateOf(0) }
+    LaunchedEffect(frames, loop) {
+        while (loop || currentFrame < frames.size - 1) {
+            delay(intervalMs)
+            currentFrame = if (loop) (currentFrame + 1) % frames.size
+            else (currentFrame + 1).coerceAtMost(frames.size - 1)
+        }
+    }
+    content(frames[currentFrame])
+}
+
+/** Attack/Prep 用: 毎回再生成される key で LaunchedEffect を走らせ、一連の再生を保証 */
+@Composable
+private fun OneShotAnimator(
+    frames: List<Int>,
+    intervalMs: Long,
+    content: @Composable (Int) -> Unit
+) {
+    if (frames.isEmpty()) return
+    if (frames.size == 1) {
+        content(frames.first())
+        return
+    }
+    val triggerKey = remember { mutableIntStateOf(0) }
+    var currentFrame by remember { mutableIntStateOf(0) }
+    LaunchedEffect(triggerKey.intValue) {
+        currentFrame = 0
+        for (i in 1 until frames.size) {
+            delay(intervalMs)
+            currentFrame = i
+        }
+    }
+    // triggerKey を毎回進めて新しい LaunchedEffect を起こす
+    LaunchedEffect(Unit) { triggerKey.intValue++ }
+    content(frames[currentFrame])
+}
 
 fun hasBackgroundResource(
     context: android.content.Context,
