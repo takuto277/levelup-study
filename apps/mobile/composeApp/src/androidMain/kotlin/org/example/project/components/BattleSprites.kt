@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,6 +17,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -181,84 +183,6 @@ fun PlayerSprite(
         PlayerSpriteMode.Rest -> {
             Image(
                 painter = SpriteSheet.framePainter(sheet, SpriteSheet.restFrame),
-                contentDescription = null,
-                modifier = modifier.size(size),
-                contentScale = ContentScale.Fit
-            )
-        }
-    }
-}
-                }
-            }
-
-            Image(
-                painter = painterResource(frames[currentFrame]),
-                contentDescription = null,
-                modifier = modifier.size(size),
-                contentScale = ContentScale.Fit
-            )
-        }
-
-        PlayerSpriteMode.Attack -> {
-            val frames = collectFrameIds(context, "sprite_player_attack")
-            if (frames.isEmpty()) return
-            var currentFrame by remember { mutableIntStateOf(0) }
-            LaunchedEffect(mode) {
-                currentFrame = 0
-                slideX.snapTo(0f)
-                for (i in 1 until frames.size) {
-                    delay(60)
-                    currentFrame = i
-                    // 斬撃の瞬間（2-3コマ目）に一瞬スライド
-                    if (i == 2) scope.launch { slideX.animateTo(20f, tween(50)) }
-                }
-                scope.launch { slideX.animateTo(0f, tween(120)) }
-            }
-            Image(painter = painterResource(frames[currentFrame]), contentDescription = null,
-                modifier = modifier
-                    .offset { IntOffset(slideX.value.roundToInt(), 0) }
-                    .size(size), contentScale = ContentScale.Fit)
-        }
-
-        PlayerSpriteMode.Prep -> {
-            val frames = collectFrameIds(context, "sprite_player_prep")
-            if (frames.isEmpty()) return
-            var currentFrame by remember { mutableIntStateOf(0) }
-            LaunchedEffect(mode) {
-                currentFrame = 0
-                slideX.snapTo(0f)
-                for (i in 1 until frames.size) {
-                    delay(60)
-                    currentFrame = i
-                }
-            }
-            Image(painter = painterResource(frames[currentFrame]), contentDescription = null,
-                modifier = modifier.size(size), contentScale = ContentScale.Fit)
-        }
-
-        PlayerSpriteMode.Idle -> {
-            val frames = collectFrameIds(context, "sprite_player_idle")
-            if (frames.isEmpty()) return
-            var currentFrame by remember { mutableIntStateOf(0) }
-            LaunchedEffect(mode) {
-                while (true) {
-                    delay(600)
-                    currentFrame = (currentFrame + 1) % frames.size
-                }
-            }
-            Image(painter = painterResource(frames[currentFrame]), contentDescription = null,
-                modifier = modifier.size(size), contentScale = ContentScale.Fit)
-        }
-
-        PlayerSpriteMode.Rest -> {
-            val restId = drawableId(context, "sprite_player_rest_1").takeIf { it != 0 }
-                ?: drawableId(context, "sprite_player_idle_1").takeIf { it != 0 }
-                ?: drawableId(context, "sprite_player_prep_1").takeIf { it != 0 }
-                ?: drawableId(context, "sprite_player_walk_1").takeIf { it != 0 }
-                ?: drawableId(context, "sprite_player_walk_2")
-            if (restId == 0) return
-            Image(
-                painter = painterResource(restId),
                 contentDescription = null,
                 modifier = modifier.size(size),
                 contentScale = ContentScale.Fit
