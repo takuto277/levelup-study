@@ -155,12 +155,56 @@ Sword held at side, body slightly lifted, cape swaying back.
 ## Post-Generation Commands
 
 ```bash
-# Background transparency
+# 1. Background transparency
 ./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py --kind player
 
-# Sync to Android/iOS
+# 2. Sync individual frames to Android/iOS
 ./scripts/assets/run.sh scripts/assets/sync_battle_assets.py
 
-# Validate
+# 3. Create sprite sheet (6x2 grid, 96px cells, transparent bg)
+montage \
+  sprite_player_idle_1.png sprite_player_idle_2.png \
+  sprite_player_prep_1.png sprite_player_prep_2.png \
+  sprite_player_attack_1.png sprite_player_attack_2.png \
+  sprite_player_attack_3.png sprite_player_attack_4.png \
+  sprite_player_attack_5.png \
+  sprite_player_walk_1.png sprite_player_walk_2.png \
+  sprite_player_rest_1.png \
+  -tile 6x2 -geometry 96x96+0+0 -background none \
+  sprite_player_sheet.png
+
+# 4. Copy sprite sheet to platform asset dirs
+cp sprite_player_sheet.png ../../composeApp/src/androidMain/res/drawable-nodpi/
+mkdir -p ../../iosApp/iosApp/Assets.xcassets/sprite_player_sheet.imageset
+cp sprite_player_sheet.png ../../iosApp/iosApp/Assets.xcassets/sprite_player_sheet.imageset/
+echo '{"images":[{"filename":"sprite_player_sheet.png","idiom":"universal"}]}' > ../../iosApp/iosApp/Assets.xcassets/sprite_player_sheet.imageset/Contents.json
+
+# 5. Validate
 ./scripts/assets/run.sh scripts/assets/validate_assets.py
 ```
+
+## Sprite Sheet Layout (6×2, 96px cells)
+
+```
+┌────────┬────────┬────────┬────────┬────────┬────────┐
+│ idle_1 │ idle_2 │ prep_1 │ prep_2 │ atk_1  │ atk_2  │   row 0
+├────────┼────────┼────────┼────────┼────────┼────────┤
+│ atk_3  │ atk_4  │ atk_5  │ walk_1 │ walk_2 │ rest_1 │   row 1
+└────────┴────────┴────────┴────────┴────────┴────────┘
+   col 0    col 1    col 2    col 3    col 4    col 5
+```
+
+| Frame idx | File |
+|-----------|------|
+| 0 | idle_1 |
+| 1 | idle_2 |
+| 2 | prep_1 |
+| 3 | prep_2 |
+| 4 | atk_1 |
+| 5 | atk_2 |
+| 6 | atk_3 |
+| 7 | atk_4 |
+| 8 | atk_5 |
+| 9 | walk_1 |
+| 10 | walk_2 |
+| 11 | rest_1 |
