@@ -4,26 +4,29 @@ import UIKit
 
 // MARK: - Sprite Helpers
 
-private func hasSpriteAsset(_ name: String) -> Bool {
-    UIImage(named: name) != nil
+private let SPRITE_COLS = 6
+private let SPRITE_CELL: CGFloat = 96
+
+/// スプライトシートから指定フレームを切り出す
+private func spriteFrame(_ frameIndex: Int) -> UIImage? {
+    guard let sheet = UIImage(named: "sprite_player_sheet"),
+          let cg = sheet.cgImage else { return nil }
+    let col = frameIndex % SPRITE_COLS
+    let row = frameIndex / SPRITE_COLS
+    let rect = CGRect(x: CGFloat(col) * SPRITE_CELL,
+                      y: CGFloat(row) * SPRITE_CELL,
+                      width: SPRITE_CELL,
+                      height: SPRITE_CELL)
+    guard let cropped = cg.cropping(to: rect) else { return nil }
+    return UIImage(cgImage: cropped, scale: sheet.scale, orientation: sheet.imageOrientation)
 }
 
-private func collectFrames(prefix: String) -> [String] {
-    (1...8).compactMap { frame in
-        let name = "\(prefix)_\(frame)"
-        return UIImage(named: name) != nil ? name : nil
-    }
-}
+private let idleFrameRange = 0...1
+private let prepFrameRange = 2...3
+private let attackFrameRange = 4...8
+private let walkFrameRange = 9...10
+private let restFrameIndex = 11
 
-private func playerWalkFrameNames() -> [String] {
-    collectFrames(prefix: "sprite_player_walk")
-}
-
-private func hasPlayerWalkSprites() -> Bool {
-    !playerWalkFrameNames().isEmpty
-}
-
-/// アニメーション付きプレイヤースプライト
 private struct PlayerSpriteView: View {
     let mode: SpriteMode
     let size: CGFloat
@@ -36,8 +39,6 @@ private struct PlayerSpriteView: View {
         case walking(phaseTick: Int64)
     }
 
-    @State private var currentFrame: Int = 0
-
     private var prefix: String {
         switch mode {
         case .idle: return "sprite_player_idle"
@@ -45,6 +46,16 @@ private struct PlayerSpriteView: View {
         case .attack: return "sprite_player_attack"
         case .rest: return "sprite_player_rest"
         case .walking: return "sprite_player_walk"
+        }
+    }
+
+    private var frames: [UIImage?] {
+        switch mode {
+        case .idle: return idleFrameRange.map { spriteFrame($0) }
+        case .prep: return prepFrameRange.map { spriteFrame($0) }
+        case .attack: return attackFrameRange.map { spriteFrame($0) }
+        case .walking: return walkFrameRange.map { spriteFrame($0) }
+        case .rest: return [spriteFrame(restFrameIndex)]
         }
     }
 
@@ -59,27 +70,22 @@ private struct PlayerSpriteView: View {
     }
 
     var body: some View {
-        let frames = collectFrames(prefix: prefix)
-        if frames.isEmpty {
+        let images = frames
+        if images.isEmpty || images.allSatisfy({ $0 == nil }) {
             Text("🧙‍♂️")
                 .font(.system(size: size * 0.42))
                 .frame(width: size, height: size)
         } else if case .attack = mode {
-            AttackAnimView(frames: frames, interval: interval, size: size)
+            AttackSpriteView(images: images.compactMap { $0 }, interval: interval, size: size)
         } else {
-            LoopAnimView(
-                frames: frames,
-                interval: interval,
-                isOneShot: mode == .prep,
-                mode: mode,
-                size: size
-            )
+            LoopSpriteView(images: images.compactMap { $0 }, interval: interval,
+                           isOneShot: mode == .prep, mode: mode, size: size)
         }
     }
 }
 
-private struct AttackAnimView: View {
-    let frames: [String]
+private struct AttackSpriteView: View {
+    let images: [UIImage]
     let interval: TimeInterval
     let size: CGFloat
 
@@ -88,7 +94,7 @@ private struct AttackAnimView: View {
     @State private var taskId: Int = 0
 
     var body: some View {
-        Image(frames[min(currentFrame, frames.count - 1)])
+        Image(uiImage: images[min(currentFrame, images.count - 1)])
             .resizable()
             .interpolation(.none)
             .scaledToFit()
@@ -97,11 +103,10 @@ private struct AttackAnimView: View {
             .task(id: taskId) {
                 currentFrame = 0
                 attackOffset = 0
-                // 斬撃の瞬間に一瞬スライド
-                for i in 1..<frames.count {
+                for i in 1..<images.count {
                     try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
                     currentFrame = i
-                    if i == 2 { withAnimation(.easeOut(duration: 0.05)) { attackOffset = 20 } }
+                    if i == 1 { withAnimation(.easeOut(duration: 0.05)) { attackOffset = 20 } }
                 }
                 withAnimation(.easeOut(duration: 0.12)) { attackOffset = 0 }
             }
@@ -109,8 +114,8 @@ private struct AttackAnimView: View {
     }
 }
 
-private struct LoopAnimView: View {
-    let frames: [String]
+private struct LoopSpriteView: View {
+    let images: [UIImage]
     let interval: TimeInterval
     let isOneShot: Bool
     let mode: PlayerSpriteView.SpriteMode
@@ -120,7 +125,7 @@ private struct LoopAnimView: View {
     @State private var taskId: Int = 0
 
     var body: some View {
-        Image(frames[min(currentFrame, frames.count - 1)])
+        Image(uiImage: images[min(currentFrame, images.count - 1)])
             .resizable()
             .interpolation(.none)
             .scaledToFit()
@@ -128,14 +133,14 @@ private struct LoopAnimView: View {
             .task(id: taskId) {
                 currentFrame = 0
                 if isOneShot {
-                    for _ in 1..<frames.count {
+                    for _ in 1..<images.count {
                         try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
                         currentFrame += 1
                     }
                 } else {
                     while !Task.isCancelled {
                         try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-                        currentFrame = (currentFrame + 1) % frames.count
+                        currentFrame = (currentFrame + 1) % images.count
                     }
                 }
             }
@@ -148,10 +153,15 @@ private struct LoopAnimView: View {
 extension PlayerSpriteView.SpriteMode: Equatable {}
 
 private func playerPrepAssetName() -> String? {
-    let frames = collectFrames(prefix: "sprite_player_prep")
-    if let first = frames.first { return first }
-    if UIImage(named: "sprite_player_idle_1") != nil { return "sprite_player_idle_1" }
-    return playerWalkFrameNames().first
+    UIImage(named: "sprite_player_sheet") != nil ? "sprite_player_sheet" : nil
+}
+
+private func playerWalkFrameNames() -> [String] {
+    UIImage(named: "sprite_player_sheet") != nil ? ["sprite_player_sheet"] : []
+}
+
+private func hasPlayerWalkSprites() -> Bool {
+    UIImage(named: "sprite_player_sheet") != nil
 }
 
 @ViewBuilder

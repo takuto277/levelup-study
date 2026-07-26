@@ -465,20 +465,22 @@ struct HomeScreenView: View {
     private struct IdleSpriteView: View {
         @State private var frame: Int = 0
         private let timer = Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()
-        
+
         var body: some View {
-            let name = frame == 0 ? "sprite_player_idle_1" : "sprite_player_idle_2"
-            if UIImage(named: "sprite_player_idle_2") != nil {
-                Image(name)
-                    .resizable()
-                    .interpolation(.none)
-                    .scaledToFit()
-                    .onReceive(timer) { _ in frame = frame == 0 ? 1 : 0 }
+            if let sheet = UIImage(named: "sprite_player_sheet"),
+               let cg = sheet.cgImage {
+                let col = frame % 6
+                let row = frame / 6
+                let rect = CGRect(x: CGFloat(col) * 96, y: CGFloat(row) * 96, width: 96, height: 96)
+                if let cropped = cg.cropping(to: rect) {
+                    Image(uiImage: UIImage(cgImage: cropped, scale: sheet.scale, orientation: sheet.imageOrientation))
+                        .resizable()
+                        .interpolation(.none)
+                        .scaledToFit()
+                        .onReceive(timer) { _ in frame = frame == 0 ? 1 : 0 }
+                }
             } else {
-                Image("sprite_player_idle_1")
-                    .resizable()
-                    .interpolation(.none)
-                    .scaledToFit()
+                Text("🧙‍♂️").font(.system(size: 90))
             }
         }
     }
