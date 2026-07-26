@@ -30,7 +30,6 @@ enum class PlayerSpriteMode {
     Prep,
     /** `sprite_player_attack_1` 〜 `sprite_player_attack_5` を順再生 */
     Attack,
-    Attack,
     /** `sprite_player_rest_1`（無ければ idle / prep / walk） */
     Rest
 }
