@@ -5,7 +5,7 @@ import UIKit
 // MARK: - Sprite Helpers
 
 private let spriteCols = 6
-private let spriteCell: CGFloat = 96
+private let spriteCell: CGFloat = 256
 
 /// スプライトシートから指定フレームを切り出す
 private func spriteFrame(_ frameIndex: Int) -> UIImage? {

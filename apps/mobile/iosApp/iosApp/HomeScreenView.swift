@@ -471,7 +471,7 @@ struct HomeScreenView: View {
                let cg = sheet.cgImage {
                 let col = frame % 6
                 let row = frame / 6
-                let rect = CGRect(x: CGFloat(col) * 96, y: CGFloat(row) * 96, width: 96, height: 96)
+                let rect = CGRect(x: CGFloat(col) * 256, y: CGFloat(row) * 256, width: 256, height: 96)
                 if let cropped = cg.cropping(to: rect) {
                     Image(uiImage: UIImage(cgImage: cropped, scale: sheet.scale, orientation: sheet.imageOrientation))
                         .resizable()

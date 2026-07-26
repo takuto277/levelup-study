@@ -19,7 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 object SpriteSheet {
 
     private const val COLS = 6
-    private const val CELL = 96
+    private const val CELL = 256
 
     /** 各モードのフレームインデックス範囲 */
     val idleFrames = 0..1
