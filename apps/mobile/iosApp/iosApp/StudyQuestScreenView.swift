@@ -157,7 +157,10 @@ private func playerPrepAssetName() -> String? {
 }
 
 private func playerWalkFrameNames() -> [String] {
-    UIImage(named: "sprite_player_sheet") != nil ? ["sprite_player_sheet"] : []
+    (1...2).compactMap { frame in
+        let name = "sprite_player_walk_\(frame)"
+        return UIImage(named: name) != nil ? name : nil
+    }
 }
 
 private func hasPlayerWalkSprites() -> Bool {
