@@ -21,11 +21,11 @@ private func spriteFrame(_ frameIndex: Int) -> UIImage? {
     return UIImage(cgImage: cropped, scale: sheet.scale, orientation: sheet.imageOrientation)
 }
 
-private let idleFrameRange = 0...1
-private let prepFrameRange = 2...3
-private let attackFrameRange = 4...8
-private let walkFrameRange = 9...10
-private let restFrameIndex = 11
+private let idleFrameRange = 0...3
+private let prepFrameRange = 4...5
+private let attackFrameRange = 6...10
+private let walkFrameRange = 11...12
+private let restFrameIndex = 13
 
 private struct PlayerSpriteView: View {
     let mode: SpriteMode

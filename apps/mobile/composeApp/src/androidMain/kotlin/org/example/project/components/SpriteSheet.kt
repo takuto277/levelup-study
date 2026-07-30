@@ -13,8 +13,9 @@ import androidx.compose.ui.platform.LocalContext
  * スプライトシート（6列×2行、各セル96×96px）からフレームを切り出す。
  *
  * レイアウト:
- *   行0: idle_1, idle_2, prep_1, prep_2, atk_1, atk_2
- *   行1: atk_3, atk_4, atk_5, walk_1, walk_2, rest_1
+ *   行0: idle_1, idle_2, idle_3, idle_4, prep_1, prep_2
+ *   行1: atk_1, atk_2, atk_3, atk_4, atk_5, walk_1
+ *   行2: walk_2, rest_1
  */
 object SpriteSheet {
 
@@ -22,11 +23,11 @@ object SpriteSheet {
     private const val CELL = 512
 
     /** 各モードのフレームインデックス範囲 */
-    val idleFrames = 0..1
-    val prepFrames = 2..3
-    val attackFrames = 4..8
-    val walkFrames = 9..10
-    val restFrame = 11
+    val idleFrames = 0..3
+    val prepFrames = 4..5
+    val attackFrames = 6..10
+    val walkFrames = 11..12
+    val restFrame = 13
 
     /** スプライトシート Bitmap をロード */
     @Composable

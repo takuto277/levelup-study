@@ -45,6 +45,36 @@ Body sinks 1 pixel, chest slightly down. Arms relaxed, sword unchanged.
 512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
+## idle 2（吸う）
+
+```
+Based on the attached character sprite.
+Gentle inhale. Chest rises 1 pixel, shoulders lift slightly.
+Hair tips and cape edge move 1 pixel up.
+Feet, waist, sword angle — completely unchanged.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+```
+
+## idle 3（吐く）
+
+```
+Based on the attached character sprite.
+Gentle exhale. Chest sinks 1 pixel, arms relax slightly.
+Hair tips and cape edge move 1 pixel down.
+Feet, waist, sword angle — completely unchanged.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+```
+
+## idle 4（戻り）
+
+```
+Based on the attached character sprite.
+Transition toward neutral. Chest midway, shoulders settling.
+Hair and cape between exhale and idle_1 position.
+Feet, waist, sword angle — completely unchanged.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+```
+
 ## prep 1
 
 ```
@@ -141,70 +171,44 @@ Sword held at side, body slightly lifted, cape swaying back.
 |---|-----------|------|
 | 1 | `sprite_player_idle_1.png` | idle 1 |
 | 2 | `sprite_player_idle_2.png` | idle 2 |
-| 3 | `sprite_player_prep_1.png` | prep 1 |
-| 4 | `sprite_player_prep_2.png` | prep 2 |
-| 5 | `sprite_player_attack_1.png` | attack 1 |
-| 6 | `sprite_player_attack_2.png` | attack 2 |
-| 7 | `sprite_player_attack_3.png` | attack 3 |
-| 8 | `sprite_player_attack_4.png` | attack 4 |
-| 9 | `sprite_player_attack_5.png` | attack 5 |
-| 10 | `sprite_player_rest_1.png` | rest 1 |
-| 11 | `sprite_player_walk_1.png` | walk 1 |
-| 12 | `sprite_player_walk_2.png` | walk 2 |
+| 3 | `sprite_player_idle_3.png` | idle 3 |
+| 4 | `sprite_player_idle_4.png` | idle 4 |
+| 5 | `sprite_player_prep_1.png` | prep 1 |
+| 6 | `sprite_player_prep_2.png` | prep 2 |
+| 7 | `sprite_player_attack_1.png` | attack 1 |
+| 8 | `sprite_player_attack_2.png` | attack 2 |
+| 9 | `sprite_player_attack_3.png` | attack 3 |
+| 10 | `sprite_player_attack_4.png` | attack 4 |
+| 11 | `sprite_player_attack_5.png` | attack 5 |
+| 12 | `sprite_player_walk_1.png` | walk 1 |
+| 13 | `sprite_player_walk_2.png` | walk 2 |
+| 14 | `sprite_player_rest_1.png` | rest 1 |
 
-## Post-Generation Commands
-
-```bash
-# 1. Background transparency
-./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py --kind player
-
-# 2. Sync individual frames to Android/iOS
-./scripts/assets/run.sh scripts/assets/sync_battle_assets.py
-
-# 3. Create sprite sheet (6x2 grid, 512px cells, transparent bg)
-montage \
-  sprite_player_idle_1.png sprite_player_idle_2.png \
-  sprite_player_prep_1.png sprite_player_prep_2.png \
-  sprite_player_attack_1.png sprite_player_attack_2.png \
-  sprite_player_attack_3.png sprite_player_attack_4.png \
-  sprite_player_attack_5.png \
-  sprite_player_walk_1.png sprite_player_walk_2.png \
-  sprite_player_rest_1.png \
-  -tile 6x2 -geometry 512x512+0+0 -background none \
-  sprite_player_sheet.png
-
-# 4. Copy sprite sheet to platform asset dirs
-cp sprite_player_sheet.png ../../composeApp/src/androidMain/res/drawable-nodpi/
-mkdir -p ../../iosApp/iosApp/Assets.xcassets/sprite_player_sheet.imageset
-cp sprite_player_sheet.png ../../iosApp/iosApp/Assets.xcassets/sprite_player_sheet.imageset/
-echo '{"images":[{"filename":"sprite_player_sheet.png","idiom":"universal"}]}' > ../../iosApp/iosApp/Assets.xcassets/sprite_player_sheet.imageset/Contents.json
-
-# 5. Validate
-./scripts/assets/run.sh scripts/assets/validate_assets.py
-```
-
-## Sprite Sheet Layout (6×2, 512px cells)
+## Sprite Sheet Layout (6×3, 512px cells, 3072×1536px)
 
 ```
 ┌────────┬────────┬────────┬────────┬────────┬────────┐
-│ idle_1 │ idle_2 │ prep_1 │ prep_2 │ atk_1  │ atk_2  │   row 0
+│ idle_1 │ idle_2 │ idle_3 │ idle_4 │ prep_1 │ prep_2 │ row 0
 ├────────┼────────┼────────┼────────┼────────┼────────┤
-│ atk_3  │ atk_4  │ atk_5  │ walk_1 │ walk_2 │ rest_1 │   row 1
+│ atk_1  │ atk_2  │ atk_3  │ atk_4  │ atk_5  │ walk_1 │ row 1
+├────────┼────────┼────────┼────────┼────────┼────────┤
+│ walk_2 │ rest_1 │        │        │        │        │ row 2
 └────────┴────────┴────────┴────────┴────────┴────────┘
-   col 0    col 1    col 2    col 3    col 4    col 5
 ```
 
 | Frame idx | File |
 |-----------|------|
 | 0 | idle_1 |
 | 1 | idle_2 |
-| 2 | prep_1 |
-| 3 | prep_2 |
-| 4 | atk_1 |
-| 5 | atk_2 |
-| 6 | atk_3 |
-| 7 | atk_4 |
-| 8 | atk_5 |
-| 9 | walk_1 |
-| 10 | walk_2 |
-| 11 | rest_1 |
+| 2 | idle_3 |
+| 3 | idle_4 |
+| 4 | prep_1 |
+| 5 | prep_2 |
+| 6 | atk_1 |
+| 7 | atk_2 |
+| 8 | atk_3 |
+| 9 | atk_4 |
+| 10 | atk_5 |
+| 11 | walk_1 |
+| 12 | walk_2 |
+| 13 | rest_1 |

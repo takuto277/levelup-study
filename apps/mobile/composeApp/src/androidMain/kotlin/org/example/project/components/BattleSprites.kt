@@ -124,11 +124,15 @@ fun PlayerSprite(
         PlayerSpriteMode.Idle -> {
             val frames = SpriteSheet.idleFrames
             var currentFrame by remember { mutableIntStateOf(frames.first) }
+            // 呼吸: 吸う→吐く→戻る→間、吐くを少し長め
+            val idleDelays = longArrayOf(120, 120, 140, 120)
+            var delayIdx by remember { mutableIntStateOf(0) }
             LaunchedEffect(mode) {
                 while (true) {
-                    delay(600)
+                    delay(idleDelays[delayIdx % idleDelays.size])
                     currentFrame = if (currentFrame >= frames.last) frames.first
                     else currentFrame + 1
+                    delayIdx++
                 }
             }
             Image(
