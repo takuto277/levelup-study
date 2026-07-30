@@ -10,7 +10,7 @@ All prompts use ChatGPT (DALL-E). Attach `sprite_player_idle_1.png` as reference
 ## idle 1（基準画像）
 
 ```
-Pixel art game sprite, 256x256 pixels.
+Pixel art game sprite, 512x512 pixels.
 Character description: [CHARACTER]
 Pose: standing, idle battle-ready, facing right (looking rightward),
 sword held at side.
@@ -42,7 +42,7 @@ Pale skin, glowing red eyes, silver hair peeking from hood.
 Based on the attached character sprite.
 Idle animation frame 2 of 2, gentle exhale.
 Body sinks 1 pixel, chest slightly down. Arms relaxed, sword unchanged.
-256x256, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## prep 1
@@ -51,7 +51,7 @@ Body sinks 1 pixel, chest slightly down. Arms relaxed, sword unchanged.
 Based on the attached character sprite.
 Prepare frame 1 of 2, gripping sword tighter.
 Knees slightly bent, sword rising to shoulder level.
-256x256, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## prep 2
@@ -60,7 +60,7 @@ Knees slightly bent, sword rising to shoulder level.
 Based on the attached character sprite.
 Prepare frame 2 of 2, full wind-up.
 Sword pulled back behind right shoulder, body leaning forward.
-256x256, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 1
@@ -69,7 +69,7 @@ Sword pulled back behind right shoulder, body leaning forward.
 Based on the attached character sprite.
 Attack frame 1 of 5, forward lunge step.
 Right foot steps forward, sword beginning to swing from behind.
-256x256, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 2
@@ -78,7 +78,7 @@ Right foot steps forward, sword beginning to swing from behind.
 Based on the attached character sprite.
 Attack frame 2 of 5, sword mid-swing at 45° diagonal slash.
 Body rotated forward, thin white arc line tracing sword path.
-256x256, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 3
@@ -87,7 +87,7 @@ Body rotated forward, thin white arc line tracing sword path.
 Based on the attached character sprite.
 Attack frame 3 of 5, peak impact. Sword slashing across center horizontally.
 Bright slash effect line, dynamic action pose.
-256x256, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 4
@@ -96,7 +96,7 @@ Bright slash effect line, dynamic action pose.
 Based on the attached character sprite.
 Attack frame 4 of 5, follow-through. Sword extended fully left/down.
 Cape flowing, body momentum carrying through.
-256x256, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 5
@@ -105,7 +105,7 @@ Cape flowing, body momentum carrying through.
 Based on the attached character sprite.
 Attack frame 5 of 5, recovery. Sword lowering, body straightening.
 Returning toward idle stance. Cape settling.
-256x256, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## rest 1
@@ -114,7 +114,7 @@ Returning toward idle stance. Cape settling.
 Based on the attached character sprite.
 Rest pose, sitting on the ground cross-legged,
 sword resting across lap, eyes closed, breathing deeply.
-256x256, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## walk 1
@@ -123,7 +123,7 @@ sword resting across lap, eyes closed, breathing deeply.
 Based on the attached character sprite.
 Walk frame 1 of 2, left foot stepping forward.
 Sword held at side, slight forward lean, cape trailing lightly.
-256x256, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## walk 2
@@ -132,7 +132,7 @@ Sword held at side, slight forward lean, cape trailing lightly.
 Based on the attached character sprite.
 Walk frame 2 of 2, right foot stepping forward.
 Sword held at side, body slightly lifted, cape swaying back.
-256x256, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## File Mapping
@@ -161,7 +161,7 @@ Sword held at side, body slightly lifted, cape swaying back.
 # 2. Sync individual frames to Android/iOS
 ./scripts/assets/run.sh scripts/assets/sync_battle_assets.py
 
-# 3. Create sprite sheet (6x2 grid, 256px cells, transparent bg)
+# 3. Create sprite sheet (6x2 grid, 512px cells, transparent bg)
 montage \
   sprite_player_idle_1.png sprite_player_idle_2.png \
   sprite_player_prep_1.png sprite_player_prep_2.png \
@@ -170,7 +170,7 @@ montage \
   sprite_player_attack_5.png \
   sprite_player_walk_1.png sprite_player_walk_2.png \
   sprite_player_rest_1.png \
-  -tile 6x2 -geometry 256x256+0+0 -background none \
+  -tile 6x2 -geometry 512x512+0+0 -background none \
   sprite_player_sheet.png
 
 # 4. Copy sprite sheet to platform asset dirs
@@ -183,7 +183,7 @@ echo '{"images":[{"filename":"sprite_player_sheet.png","idiom":"universal"}]}' >
 ./scripts/assets/run.sh scripts/assets/validate_assets.py
 ```
 
-## Sprite Sheet Layout (6×2, 256px cells)
+## Sprite Sheet Layout (6×2, 512px cells)
 
 ```
 ┌────────┬────────┬────────┬────────┬────────┬────────┐
