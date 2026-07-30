@@ -66,6 +66,9 @@ battle_assets:
     mode: rest
     frame: 1
     required: true
+  - file: sprite_player_sheet.png
+    kind: player_sheet
+    required: true
 
   # --- 背景（bg_dungeon_{dungeon_key}.png） ---
   - file: bg_dungeon_training.png
