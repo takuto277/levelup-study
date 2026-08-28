@@ -42,7 +42,7 @@
       allowLocationSimulation = "YES"
       queueDebuggingEnableBacktraceRecording = "Yes">
       <EnvironmentVariables>
-         <EnvironmentVariable key="LEVELUP_ENV" value="dev" isEnabled="YES"/>
+         <EnvironmentVariable key="LEVELUP_ENV" value="stg" isEnabled="YES"/>
       </EnvironmentVariables>
       <BuildableProductRunnable
          runnableDebuggingMode = "0">
