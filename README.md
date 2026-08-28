@@ -77,3 +77,7 @@ AI 向けの詳細手順: [.cursor/skills/feature-delivery/SKILL.md](.cursor/ski
 - `CLAUDE.md`: Claude Code 用の自動生成ガイド (編集禁止)
 - `docs/`: プロジェクトの設計・計画ドキュメント
 - `scripts/`: 開発用スクリプト（`create-issue.sh`, `feature-start.sh`, `assets/`）
+
+### 環境構成（dev / stg / prod）
+- API (Render) と Supabase は環境ごとに分離しています。詳細は [`backend/RENDER.md`](backend/RENDER.md) を参照。
+- モバイルの接続先（API URL / Supabase / API Key）は `apps/mobile/local.properties` とビルド時の環境変数で切り替えます。キーの一覧は [`apps/mobile/local.properties.example`](apps/mobile/local.properties.example) を参照。

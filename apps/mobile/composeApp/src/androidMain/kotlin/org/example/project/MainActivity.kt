@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
         initializeSessionMode(isDebug)
 
         // DEBUG 環境を復元してから SessionManager を初期化する（Guest Supabase config を正しく紐付けるため）
+        SupabaseConfigSelector.initialize(isDebug)
         if (isDebug) {
             val savedEnv = UserSessionStore.getDebugEnvironment()
             val env = savedEnv?.let { s ->

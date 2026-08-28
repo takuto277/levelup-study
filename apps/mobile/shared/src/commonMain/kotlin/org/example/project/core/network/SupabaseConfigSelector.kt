@@ -8,12 +8,21 @@ package org.example.project.core.network
 object SupabaseConfigSelector {
 
     /** 現在アクティブな Supabase URL */
-    var currentUrl: String = GENERATED_SUPABASE_URL
+    var currentUrl: String = GENERATED_PROD_SUPABASE_URL
 
     /** 現在アクティブな Supabase anon key */
-    var currentAnonKey: String = GENERATED_SUPABASE_ANON_KEY
+    var currentAnonKey: String = GENERATED_PROD_SUPABASE_ANON_KEY
 
-    /** 環境キー（dev/stg）に基づいて Supabase 設定を切り替える */
+    /**
+     * 現在のビルド種別に応じた初期化。
+     * Release ビルドでは常に本番 Supabase を使用する。
+     */
+    fun initialize(isDebug: Boolean) {
+        currentUrl = if (isDebug) GENERATED_SUPABASE_URL else GENERATED_PROD_SUPABASE_URL
+        currentAnonKey = if (isDebug) GENERATED_SUPABASE_ANON_KEY else GENERATED_PROD_SUPABASE_ANON_KEY
+    }
+
+    /** 環境キー（dev/stg）に基づいて Supabase 設定を切り替える（デバッグビルド用） */
     fun selectForEnvironment(envName: String) {
         when (envName.lowercase()) {
             "stg" -> {
