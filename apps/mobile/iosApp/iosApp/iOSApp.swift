@@ -22,7 +22,7 @@ struct iOSApp: App {
         } else {
             resolvedEnv = savedEnv ?? "dev"
         }
-        UserSessionStore.shared.setDebugEnvironment(resolvedEnv)
+        UserSessionStore.shared.setDebugEnvironment(env: resolvedEnv)
         initializeEnvironment(resolvedEnv)
         // Guest Session を初期化（Release では必須、Debug Guest 時も実行）
         KoinHelperKt.initializeSessionManagerAsync(isDebug: isDebugBuild)
