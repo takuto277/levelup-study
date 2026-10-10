@@ -11,8 +11,12 @@ val generateLevelupClientApiKey = tasks.register("generateLevelupClientApiKey") 
     notCompatibleWithConfigurationCache("Reads local.properties / env at execution time to emit Kotlin source")
     val outDir = layout.buildDirectory.dir("generated/sources/levelupApiKey/commonMain/kotlin")
     val localProperties = rootProject.layout.projectDirectory.file("local.properties")
-    // local.properties を変更したのにタスクが UP-TO-DATE のままだと api.key / dev.jwt が反映されない
-    inputs.file(localProperties).optional()
+    // local.properties を変更したのにタスクが UP-TO-DATE のままだと api.key / dev.jwt が反映されない。
+    // iOS ビルドなど local.properties が無い環境では file().optional() でも必須扱いになるため、
+    // 存在する場合のみ入力として登録する。
+    if (localProperties.asFile.isFile) {
+        inputs.file(localProperties)
+    }
     inputs.property("LEVELUP_API_KEY", providers.environmentVariable("LEVELUP_API_KEY").orElse(""))
         .optional(true)
     inputs.property("LEVELUP_DEV_JWT", providers.environmentVariable("LEVELUP_DEV_JWT").orElse(""))
@@ -26,6 +30,10 @@ val generateLevelupClientApiKey = tasks.register("generateLevelupClientApiKey") 
     inputs.property("LEVELUP_STG_SUPABASE_URL", providers.environmentVariable("LEVELUP_STG_SUPABASE_URL").orElse(""))
         .optional(true)
     inputs.property("LEVELUP_STG_SUPABASE_ANON_KEY", providers.environmentVariable("LEVELUP_STG_SUPABASE_ANON_KEY").orElse(""))
+        .optional(true)
+    inputs.property("LEVELUP_PROD_SUPABASE_URL", providers.environmentVariable("LEVELUP_PROD_SUPABASE_URL").orElse(""))
+        .optional(true)
+    inputs.property("LEVELUP_PROD_SUPABASE_ANON_KEY", providers.environmentVariable("LEVELUP_PROD_SUPABASE_ANON_KEY").orElse(""))
         .optional(true)
     outputs.dir(outDir)
     doLast {
@@ -81,17 +89,17 @@ val generateLevelupClientApiKey = tasks.register("generateLevelupClientApiKey") 
         val escapedStgJwt = escapeKotlinStringLiteral(stgDevJwt)
 
         val supabaseUrlFromEnv = System.getenv("LEVELUP_SUPABASE_URL")?.trim().orEmpty()
-        val supabaseUrlRaw = supabaseUrlFromEnv.ifBlank {
-            props.getProperty("supabase.url")?.trim().orEmpty()
-        }
-        val supabaseUrl = normalizeApiKey(supabaseUrlRaw)
+        // dev 用。旧キー supabase.url もフォールバックとして受け付ける。
+        val devSupabaseUrl = props.getProperty("dev.supabase.url")?.trim().orEmpty()
+        val legacySupabaseUrl = props.getProperty("supabase.url")?.trim().orEmpty()
+        val supabaseUrl = normalizeApiKey(supabaseUrlFromEnv.ifBlank { devSupabaseUrl.ifBlank { legacySupabaseUrl } })
         val escapedSupabaseUrl = escapeKotlinStringLiteral(supabaseUrl)
 
         val supabaseAnonKeyFromEnv = System.getenv("LEVELUP_SUPABASE_ANON_KEY")?.trim().orEmpty()
-        val supabaseAnonKeyRaw = supabaseAnonKeyFromEnv.ifBlank {
-            props.getProperty("supabase.anon.key")?.trim().orEmpty()
-        }
-        val supabaseAnonKey = normalizeApiKey(supabaseAnonKeyRaw)
+        // dev 用。旧キー supabase.anon.key もフォールバックとして受け付ける。
+        val devSupabaseAnonKey = props.getProperty("dev.supabase.anon.key")?.trim().orEmpty()
+        val legacySupabaseAnonKey = props.getProperty("supabase.anon.key")?.trim().orEmpty()
+        val supabaseAnonKey = normalizeApiKey(supabaseAnonKeyFromEnv.ifBlank { devSupabaseAnonKey.ifBlank { legacySupabaseAnonKey } })
         val escapedSupabaseAnonKey = escapeKotlinStringLiteral(supabaseAnonKey)
 
         val stgSupabaseUrlFromEnv = System.getenv("LEVELUP_STG_SUPABASE_URL")?.trim().orEmpty()
@@ -107,6 +115,20 @@ val generateLevelupClientApiKey = tasks.register("generateLevelupClientApiKey") 
         }
         val stgSupabaseAnonKey = normalizeApiKey(stgSupabaseAnonKeyRaw)
         val escapedStgSupabaseAnonKey = escapeKotlinStringLiteral(stgSupabaseAnonKey)
+
+        val prodSupabaseUrlFromEnv = System.getenv("LEVELUP_PROD_SUPABASE_URL")?.trim().orEmpty()
+        val prodSupabaseUrlRaw = prodSupabaseUrlFromEnv.ifBlank {
+            props.getProperty("prod.supabase.url")?.trim().orEmpty()
+        }
+        val prodSupabaseUrl = normalizeApiKey(prodSupabaseUrlRaw)
+        val escapedProdSupabaseUrl = escapeKotlinStringLiteral(prodSupabaseUrl)
+
+        val prodSupabaseAnonKeyFromEnv = System.getenv("LEVELUP_PROD_SUPABASE_ANON_KEY")?.trim().orEmpty()
+        val prodSupabaseAnonKeyRaw = prodSupabaseAnonKeyFromEnv.ifBlank {
+            props.getProperty("prod.supabase.anon.key")?.trim().orEmpty()
+        }
+        val prodSupabaseAnonKey = normalizeApiKey(prodSupabaseAnonKeyRaw)
+        val escapedProdSupabaseAnonKey = escapeKotlinStringLiteral(prodSupabaseAnonKey)
 
         val file = outDir.get().asFile.resolve("org/example/project/core/network/GeneratedApiKey.kt")
         file.parentFile.mkdirs()
@@ -134,12 +156,18 @@ val generateLevelupClientApiKey = tasks.register("generateLevelupClientApiKey") 
              * [GENERATED_SUPABASE_URL] / [GENERATED_SUPABASE_ANON_KEY]
              * Guest Session（Supabase Anonymous Sign-In）用。dev / デフォルト環境用。
              * 優先: 環境変数 `LEVELUP_SUPABASE_URL` / `LEVELUP_SUPABASE_ANON_KEY`、
-             * 次に local.properties の `supabase.url` / `supabase.anon.key`。
+             * 次に local.properties の `dev.supabase.url` / `dev.supabase.anon.key`。
+             * （旧キー `supabase.url` / `supabase.anon.key` もフォールバックとして使用可）
              *
              * [GENERATED_STG_SUPABASE_URL] / [GENERATED_STG_SUPABASE_ANON_KEY]
              * Guest Session（Supabase Anonymous Sign-In）用。stg 環境切替時に使用。
              * 優先: 環境変数 `LEVELUP_STG_SUPABASE_URL` / `LEVELUP_STG_SUPABASE_ANON_KEY`、
              * 次に local.properties の `stg.supabase.url` / `stg.supabase.anon.key`。
+             *
+             * [GENERATED_PROD_SUPABASE_URL] / [GENERATED_PROD_SUPABASE_ANON_KEY]
+             * Guest Session（Supabase Anonymous Sign-In）用。本番（Release）ビルドで使用。
+             * 優先: 環境変数 `LEVELUP_PROD_SUPABASE_URL` / `LEVELUP_PROD_SUPABASE_ANON_KEY`、
+             * 次に local.properties の `prod.supabase.url` / `prod.supabase.anon.key`。
              */
             internal const val GENERATED_CLIENT_API_KEY: String = "$escaped"
 
@@ -154,6 +182,10 @@ val generateLevelupClientApiKey = tasks.register("generateLevelupClientApiKey") 
             internal const val GENERATED_STG_SUPABASE_URL: String = "$escapedStgSupabaseUrl"
 
             internal const val GENERATED_STG_SUPABASE_ANON_KEY: String = "$escapedStgSupabaseAnonKey"
+
+            internal const val GENERATED_PROD_SUPABASE_URL: String = "$escapedProdSupabaseUrl"
+
+            internal const val GENERATED_PROD_SUPABASE_ANON_KEY: String = "$escapedProdSupabaseAnonKey"
             """.trimIndent() + "\n",
         )
     }
