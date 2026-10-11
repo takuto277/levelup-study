@@ -9,6 +9,7 @@ from the source images.
 Usage:
   ./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py
   ./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py --kind enemy
+  ./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py --kind character
   ./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py --kind all
   ./scripts/assets/run.sh scripts/assets/sync_battle_assets.py
   ./scripts/assets/run.sh scripts/assets/validate_assets.py
@@ -27,6 +28,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib.manifest import SOURCE_DIR, load_manifest  # noqa: E402
 
+
+REPO_ROOT = SOURCE_DIR.parents[3]
+MASTER_CHARACTER_DIR = REPO_ROOT / "backend/assets/master/source/characters"
 
 DEFAULT_TOLERANCE = 28
 DEFAULT_FEATHER = 10
@@ -137,7 +141,11 @@ def transparentize(
         image.save(path)
 
     action = "would update" if dry_run else "updated"
-    print(f"{action} {path.relative_to(SOURCE_DIR.parent)} bg={bg_color} pixels={len(mask)}")
+    try:
+        rel = path.relative_to(REPO_ROOT)
+    except ValueError:
+        rel = path.name
+    print(f"{action} {rel} bg={bg_color} pixels={len(mask)}")
     return changed
 
 
@@ -166,17 +174,37 @@ def collect_enemy_sprite_files() -> list[Path]:
     return sorted(files)
 
 
+def collect_character_files() -> list[Path]:
+    """Master character portraits (backend/assets/master/source/characters/)."""
+    if not MASTER_CHARACTER_DIR.is_dir():
+        return []
+    files = [
+        p
+        for p in MASTER_CHARACTER_DIR.iterdir()
+        if p.is_file() and p.suffix.lower() in {".png", ".webp"}
+    ]
+    return sorted(files)
+
+
 def collect_sprite_files(kind: str) -> list[Path]:
     if kind == "player":
         return collect_player_sprite_files()
     if kind == "enemy":
         return collect_enemy_sprite_files()
-    return sorted(set(collect_player_sprite_files() + collect_enemy_sprite_files()))
+    if kind == "character":
+        return collect_character_files()
+    return sorted(
+        set(
+            collect_player_sprite_files()
+            + collect_enemy_sprite_files()
+            + collect_character_files()
+        )
+    )
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Make sprite backgrounds transparent")
-    parser.add_argument("--kind", choices=["player", "enemy", "all"], default="all",
+    parser.add_argument("--kind", choices=["player", "enemy", "character", "all"], default="all",
                         help="Sprite kind to process (default: all)")
     parser.add_argument("--tolerance", type=int, default=DEFAULT_TOLERANCE)
     parser.add_argument("--feather", type=int, default=DEFAULT_FEATHER)
