@@ -30,6 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import org.example.project.components.PlayerSprite
 import org.example.project.components.PlayerSpriteMode
 import org.example.project.components.hasPartyPlayerSprite
@@ -58,16 +61,24 @@ private fun rarityColor(rarity: Int): Color = when (rarity) {
     else -> Color(0xFF94A3B8)
 }
 
-/** とりあえず編成画面のキャラ絵はユーザー（冒険者）スプライトに統一 */
+/** キャラ絵。imageUrl があればそれを表示し、無ければ冒険者スプライトにフォールバック */
 @Composable
 private fun PartyPlayerAvatar(
     size: Dp,
+    imageUrl: String? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val hasSprite = remember { hasPartyPlayerSprite(context) }
     Box(modifier = modifier.size(size), contentAlignment = Alignment.Center) {
-        if (hasSprite) {
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = ImageRequest.Builder(context).data(imageUrl).crossfade(true).build(),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (hasSprite) {
             PlayerSprite(
                 mode = PlayerSpriteMode.Idle,
                 size = size,
@@ -256,7 +267,7 @@ fun PartyScreenView() {
                                     }
                                     .padding(vertical = 12.dp)
                             ) {
-                                PartyPlayerAvatar(size = 44.dp)
+                                PartyPlayerAvatar(size = 44.dp, imageUrl = master.imageUrl)
                                 Text(master.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                                 Text("Lv.${char.level}", fontSize = 11.sp, color = rarityColor(master.rarity))
                             }
@@ -345,7 +356,7 @@ private fun MainCharacterSection(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        PartyPlayerAvatar(size = 96.dp)
+                        PartyPlayerAvatar(size = 96.dp, imageUrl = master.imageUrl)
                     }
 
                     Spacer(modifier = Modifier.width(20.dp))
@@ -511,7 +522,7 @@ private fun PartySlotCard(
                     }
                 }
                 Spacer(modifier = Modifier.height(2.dp))
-                PartyPlayerAvatar(size = 36.dp)
+                PartyPlayerAvatar(size = 36.dp, imageUrl = master?.imageUrl)
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     master?.name ?: "",
@@ -674,7 +685,7 @@ private fun CharacterGridCard(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    PartyPlayerAvatar(size = 56.dp)
+                    PartyPlayerAvatar(size = 56.dp, imageUrl = master.imageUrl)
                     Spacer(modifier = Modifier.height(2.dp))
                     Row {
                         repeat(master.rarity) {
@@ -826,7 +837,7 @@ private fun CharacterDetailScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        PartyPlayerAvatar(size = 112.dp)
+                        PartyPlayerAvatar(size = 112.dp, imageUrl = master.imageUrl)
                         Spacer(modifier = Modifier.height(8.dp))
                         Row {
                             repeat(master.rarity) { Text("⭐", fontSize = 16.sp) }
