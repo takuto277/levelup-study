@@ -12,7 +12,7 @@ MIGRATE_IMAGE ?= migrate/migrate:v4.18.2
 # Docker からホストの Postgres へ（Linux は host-gateway で host.docker.internal を解決）
 MIGRATE_DATABASE_URL ?= postgres://postgres:postgres@host.docker.internal:5432/levelup_study?sslmode=disable
 
-.PHONY: help setup run test build lint db-up db-down db-reset env migrate-up migrate-down migrate-create migrate-version seed seed-remote seed-stg seed-prod db-fresh mint-dev-jwt master-images-validate master-images-upload master-images-upload-dev master-images-upload-stg master-images-upload-prod
+.PHONY: help setup run test build lint db-up db-down db-reset env migrate-up migrate-down migrate-create migrate-version seed seed-remote seed-stg seed-prod db-fresh mint-dev-jwt master-images-validate master-images-upload master-images-upload-dev master-images-upload-stg master-images-upload-prod master-images-upload-storage-dev master-images-upload-storage-stg master-images-upload-storage-prod
 
 # --- ヘルプ ---
 help: ## このヘルプを表示
@@ -170,6 +170,22 @@ master-images-upload-prod: ## prod（PROD_SUPABASE_* + PROD_DATABASE_URL）※ C
 		exit 1; \
 	fi
 	@../scripts/master-images/run.sh ../scripts/master-images/upload.py --env prod
+
+# --- マスタ画像（Storage のみ・DB 更新なし）---
+# 複数フレームのキャラ画像など m_* に 1:1 対応しない画像用。DIR / PREFIX 必須。
+master-images-upload-storage-dev: ## dev Storage へアップ（DB更新なし。DIR=, PREFIX=）
+	@../scripts/master-images/run.sh ../scripts/master-images/upload_storage.py --env dev --dir "$(DIR)" --prefix "$(PREFIX)"
+
+master-images-upload-storage-stg: ## stg Storage へアップ（DB更新なし。DIR=, PREFIX=）
+	@../scripts/master-images/run.sh ../scripts/master-images/upload_storage.py --env stg --dir "$(DIR)" --prefix "$(PREFIX)"
+
+master-images-upload-storage-prod: ## prod Storage へアップ（DB更新なし）※ CONFIRM_PROD_UPLOAD=yes 必須
+	@if [ "$(CONFIRM_PROD_UPLOAD)" != "yes" ]; then \
+		echo "❌ 本番 (prod) の Storage を更新します。"; \
+		echo "   実行するには CONFIRM_PROD_UPLOAD=yes make master-images-upload-storage-prod DIR=... PREFIX=... としてください。"; \
+		exit 1; \
+	fi
+	@../scripts/master-images/run.sh ../scripts/master-images/upload_storage.py --env prod --dir "$(DIR)" --prefix "$(PREFIX)"
 
 # --- コード品質 ---
 lint: ## go vet を実行

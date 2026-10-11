@@ -61,16 +61,42 @@ def parse_monster_slugs_from_seed() -> list[str]:
     return slugs
 
 
-def collect_managed_filenames(manifest: dict) -> set[str]:
-    """manifest から管理対象のファイル名一覧を収集する。"""
-    names: set[str] = set()
+# 対応画像拡張子（優先順: webp → png）。ソース側の拡張子で同期する。
+IMAGE_EXTS = (".webp", ".png")
+
+
+def resolve_source_file(filename: str) -> Path | None:
+    """source/ からファイルを解決する。宣言と拡張子が違っても（.webp/.png）探す。"""
+    declared = SOURCE_DIR / filename
+    if declared.is_file():
+        return declared
+    stem = Path(filename).stem
+    for ext in IMAGE_EXTS:
+        cand = SOURCE_DIR / f"{stem}{ext}"
+        if cand.is_file():
+            return cand
+    return None
+
+
+def find_image_with_ext(directory: Path, stem: str) -> Path | None:
+    """ディレクトリから stem + 対応拡張子の画像を返す。"""
+    for ext in IMAGE_EXTS:
+        cand = directory / f"{stem}{ext}"
+        if cand.is_file():
+            return cand
+    return None
+
+
+def collect_managed_stems(manifest: dict) -> set[str]:
+    """manifest から管理対象ファイル名（拡張子なし）を収集する。"""
+    stems: set[str] = set()
     for entry in manifest.get("battle_assets", []):
         name = entry.get("file")
         if name:
-            names.add(name)
+            stems.add(Path(name).stem)
     for key_ in manifest.get("enemy_sprite_keys", []):
-        names.add(f"sprite_enemy_{key_}_1.png")
-    return names
+        stems.add(f"sprite_enemy_{key_}_1")
+    return stems
 
 
 def collect_os_exceptions(manifest: dict) -> set[str]:
@@ -83,20 +109,22 @@ def collect_os_exceptions(manifest: dict) -> set[str]:
     return exceptions
 
 
-def enumerate_android_pngs(base_dir: Path) -> dict[str, Path]:
-    """Android res/ 以下の全 PNG ファイルを {相対パス: 絶対パス} で返す。"""
+def enumerate_android_images(base_dir: Path) -> dict[str, Path]:
+    """Android res/ 以下の画像ファイルを {相対パス: 絶対パス} で返す。"""
     result: dict[str, Path] = {}
-    for p in base_dir.rglob("*.png"):
-        result[p.relative_to(base_dir).as_posix()] = p
+    for p in base_dir.rglob("*"):
+        if p.suffix.lower() in IMAGE_EXTS:
+            result[p.relative_to(base_dir).as_posix()] = p
     return result
 
 
 def enumerate_ios_imagesets(assets_dir: Path) -> dict[str, Path]:
-    """iOS Assets.xcassets 以下の全 imageset を {imageset名: PNGパス} で返す。"""
+    """iOS Assets.xcassets 以下の imageset を {imageset名: 画像パス} で返す。"""
     result: dict[str, Path] = {}
     for contents_json in assets_dir.rglob("*.imageset/Contents.json"):
         imageset = contents_json.parent
-        for png in imageset.glob("*.png"):
-            result[imageset.name] = png
-            break  # 最初の PNG のみ
+        for p in sorted(imageset.iterdir()):
+            if p.suffix.lower() in IMAGE_EXTS:
+                result[imageset.name] = p
+                break  # 最初の画像のみ
     return result

@@ -8,7 +8,7 @@ LevelUp Study の **敵・プレイヤー・背景・小物**（バトル同梱�
 
 ```mermaid
 flowchart LR
-  A[PNG を source/ に配置] --> B[manifest.yaml 更新]
+  A[PNG/WebP を source/ に配置] --> B[manifest.yaml 更新]
   B --> C[sync + generate]
   C --> D[validate]
   D --> E[PR]
@@ -30,7 +30,7 @@ flowchart LR
 
 ### 手順
 
-1. **PNG を配置**  
+1. **画像を配置（PNG/WebP。WebP 推奨）**  
    `apps/mobile/assets/source/` に命名規則どおりのファイル名で置く。  
    詳細な命名は [`apps/mobile/SPRITES_README.md`](../../apps/mobile/SPRITES_README.md) を参照。
 
@@ -56,9 +56,11 @@ flowchart LR
 
 | 種別 | サイズ | 形式 |
 |------|--------|------|
-| キャラ・敵 | 512×512px | PNG 透過 |
-| 背景 | 640×360 以上 | PNG |
-| 小物 | 512×512px | PNG 透過 |
+| キャラ・敵 | 512×512px | WebP 透過（推奨） |
+| 背景 | 640×360 以上 | WebP（推奨） |
+| 小物 | 512×512px | WebP 透過（推奨） |
+
+> ソースは PNG/WebP どちらも可（`sync_battle_assets.py` が拡張子を維持して同期）。容量削減のため **WebP 推奨**。同梱スプライト一式を WebP 化した実績では約 92% 削減（71.3MB → 5.6MB）。
 
 ---
 
@@ -116,7 +118,7 @@ PR / push 時に `.github/workflows/assets-ci.yml` が以下を実行します�
 |------|------|
 | validate で Android/iOS 欠落 | `sync_battle_assets.py` を実行 |
 | slug 未マッピング | `manifest.yaml` の `monster_slug_to_sprite_key` を追加 → generate |
-| 絵文字のまま表示 | `source/` に PNG があるか、sync 済みか確認 |
+| 絵文字のまま表示 | `source/` に画像があるか、sync 済みか確認 |
 | zsh で issue 作成失敗 | `--body` はシングルクォート、`--body-file` 推奨 |
 
 ---
