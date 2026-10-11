@@ -16,6 +16,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -88,8 +90,20 @@ fun BattleSprite(
 fun PlayerSprite(
     mode: PlayerSpriteMode,
     size: Dp = 120.dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** 非空ならこの画像（キャラのマスタ image_url）を表示。空なら mode に応じた同梱スプライトへフォールバック */
+    url: String? = null
 ) {
+    if (!url.isNullOrBlank()) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(true).build(),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = modifier.size(size)
+        )
+        return
+    }
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val slideX = remember { Animatable(0f) }
