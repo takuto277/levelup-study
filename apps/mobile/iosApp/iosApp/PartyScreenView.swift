@@ -38,9 +38,25 @@ private func combatAtk(_ c: UserCharacter, _ m: MasterCharacter) -> Int {
 private func combatDef(_ c: UserCharacter, _ m: MasterCharacter) -> Int {
     Int(m.baseDef) + Swift.max(0, Int(c.level) - 1) * 10
 }
-/// 編成画面ではとりあえずユーザー（冒険者）スプライトを表示
+/// キャラ絵。url（マスタ image_url）があればそれを表示し、無ければ冒険者スプライトにフォールバック
 @ViewBuilder
-private func partyPlayerAvatar(size: CGFloat) -> some View {
+private func partyPlayerAvatar(size: CGFloat, url: String? = nil) -> some View {
+    if let s = url, !s.isEmpty, let u = URL(string: s) {
+        AsyncImage(url: u) { phase in
+            switch phase {
+            case .success(let image):
+                image.resizable().scaledToFit().frame(width: size, height: size)
+            default:
+                bundledPlayerAvatar(size: size)
+            }
+        }
+    } else {
+        bundledPlayerAvatar(size: size)
+    }
+}
+
+@ViewBuilder
+private func bundledPlayerAvatar(size: CGFloat) -> some View {
     if UIImage(named: "sprite_player_idle_1") != nil {
         Image("sprite_player_idle_1")
             .resizable()
@@ -166,7 +182,7 @@ struct PartyScreenView: View {
                 HStack(spacing: 18) {
                     ZStack {
                         Circle().fill(rarityColor(Int(m.rarity)).opacity(0.2)).frame(width: 90, height: 90)
-                        partyPlayerAvatar(size: 80)
+                        partyPlayerAvatar(size: 80, url: m.imageUrl)
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 2) { ForEach(0..<Int(m.rarity), id: \.self) { _ in Text("⭐").font(.system(size: 12)) } }
@@ -212,7 +228,7 @@ struct PartyScreenView: View {
                     Button(action: { holder.viewModel.onIntent(intent: PartyIntentSelectSlot(slotPosition: Int32(slot))) }) {
                         VStack(spacing: 4) {
                             if let uc = partySlot?.userCharacter, let m = uc.character {
-                                partyPlayerAvatar(size: 34)
+                                partyPlayerAvatar(size: 34, url: m.imageUrl)
                                 Text(m.name).font(.system(size: 9, weight: .bold)).foregroundColor(textW).lineLimit(1)
                                 Text("Lv.\(uc.level)").font(.system(size: 9)).foregroundColor(rarityColor(Int(m.rarity)))
                             } else {
@@ -277,7 +293,7 @@ struct PartyScreenView: View {
                     }
                 }) {
                     VStack(spacing: 0) {
-                        VStack(spacing: 4) { partyPlayerAvatar(size: 44); HStack(spacing: 1) { ForEach(0..<Int(m.rarity), id: \.self) { _ in Text("⭐").font(.system(size: 7)) } } }
+                        VStack(spacing: 4) { partyPlayerAvatar(size: 44, url: m.imageUrl); HStack(spacing: 1) { ForEach(0..<Int(m.rarity), id: \.self) { _ in Text("⭐").font(.system(size: 7)) } } }
                             .frame(maxWidth: .infinity).padding(.vertical, 10).background(rarityColor(Int(m.rarity)).opacity(0.1))
                         VStack(spacing: 2) {
                             Text(m.name).font(.system(size: 11, weight: .bold)).foregroundColor(textW).lineLimit(1)
@@ -301,7 +317,7 @@ struct PartyScreenView: View {
                         ForEach(uiState.ownedCharacters, id: \.id) { c in
                             let m = c.character!
                             Button(action: { holder.viewModel.onIntent(intent: PartyIntentAssignCharacter(slotPosition: 1, userCharacterId: c.id)); showPicker = false }) {
-                                VStack(spacing: 4) { partyPlayerAvatar(size: 40); Text(m.name).font(.system(size: 11, weight: .bold)).foregroundColor(textW); Text("Lv.\(c.level)").font(.system(size: 10)).foregroundColor(rarityColor(Int(m.rarity))) }
+                                VStack(spacing: 4) { partyPlayerAvatar(size: 40, url: m.imageUrl); Text(m.name).font(.system(size: 11, weight: .bold)).foregroundColor(textW); Text("Lv.\(c.level)").font(.system(size: 10)).foregroundColor(rarityColor(Int(m.rarity))) }
                                     .frame(maxWidth: .infinity).padding(.vertical, 10).background(bgSurface).cornerRadius(12)
                             }.buttonStyle(.plain)
                         }
@@ -361,7 +377,7 @@ private struct CharacterDetailFullScreen: View {
         return ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 14) {
                 VStack(spacing: 6) {
-                    partyPlayerAvatar(size: 100)
+                    partyPlayerAvatar(size: 100, url: m.imageUrl)
                     HStack(spacing: 2) { ForEach(0..<Int(m.rarity), id: \.self) { _ in Text("⭐").font(.system(size: 14)) } }
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 18)
