@@ -47,6 +47,7 @@ data class GachaPullResultResponse(
     @SerialName("item_id") val itemId: String,
     val name: String = "",
     val rarity: Int = 0,
+    @SerialName("image_url") val imageUrl: String = "",
     @SerialName("is_new") val isNew: Boolean = false,
     @SerialName("pity_count") val pityCount: Int = 0
 )
@@ -129,6 +130,7 @@ fun GachaPullResultResponse.toDomain(): GachaResult = GachaResult(
     resultItemId = itemId,
     name = name,
     rarity = rarity,
+    imageUrl = imageUrl,
     pityCount = pityCount,
     isNew = isNew,
     createdAt = ""

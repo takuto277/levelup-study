@@ -88,6 +88,7 @@ private struct ResultItem: Identifiable {
     let name: String
     let rarity: Int
     let type: ItemType
+    let imageUrl: String
     let isNew: Bool
 
     var rarityColor: Color {
@@ -224,7 +225,7 @@ private class GachaStore: ObservableObject {
         return ResultItem(
             id: r.id, name: r.name,
             rarity: Int(r.rarity),
-            type: it, isNew: r.isNew
+            type: it, imageUrl: r.imageUrl, isNew: r.isNew
         )
     }
 }
@@ -990,7 +991,18 @@ private struct SingleResultCard: View {
                         )
                     )
                     .frame(width: 240, height: 240)
-                Image(systemName: item.type.icon).font(.system(size: 60, weight: .light)).foregroundColor(.white)
+                if !item.imageUrl.isEmpty, let url = URL(string: item.imageUrl) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().scaledToFit().frame(width: 200, height: 200)
+                        default:
+                            Image(systemName: item.type.icon).font(.system(size: 60, weight: .light)).foregroundColor(.white)
+                        }
+                    }
+                } else {
+                    Image(systemName: item.type.icon).font(.system(size: 60, weight: .light)).foregroundColor(.white)
+                }
                 if item.isNew {
                     Text("NEW").font(.system(size: 11, weight: .black)).foregroundColor(.white)
                         .padding(.horizontal, 10).padding(.vertical, 4)
@@ -1033,7 +1045,18 @@ private struct MultiResultCard: View {
                         )
                     )
                     .frame(width: 70, height: 70)
-                Image(systemName: item.type.icon).font(.system(size: 28, weight: .light)).foregroundColor(.white)
+                if !item.imageUrl.isEmpty, let url = URL(string: item.imageUrl) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().scaledToFill().frame(width: 56, height: 56).clipShape(Circle())
+                        default:
+                            Image(systemName: item.type.icon).font(.system(size: 28, weight: .light)).foregroundColor(.white)
+                        }
+                    }
+                } else {
+                    Image(systemName: item.type.icon).font(.system(size: 28, weight: .light)).foregroundColor(.white)
+                }
                 if item.isNew {
                     Text("NEW").font(.system(size: 8, weight: .black)).foregroundColor(.white)
                         .padding(.horizontal, 5).padding(.vertical, 2)

@@ -32,6 +32,7 @@ type GachaPullResult struct {
 	ItemID     uuid.UUID `json:"item_id"`     // マスタID
 	Name       string    `json:"name"`
 	Rarity     int       `json:"rarity"`
+	ImageURL   string    `json:"image_url"`  // 立ち絵URL（空ならクライアントはアイコンfallback）
 	IsNew      bool      `json:"is_new"`     // 新規入手か
 	PityCount  int       `json:"pity_count"` // 天井カウント
 }
@@ -171,6 +172,7 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 			// 名前とレアリティを取得
 			name := ""
 			rarity := 0
+			imageURL := ""
 			isNew := false
 
 			if entry.ResultType == "character" {
@@ -178,6 +180,7 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 				if mc != nil {
 					name = mc.Name
 					rarity = mc.Rarity
+					imageURL = mc.ImageURL
 				}
 				if existing, ok := charMap[entry.ItemID]; ok {
 					if existing.BreakthroughLevel < maxBreakthrough {
@@ -224,6 +227,7 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 				if mc != nil {
 					name = mc.Name
 					rarity = mc.Rarity
+					imageURL = mc.ImageURL
 				}
 				if existing, ok := s.costumeRepo.GetByUserAndCostume(userID, entry.ItemID); ok == nil && existing != nil {
 					compStones := 15
@@ -246,6 +250,7 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 				if mw != nil {
 					name = mw.Name
 					rarity = mw.Rarity
+					imageURL = mw.ImageURL
 				}
 				if existing, ok := weaponMap[entry.ItemID]; ok {
 					if existing.RefinementLevel < maxRefinement {
@@ -310,6 +315,7 @@ func (s *GachaService) Pull(userID uuid.UUID, req GachaPullRequest) (*GachaPullR
 				ItemID:     entry.ItemID,
 				Name:       name,
 				Rarity:     rarity,
+				ImageURL:   imageURL,
 				IsNew:      isNew,
 				PityCount:  currentPity,
 			})
