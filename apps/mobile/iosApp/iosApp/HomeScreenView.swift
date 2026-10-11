@@ -280,7 +280,14 @@ struct HomeScreenView: View {
                 }
                 Spacer().frame(height: 6)
                 Group {
-                    if UIImage(named: "sprite_player_idle_1") != nil {
+                    if let urlStr = homeState?.mainCharacter?.character?.imageUrl, !urlStr.isEmpty, let u = URL(string: urlStr) {
+                        AsyncImage(url: u) { phase in
+                            switch phase {
+                            case .success(let img): img.resizable().scaledToFit().frame(width: 160, height: 160)
+                            default: IdleSpriteView().frame(width: 160, height: 160)
+                            }
+                        }
+                    } else if UIImage(named: "sprite_player_idle_1") != nil {
                         IdleSpriteView()
                             .frame(width: 160, height: 160)
                     } else {

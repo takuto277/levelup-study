@@ -235,10 +235,12 @@ private fun HomeCharacterHero(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.clickable(onClick = onTapCharacter)
             ) {
-            if (hasSprite) {
+            val mainImageUrl = homeState.mainCharacter?.character?.imageUrl
+            if (hasSprite || !mainImageUrl.isNullOrBlank()) {
                 PlayerSprite(
                     mode = PlayerSpriteMode.Idle,
-                    size = 160.dp
+                    size = 160.dp,
+                    url = mainImageUrl
                 )
             } else {
                 Text("🧙‍♂️", fontSize = 100.sp)

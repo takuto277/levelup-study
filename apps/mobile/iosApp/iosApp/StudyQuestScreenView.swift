@@ -23,10 +23,16 @@ private func hasPlayerWalkSprites() -> Bool {
     !playerWalkFrameNames().isEmpty
 }
 
+/// 選択中キャラのマスタ画像URL（StudyQuestScreenView から environment で流す）
+private struct PartyLeadImageUrlKey: EnvironmentKey { static let defaultValue: String = "" }
+private extension EnvironmentValues { var partyLeadImageUrl: String { get { self[PartyLeadImageUrlKey.self] } set { self[PartyLeadImageUrlKey.self] = newValue } } }
+
 /// アニメーション付きプレイヤースプライト
 private struct PlayerSpriteView: View {
     let mode: SpriteMode
     let size: CGFloat
+
+    @Environment(\.partyLeadImageUrl) private var partyLeadImageUrl
 
     enum SpriteMode {
         case idle
@@ -59,6 +65,20 @@ private struct PlayerSpriteView: View {
     }
 
     var body: some View {
+        if !partyLeadImageUrl.isEmpty, let u = URL(string: partyLeadImageUrl) {
+            AsyncImage(url: u) { phase in
+                switch phase {
+                case .success(let image): image.resizable().scaledToFit().frame(width: size, height: size)
+                default: bundledBody
+                }
+            }
+        } else {
+            bundledBody
+        }
+    }
+
+    @ViewBuilder
+    private var bundledBody: some View {
         let frames = collectFrames(prefix: prefix)
         if frames.isEmpty {
             Text("🧙‍♂️")
@@ -208,6 +228,7 @@ struct AnimatedSpriteView: View {
     let interval: TimeInterval
     let size: CGFloat
 
+    @Environment(\.partyLeadImageUrl) private var partyLeadImageUrl
     @State private var currentFrame = 0
 
     init(frames: [String], interval: TimeInterval = 0.2, size: CGFloat = 120) {
@@ -218,12 +239,17 @@ struct AnimatedSpriteView: View {
 
     var body: some View {
         Group {
-            if !frames.isEmpty {
-                Image(frames[currentFrame])
-                    .resizable()
-                    .interpolation(.none)
-                    .scaledToFit()
-                    .frame(width: size, height: size, alignment: .bottom)
+            if !partyLeadImageUrl.isEmpty, let u = URL(string: partyLeadImageUrl) {
+                AsyncImage(url: u) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFit().frame(width: size, height: size, alignment: .bottom)
+                    default:
+                        framesImage
+                    }
+                }
+            } else {
+                framesImage
             }
         }
         .onAppear {
@@ -231,6 +257,17 @@ struct AnimatedSpriteView: View {
             Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
                 currentFrame = (currentFrame + 1) % frames.count
             }
+        }
+    }
+
+    @ViewBuilder
+    private var framesImage: some View {
+        if !frames.isEmpty {
+            Image(frames[currentFrame])
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: size, height: size, alignment: .bottom)
         }
     }
 }
@@ -696,6 +733,7 @@ struct StudyQuestScreenView: View {
             bgColor.ignoresSafeArea()
             mainQuestView
         }
+        .environment(\.partyLeadImageUrl, uiState.partyLeadImageUrl)
         .onAppear {
             if !didStartQuest {
                 didStartQuest = true

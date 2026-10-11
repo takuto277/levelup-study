@@ -391,7 +391,7 @@ private fun MainQuestView(
                         }
                     }
                     if (isBreak) {
-                        BreakScene(restFlicker)
+                        BreakScene(restFlicker, uiState.partyLeadImageUrl)
                     } else {
                         AdventureScene(
                             phase = phase,
@@ -407,6 +407,7 @@ private fun MainQuestView(
                             currentFloor = uiState.currentFloor,
                             totalFloors = uiState.totalFloors,
                             adventurePhaseTick = uiState.adventurePhaseTick,
+                            playerImageUrl = uiState.partyLeadImageUrl,
                             walkOffset = walkOffset,
                             walkBounce = walkBounce,
                             pulseAlpha = pulseAlpha
@@ -755,7 +756,8 @@ private fun trainingPlayerMode(phaseTick: Long): PlayerSpriteMode =
 @Composable
 private fun TrainingGroundLayer(
     adventurePhaseTick: Long,
-    hasPlayerSprite: Boolean
+    hasPlayerSprite: Boolean,
+    playerImageUrl: String
 ) {
     val context = LocalContext.current
     val barrelResId = remember { trainingBarrelDrawableId(context) }
@@ -777,6 +779,7 @@ private fun TrainingGroundLayer(
                 PlayerSprite(
                     mode = trainingPlayerMode(adventurePhaseTick),
                     size = ConfrontPlayerSize,
+                    url = playerImageUrl,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .offset(x = (-48).dp + if (isStrikeFrame) 8.dp else 0.dp)
@@ -827,6 +830,7 @@ private fun BattleConfrontationLayer(
     syncBob: Boolean,
     adventurePhaseTick: Long,
     hasPlayerSprite: Boolean,
+    playerImageUrl: String,
     hasEnemySprite: Boolean,
     enemySpriteKey: String,
     enemyEmoji: String,
@@ -876,6 +880,7 @@ private fun BattleConfrontationLayer(
                         else -> combatPlayerMode(adventurePhaseTick, lastDamage)
                     },
                     size = ConfrontPlayerSize,
+                    url = playerImageUrl,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .offset(x = playerLeft + if (isAttackPhase && isStriking) 6.dp else 0.dp)
@@ -939,6 +944,7 @@ private fun AdventureScene(
     currentFloor: Int,
     totalFloors: Int,
     adventurePhaseTick: Long,
+    playerImageUrl: String,
     walkOffset: Float,
     walkBounce: Float,
     pulseAlpha: Float
@@ -1035,6 +1041,7 @@ private fun AdventureScene(
                         PlayerSprite(
                             mode = PlayerSpriteMode.Walking,
                             size = 118.dp,
+                            url = playerImageUrl,
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
                                 .padding(start = 16.dp, bottom = AdventureFloorInsetDp)
@@ -1054,7 +1061,8 @@ private fun AdventureScene(
             AdventurePhase.TRAINING -> {
                 TrainingGroundLayer(
                     adventurePhaseTick = adventurePhaseTick,
-                    hasPlayerSprite = hasPlayerSprite
+                    hasPlayerSprite = hasPlayerSprite,
+                    playerImageUrl = playerImageUrl
                 )
             }
 
@@ -1065,6 +1073,7 @@ private fun AdventureScene(
                     syncBob = syncBob,
                     adventurePhaseTick = adventurePhaseTick,
                     hasPlayerSprite = hasPlayerSprite,
+                    playerImageUrl = playerImageUrl,
                     hasEnemySprite = hasEnemySprite,
                     enemySpriteKey = enemySpriteKey,
                     enemyEmoji = enemyEmoji,
@@ -1081,6 +1090,7 @@ private fun AdventureScene(
                     syncBob = syncBob,
                     adventurePhaseTick = adventurePhaseTick,
                     hasPlayerSprite = hasPlayerSprite,
+                    playerImageUrl = playerImageUrl,
                     hasEnemySprite = hasEnemySprite,
                     enemySpriteKey = enemySpriteKey,
                     enemyEmoji = enemyEmoji,
@@ -1104,6 +1114,7 @@ private fun AdventureScene(
                     syncBob = false,
                     adventurePhaseTick = adventurePhaseTick,
                     hasPlayerSprite = hasPlayerSprite,
+                    playerImageUrl = playerImageUrl,
                     hasEnemySprite = hasEnemySprite,
                     enemySpriteKey = enemySpriteKey,
                     enemyEmoji = enemyEmoji,
@@ -1119,7 +1130,7 @@ private fun AdventureScene(
             }
 
             AdventurePhase.RESTING -> {
-                BreakScene(pulseAlpha)
+                BreakScene(pulseAlpha, playerImageUrl)
             }
 
             AdventurePhase.PLAYER_DEAD -> {
@@ -1140,7 +1151,7 @@ private fun AdventureScene(
 }
 
 @Composable
-private fun BreakScene(flickerAlpha: Float) {
+private fun BreakScene(flickerAlpha: Float, playerImageUrl: String = "") {
     val breatheTransition = rememberInfiniteTransition(label = "break_breathe")
     val breatheY by breatheTransition.animateFloat(
         initialValue = 0f,
@@ -1254,6 +1265,7 @@ private fun BreakScene(flickerAlpha: Float) {
                 PlayerSprite(
                     mode = PlayerSpriteMode.Rest,
                     size = 148.dp,
+                    url = playerImageUrl,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .offset(y = breatheY.dp)
