@@ -40,6 +40,7 @@ import org.example.project.features.party.PartyViewModel
 import org.example.project.features.quest.QuestUseCase
 import org.example.project.features.quest.QuestViewModel
 import org.example.project.features.collection.CollectionViewModel
+import org.example.project.features.character.CharacterFrameDownloader
 import org.example.project.features.settings.SettingsViewModel
 import org.example.project.features.study.StudyQuestViewModel
 import org.example.project.features.study.StudyUseCase
@@ -53,6 +54,9 @@ val sharedModule = module {
 
     // ── Network ─────────────────────────────────
     single { ApiClient.create(UserSessionStore.isDebugBuild(), get(), get()) }
+
+    // ── Character アセット（Storage からフレーム取得・保存）──
+    singleOf(::CharacterFrameDownloader)
 
     // ── Session ─────────────────────────────────
     single { SecureSessionStore() }

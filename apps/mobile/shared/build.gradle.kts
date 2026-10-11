@@ -239,6 +239,9 @@ kotlin {
 
                 // Supabase Auth
                 implementation(libs.supabase.auth)
+
+                // File IO（クロスプラットフォーム）
+                implementation(libs.okio)
             }
         }
         androidMain.dependencies {

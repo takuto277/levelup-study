@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import org.example.project.core.storage.AssetStore
+import org.example.project.features.character.CharacterFrames
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -95,6 +97,26 @@ fun PlayerSprite(
     url: String? = null
 ) {
     if (!url.isNullOrBlank()) {
+        val modeName = when (mode) {
+            PlayerSpriteMode.Walking -> "walk"
+            PlayerSpriteMode.Idle -> "idle"
+            PlayerSpriteMode.Prep -> "prep"
+            PlayerSpriteMode.Attack -> "attack"
+            PlayerSpriteMode.Rest -> "rest"
+        }
+        val frames = remember(url, modeName) { CharacterFrames.frameUrls(url, modeName) }
+        if (frames.isNotEmpty()) {
+            val intervalMs = when (mode) {
+                PlayerSpriteMode.Walking -> 320L
+                PlayerSpriteMode.Idle -> 600L
+                PlayerSpriteMode.Prep -> 90L
+                PlayerSpriteMode.Attack -> 90L
+                PlayerSpriteMode.Rest -> 0L
+            }
+            PlayerFrameImage(frames = frames, intervalMs = intervalMs, size = size, modifier = modifier)
+            return
+        }
+        // フレームを導出できない場合は image_url を単体表示
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(true).build(),
             contentDescription = null,
@@ -202,6 +224,36 @@ fun PlayerSprite(
             )
         }
     }
+}
+
+/** キャラのフレーム（リモートURL or ローカル保存ファイル）を mode に応じて再生する。 */
+@Composable
+private fun PlayerFrameImage(
+    frames: List<String>,
+    intervalMs: Long,
+    size: Dp,
+    modifier: Modifier = Modifier
+) {
+    var index by remember(frames) { mutableIntStateOf(0) }
+    if (frames.size > 1 && intervalMs > 0) {
+        LaunchedEffect(frames) {
+            while (true) {
+                delay(intervalMs)
+                index = (index + 1) % frames.size
+            }
+        }
+    }
+    val remote = frames[index.coerceIn(0, frames.lastIndex)]
+    val model: Any = remember(remote) {
+        val key = CharacterFrames.storageKey(remote)
+        if (AssetStore.exists(key)) java.io.File(AssetStore.localPath(key)) else remote
+    }
+    AsyncImage(
+        model = ImageRequest.Builder(LocalContext.current).data(model).crossfade(false).build(),
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = modifier.size(size)
+    )
 }
 
 @Composable

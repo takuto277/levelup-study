@@ -65,7 +65,10 @@ private struct PlayerSpriteView: View {
     }
 
     var body: some View {
-        if !partyLeadImageUrl.isEmpty, let u = URL(string: partyLeadImageUrl) {
+        let frames = characterFrameUrls
+        if !frames.isEmpty {
+            PlayerFrameImage(frames: frames, interval: frameInterval, size: size)
+        } else if !partyLeadImageUrl.isEmpty, let u = URL(string: partyLeadImageUrl) {
             AsyncImage(url: u) { phase in
                 switch phase {
                 case .success(let image): image.resizable().scaledToFit().frame(width: size, height: size)
@@ -74,6 +77,30 @@ private struct PlayerSpriteView: View {
             }
         } else {
             bundledBody
+        }
+    }
+
+    private var modeKey: String {
+        switch mode {
+        case .idle: return "idle"
+        case .prep: return "prep"
+        case .attack: return "attack"
+        case .rest: return "rest"
+        case .walking: return "walk"
+        }
+    }
+
+    private var characterFrameUrls: [String] {
+        guard !partyLeadImageUrl.isEmpty else { return [] }
+        return CharacterFrames.shared.frameUrls(imageUrl: partyLeadImageUrl, mode: modeKey)
+    }
+
+    private var frameInterval: TimeInterval {
+        switch mode {
+        case .idle: return 0.6
+        case .prep, .attack: return 0.09
+        case .walking: return 0.32
+        case .rest: return 0
         }
     }
 
@@ -95,6 +122,39 @@ private struct PlayerSpriteView: View {
                 size: size
             )
         }
+    }
+}
+
+/// キャラのフレーム（ローカル保存ファイル優先、無ければリモートURL）をループ再生
+private struct PlayerFrameImage: View {
+    let frames: [String]
+    let interval: TimeInterval
+    let size: CGFloat
+
+    @State private var currentFrame = 0
+
+    var body: some View {
+        let remote = frames[min(currentFrame, frames.count - 1)]
+        AsyncImage(url: frameURL(remote)) { phase in
+            switch phase {
+            case .success(let image): image.resizable().scaledToFit().frame(width: size, height: size)
+            default: Color.clear.frame(width: size, height: size)
+            }
+        }
+        .onAppear {
+            guard frames.count > 1, interval > 0 else { return }
+            Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+                currentFrame = (currentFrame + 1) % frames.count
+            }
+        }
+    }
+
+    private func frameURL(_ remote: String) -> URL? {
+        let key = CharacterFrames.shared.storageKey(frameUrl: remote)
+        if AssetStore.shared.exists(key: key) {
+            return URL(fileURLWithPath: AssetStore.shared.localPath(key: key))
+        }
+        return URL(string: remote)
     }
 }
 
@@ -238,8 +298,12 @@ struct AnimatedSpriteView: View {
     }
 
     var body: some View {
+        let leadWalkFrames: [String] = partyLeadImageUrl.isEmpty
+            ? [] : CharacterFrames.shared.frameUrls(imageUrl: partyLeadImageUrl, mode: "walk")
         Group {
-            if !partyLeadImageUrl.isEmpty, let u = URL(string: partyLeadImageUrl) {
+            if !leadWalkFrames.isEmpty {
+                PlayerFrameImage(frames: leadWalkFrames, interval: interval > 0 ? interval : 0.32, size: size)
+            } else if !partyLeadImageUrl.isEmpty, let u = URL(string: partyLeadImageUrl) {
                 AsyncImage(url: u) { phase in
                     switch phase {
                     case .success(let image):
