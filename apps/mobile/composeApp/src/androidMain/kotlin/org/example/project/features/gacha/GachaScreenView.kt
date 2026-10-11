@@ -921,7 +921,16 @@ private fun SingleResultCard(item: GachaResultItem) {
                     ), CircleShape
                 )
             )
-            Icon(itemIcon(item.type), null, modifier = Modifier.size(60.dp), tint = Color.White)
+            if (item.imageUrl.isNotBlank()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current).data(item.imageUrl).crossfade(true).build(),
+                    contentDescription = item.name,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(120.dp).clip(RoundedCornerShape(16.dp))
+                )
+            } else {
+                Icon(itemIcon(item.type), null, modifier = Modifier.size(60.dp), tint = Color.White)
+            }
             if (item.isNew) {
                 Text(
                     "NEW", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Color.White,
@@ -959,7 +968,16 @@ private fun MultiResultCard(item: GachaResultItem) {
                     ), CircleShape
                 )
             )
-            Icon(itemIcon(item.type), null, modifier = Modifier.size(24.dp), tint = Color.White)
+            if (item.imageUrl.isNotBlank()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current).data(item.imageUrl).crossfade(true).build(),
+                    contentDescription = item.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(44.dp).clip(CircleShape)
+                )
+            } else {
+                Icon(itemIcon(item.type), null, modifier = Modifier.size(24.dp), tint = Color.White)
+            }
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {

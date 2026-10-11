@@ -69,7 +69,7 @@ INSERT INTO m_study_genres (id, slug, label, emoji, color_hex, sort_order, is_de
 -- ガチャピックアップ等で image_url は開発中は空にし、クライアントは同梱 bg_gacha_banner + スプライト／アイコンで表示
 INSERT INTO m_characters (id, name, rarity, base_hp, base_atk, base_def, image_url, is_active, created_at) VALUES
   ('a0000000-0000-0000-0000-000000000001', '光の勇者アリア',       5, 1500, 420, 300, '',     true, NOW()),
-  ('a0000000-0000-0000-0000-000000000002', '闇の魔王ゼファー',     5, 1800, 480, 250, 'https://placehold.co/200x200/4B0082/FFF?text=Zephyr',   true, NOW()),
+  ('a0000000-0000-0000-0000-000000000002', '青魔導士',             5, 1800, 480, 250, 'https://njjmhkmaxyceplecifwz.supabase.co/storage/v1/object/public/game-assets/master/characters/character_00002_idle_1.webp', true, NOW()),
   ('a0000000-0000-0000-0000-000000000003', '聖女セラフィーナ',     5, 1200, 200, 380, 'https://placehold.co/200x200/FFB6C1/000?text=Seraphina', true, NOW()),
   ('a0000000-0000-0000-0000-000000000004', '竜騎士ドラク',         5, 2000, 400, 350, 'https://placehold.co/200x200/DC143C/FFF?text=Draco',     true, NOW()),
   ('a0000000-0000-0000-0000-000000000005', '叡智の大賢者マーリン', 5, 1100, 500, 200, 'https://placehold.co/200x200/8B5CF6/FFF?text=Merlin',   true, NOW());
@@ -305,40 +305,12 @@ INSERT INTO m_dungeon_stage_enemies (id, stage_id, monster_id, sort_order, count
 -- 5. ガチャバナー（3種）
 --    UUID prefix: f0000000-0000-0000-0000-0000000000xx
 -- ────────────────────────────────────────────────
+-- ★一時テスト用: このキャラバナーは常に 00002（青魔導士）を排出する。検証後に元の排出テーブルへ戻す。
 INSERT INTO m_gacha_banners (id, name, banner_type, start_at, end_at, pity_threshold, rate_table, is_active) VALUES
-  ('f0000000-0000-0000-0000-000000000001', '光の勇者ピックアップ', 'character',
+  ('f0000000-0000-0000-0000-000000000001', '青魔導士ピックアップ', 'character',
    '2026-01-01 00:00:00+00', '2027-12-31 23:59:59+00', 90,
    '[
-     {"item_id":"a0000000-0000-0000-0000-000000000001","result_type":"character","rarity":5,"rate":0.015},
-     {"item_id":"a0000000-0000-0000-0000-000000000002","result_type":"character","rarity":5,"rate":0.005},
-     {"item_id":"a0000000-0000-0000-0000-000000000003","result_type":"character","rarity":5,"rate":0.005},
-     {"item_id":"a0000000-0000-0000-0000-000000000004","result_type":"character","rarity":5,"rate":0.003},
-     {"item_id":"a0000000-0000-0000-0000-000000000005","result_type":"character","rarity":5,"rate":0.002},
-     {"item_id":"a0000000-0000-0000-0000-000000000006","result_type":"character","rarity":4,"rate":0.015},
-     {"item_id":"a0000000-0000-0000-0000-000000000007","result_type":"character","rarity":4,"rate":0.015},
-     {"item_id":"a0000000-0000-0000-0000-000000000008","result_type":"character","rarity":4,"rate":0.015},
-     {"item_id":"a0000000-0000-0000-0000-000000000009","result_type":"character","rarity":4,"rate":0.015},
-     {"item_id":"a0000000-0000-0000-0000-00000000000a","result_type":"character","rarity":4,"rate":0.015},
-     {"item_id":"a0000000-0000-0000-0000-00000000000b","result_type":"character","rarity":4,"rate":0.015},
-     {"item_id":"a0000000-0000-0000-0000-00000000000c","result_type":"character","rarity":4,"rate":0.015},
-     {"item_id":"a0000000-0000-0000-0000-00000000000d","result_type":"character","rarity":4,"rate":0.015},
-     {"item_id":"a0000000-0000-0000-0000-00000000000e","result_type":"character","rarity":4,"rate":0.015},
-     {"item_id":"a0000000-0000-0000-0000-00000000000f","result_type":"character","rarity":4,"rate":0.015},
-     {"item_id":"a0000000-0000-0000-0000-000000000010","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-000000000011","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-000000000012","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-000000000013","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-000000000014","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-000000000015","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-000000000016","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-000000000017","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-000000000018","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-000000000019","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-00000000001a","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-00000000001b","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-00000000001c","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-00000000001d","result_type":"character","rarity":3,"rate":0.054},
-     {"item_id":"a0000000-0000-0000-0000-00000000001e","result_type":"character","rarity":3,"rate":0.054}
+     {"item_id":"a0000000-0000-0000-0000-000000000002","result_type":"character","rarity":5,"rate":1.0}
    ]'::jsonb, true),
 
   ('f0000000-0000-0000-0000-000000000002', '伝説の聖剣ガチャ', 'weapon',

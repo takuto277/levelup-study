@@ -97,6 +97,7 @@ class GachaViewModel(
                         id = result.resultItemId,
                         name = result.name.ifEmpty { result.resultItemId },
                         rarity = result.rarity.takeIf { it > 0 } ?: 3,
+                        imageUrl = result.imageUrl,
                         type = result.resultType,
                         isNew = result.isNew
                     )

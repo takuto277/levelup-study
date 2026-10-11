@@ -52,6 +52,7 @@ data class GachaResult(
     val resultItemId: String,
     val name: String = "",
     val rarity: Int = 0,
+    val imageUrl: String = "",
     val pityCount: Int,
     val isNew: Boolean = true,
     val createdAt: String

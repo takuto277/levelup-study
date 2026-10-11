@@ -70,6 +70,20 @@ LevelUp Study における **召喚バナー**（`m_gacha_banners`）と **キ�
 → 合成ウェイト `0.01 × (1 + 0.5) = 0.015`  
 → その後、プール全体で正規化。
 
+### 2.2 Pull レスポンス
+
+`POST /api/v1/users/{userID}/gacha/pull` の `results[]` は以下を返す:
+
+| フィールド | 説明 |
+|-----------|------|
+| `result_type` | `character` / `weapon` / `costume` |
+| `item_id` | 排出されたマスタID（UUID） |
+| `name` / `rarity` | マスタから解決した表示用の名前・レアリティ |
+| `image_url` | 立ち絵URL（マスタの `image_url` をそのまま返す）。空ならクライアントはアイコンへフォールバック |
+| `is_new` / `pity_count` | 新規入手か / バナー内累計回数 |
+
+画像の**実体は API では返さない**。クライアントは `image_url` を使って Storage から直接取得する（API は URL のみ）。
+
 ---
 
 ## 3. バナー一覧 API
