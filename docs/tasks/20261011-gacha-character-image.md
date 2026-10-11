@@ -51,6 +51,15 @@ cd apps/mobile && ./gradlew :shared:compileKotlinMetadata   # 可能なら
 - [ ] character 00002 を引くと名前＋画像が表示される（画像が無ければアイコンfallback）
 - [ ] 単発・10連の両カードで表示
 
+## テスト用データ（00002）
+
+ガチャで 00002 を必ず表示し画像取得を確認するため、以下を反映（テスト用・検証後に戻す）:
+
+- **Storage**: `master/characters/character_00002_*.webp`（blue mage 12枚）をアップ
+- **m_characters `...0002`**: `闇の魔王ゼファー` → `青魔導士` に変更し、`image_url` を `character_00002_idle_1.webp` の公開URLへ
+- **m_gacha_banners `f...0001`**: 排出テーブルを `...0002` のみ（rate 1.0）にして常に 00002 を排出
+- 変更は `backend/db/seed.sql` と **stg DB** の両方に反映
+
 ## 影響範囲
 
 - backend: `internal/service/gacha_service.go`
