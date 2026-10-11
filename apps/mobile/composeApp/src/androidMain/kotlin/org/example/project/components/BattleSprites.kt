@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -17,6 +19,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.imageLoader
 import coil.request.ImageRequest
 import org.example.project.core.storage.AssetStore
 import org.example.project.features.character.CharacterFrames
@@ -113,7 +116,13 @@ fun PlayerSprite(
                 PlayerSpriteMode.Attack -> 90L
                 PlayerSpriteMode.Rest -> 0L
             }
-            PlayerFrameImage(frames = frames, intervalMs = intervalMs, size = size, modifier = modifier)
+            PlayerFrameImage(
+                frames = frames,
+                intervalMs = intervalMs,
+                size = size,
+                modifier = modifier,
+                oneShot = mode == PlayerSpriteMode.Attack
+            )
             return
         }
         // フレームを導出できない場合は image_url を単体表示
@@ -226,30 +235,48 @@ fun PlayerSprite(
     }
 }
 
-/** キャラのフレーム（リモートURL or ローカル保存ファイル）を mode に応じて再生する。 */
+/** キャラのフレームを一度メモリに読み込んでから mode に応じて再生する（毎フレーム再ロードによるちらつきを防ぐ）。 */
 @Composable
 private fun PlayerFrameImage(
     frames: List<String>,
     intervalMs: Long,
     size: Dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    oneShot: Boolean = false
 ) {
-    var index by remember(frames) { mutableIntStateOf(0) }
-    if (frames.size > 1 && intervalMs > 0) {
-        LaunchedEffect(frames) {
+    val context = LocalContext.current
+    // 先に全フレームを ImageBitmap として読み込み、メモリに保持する
+    val bitmaps by produceState(initialValue = emptyList<ImageBitmap>(), frames) {
+        val loader = context.imageLoader
+        value = frames.mapNotNull { remote ->
+            val key = CharacterFrames.storageKey(remote)
+            val data: Any = if (AssetStore.exists(key)) java.io.File(AssetStore.localPath(key)) else remote
+            runCatching {
+                val drawable = loader.execute(ImageRequest.Builder(context).data(data).build()).drawable
+                (drawable as android.graphics.drawable.BitmapDrawable).bitmap.asImageBitmap()
+            }.getOrNull()
+        }
+    }
+    if (bitmaps.isEmpty()) return
+
+    var index by remember(bitmaps) { mutableIntStateOf(0) }
+    LaunchedEffect(bitmaps) {
+        index = 0
+        if (bitmaps.size <= 1 || intervalMs <= 0) return@LaunchedEffect
+        if (oneShot) {
+            for (i in 1 until bitmaps.size) {
+                delay(intervalMs)
+                index = i
+            }
+        } else {
             while (true) {
                 delay(intervalMs)
-                index = (index + 1) % frames.size
+                index = (index + 1) % bitmaps.size
             }
         }
     }
-    val remote = frames[index.coerceIn(0, frames.lastIndex)]
-    val model: Any = remember(remote) {
-        val key = CharacterFrames.storageKey(remote)
-        if (AssetStore.exists(key)) java.io.File(AssetStore.localPath(key)) else remote
-    }
-    AsyncImage(
-        model = ImageRequest.Builder(LocalContext.current).data(model).crossfade(false).build(),
+    Image(
+        bitmap = bitmaps[index.coerceIn(0, bitmaps.lastIndex)],
         contentDescription = null,
         contentScale = ContentScale.Fit,
         modifier = modifier.size(size)

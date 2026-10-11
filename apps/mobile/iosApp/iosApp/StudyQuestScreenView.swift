@@ -67,7 +67,7 @@ private struct PlayerSpriteView: View {
     var body: some View {
         let frames = characterFrameUrls
         if !frames.isEmpty {
-            PlayerFrameImage(frames: frames, interval: frameInterval, size: size)
+            PlayerFrameImage(frames: frames, interval: frameInterval, size: size, oneShot: mode == .attack)
         } else if !partyLeadImageUrl.isEmpty, let u = URL(string: partyLeadImageUrl) {
             AsyncImage(url: u) { phase in
                 switch phase {
@@ -125,36 +125,61 @@ private struct PlayerSpriteView: View {
     }
 }
 
-/// キャラのフレーム（ローカル保存ファイル優先、無ければリモートURL）をループ再生
+/// キャラのフレームを一度メモリに読み込んでから再生（毎フレーム再ロードによるちらつきを防ぐ）
 private struct PlayerFrameImage: View {
     let frames: [String]
     let interval: TimeInterval
     let size: CGFloat
+    var oneShot: Bool = false
 
+    @State private var images: [UIImage] = []
     @State private var currentFrame = 0
 
     var body: some View {
-        let remote = frames[min(currentFrame, frames.count - 1)]
-        AsyncImage(url: frameURL(remote)) { phase in
-            switch phase {
-            case .success(let image): image.resizable().scaledToFit().frame(width: size, height: size)
-            default: Color.clear.frame(width: size, height: size)
+        Group {
+            if !images.isEmpty {
+                Image(uiImage: images[min(currentFrame, images.count - 1)])
+                    .resizable().scaledToFit().frame(width: size, height: size)
+            } else {
+                Color.clear.frame(width: size, height: size)
             }
         }
-        .onAppear {
-            guard frames.count > 1, interval > 0 else { return }
-            Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-                currentFrame = (currentFrame + 1) % frames.count
-            }
-        }
+        .onAppear { loadImages() }
+        .onChange(of: frames) { _, _ in loadImages() }
     }
 
-    private func frameURL(_ remote: String) -> URL? {
-        let key = CharacterFrames.shared.storageKey(frameUrl: remote)
-        if AssetStore.shared.exists(key: key) {
-            return URL(fileURLWithPath: AssetStore.shared.localPath(key: key))
+    private func loadImages() {
+        let remoteFrames = frames
+        var result = [UIImage?](repeating: nil, count: remoteFrames.count)
+        let group = DispatchGroup()
+        for (i, remote) in remoteFrames.enumerated() {
+            let key = CharacterFrames.shared.storageKey(frameUrl: remote)
+            if AssetStore.shared.exists(key: key) {
+                result[i] = UIImage(contentsOfFile: AssetStore.shared.localPath(key: key))
+                continue
+            }
+            guard let url = URL(string: remote) else { continue }
+            group.enter()
+            URLSession.shared.dataTask(with: url) { data, _, _ in
+                if let d = data { result[i] = UIImage(data: d) }
+                group.leave()
+            }.resume()
         }
-        return URL(string: remote)
+        group.notify(queue: .main) {
+            self.images = result.compactMap { $0 }
+            self.currentFrame = 0
+            guard images.count > 1, interval > 0 else { return }
+            let total = images.count
+            if oneShot {
+                Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { t in
+                    if currentFrame + 1 >= total { t.invalidate() } else { currentFrame += 1 }
+                }
+            } else {
+                Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+                    currentFrame = (currentFrame + 1) % total
+                }
+            }
+        }
     }
 }
 
