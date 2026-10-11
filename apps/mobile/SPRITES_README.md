@@ -128,7 +128,7 @@ iOS の `Contents.json` テンプレート:
 ## 画像作成のヒント
 
 ### 推奨サイズ
-- キャラクター: **64×64px** 〜 **128×128px**（ドット絵は小さいサイズで作成→コード側で拡大）
+- キャラクター・敵・小物: **512×512px**（生成サイズを統一。表示はコード側で縮小）
 - 背景: **640×360px** 以上（横長）
 - フォーマット: PNG（透過対応）
 
@@ -139,7 +139,7 @@ iOS の `Contents.json` テンプレート:
 
 ### AI生成のプロンプト例
 ```
-Pixel art, 64x64 sprite, [キャラクター説明],
+Pixel art, 512x512 sprite, [キャラクター説明],
 16-bit retro JRPG style, clean pixel art,
 transparent background, no anti-aliasing,
 limited color palette

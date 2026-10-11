@@ -10,7 +10,7 @@ All prompts use ChatGPT (DALL-E). Attach `sprite_player_idle_1.png` as reference
 ## idle 1（基準画像）
 
 ```
-Pixel art game sprite, 96x96 pixels.
+Pixel art game sprite, 512x512 pixels.
 Character description: [CHARACTER]
 Pose: standing, idle battle-ready, facing right (looking rightward),
 sword held at side.
@@ -42,7 +42,7 @@ Pale skin, glowing red eyes, silver hair peeking from hood.
 Based on the attached character sprite.
 Idle animation frame 2 of 2, gentle exhale.
 Body sinks 1 pixel, chest slightly down. Arms relaxed, sword unchanged.
-96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## prep 1
@@ -51,7 +51,7 @@ Body sinks 1 pixel, chest slightly down. Arms relaxed, sword unchanged.
 Based on the attached character sprite.
 Prepare frame 1 of 2, gripping sword tighter.
 Knees slightly bent, sword rising to shoulder level.
-96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## prep 2
@@ -60,7 +60,7 @@ Knees slightly bent, sword rising to shoulder level.
 Based on the attached character sprite.
 Prepare frame 2 of 2, full wind-up.
 Sword pulled back behind right shoulder, body leaning forward.
-96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 1
@@ -69,7 +69,7 @@ Sword pulled back behind right shoulder, body leaning forward.
 Based on the attached character sprite.
 Attack frame 1 of 5, forward lunge step.
 Right foot steps forward, sword beginning to swing from behind.
-96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 2
@@ -78,7 +78,7 @@ Right foot steps forward, sword beginning to swing from behind.
 Based on the attached character sprite.
 Attack frame 2 of 5, sword mid-swing at 45° diagonal slash.
 Body rotated forward, thin white arc line tracing sword path.
-96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 3
@@ -87,7 +87,7 @@ Body rotated forward, thin white arc line tracing sword path.
 Based on the attached character sprite.
 Attack frame 3 of 5, peak impact. Sword slashing across center horizontally.
 Bright slash effect line, dynamic action pose.
-96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 4
@@ -96,7 +96,7 @@ Bright slash effect line, dynamic action pose.
 Based on the attached character sprite.
 Attack frame 4 of 5, follow-through. Sword extended fully left/down.
 Cape flowing, body momentum carrying through.
-96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## attack 5
@@ -105,7 +105,7 @@ Cape flowing, body momentum carrying through.
 Based on the attached character sprite.
 Attack frame 5 of 5, recovery. Sword lowering, body straightening.
 Returning toward idle stance. Cape settling.
-96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## rest 1
@@ -114,7 +114,7 @@ Returning toward idle stance. Cape settling.
 Based on the attached character sprite.
 Rest pose, sitting on the ground cross-legged,
 sword resting across lap, eyes closed, breathing deeply.
-96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## walk 1
@@ -123,7 +123,7 @@ sword resting across lap, eyes closed, breathing deeply.
 Based on the attached character sprite.
 Walk frame 1 of 2, left foot stepping forward.
 Sword held at side, slight forward lean, cape trailing lightly.
-96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## walk 2
@@ -132,7 +132,7 @@ Sword held at side, slight forward lean, cape trailing lightly.
 Based on the attached character sprite.
 Walk frame 2 of 2, right foot stepping forward.
 Sword held at side, body slightly lifted, cape swaying back.
-96x96, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
+512x512, same pixel art style and colors, facing right, feet at same ground level as reference. Dark background. No text.
 ```
 
 ## File Mapping
@@ -155,12 +155,21 @@ Sword held at side, body slightly lifted, cape swaying back.
 ## Post-Generation Commands
 
 ```bash
-# Background transparency
-./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py --kind player
+# 1) 生成画像は 1024〜1254px で出るので 512x512 に縮小
+sips -z 512 512 <生成画像>.png
 
-# Sync to Android/iOS
+# 2) Background transparency
+#    バトルスプライト（apps/mobile/assets/source/）
+./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py --kind player
+#    ガチャ立ち絵（backend/assets/master/source/characters/）
+./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py --kind character
+
+# 3) Sync to Android/iOS（バトルスプライトのみ）
 ./scripts/assets/run.sh scripts/assets/sync_battle_assets.py
 
-# Validate
+# 4) Validate
 ./scripts/assets/run.sh scripts/assets/validate_assets.py
 ```
+
+> `--kind character` は `backend/assets/master/source/characters/` 配下の PNG/WebP を一括で背景透過します。
+> 生成した立ち絵をこのディレクトリに置いてから実行してください。
