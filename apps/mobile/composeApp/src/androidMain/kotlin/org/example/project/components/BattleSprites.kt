@@ -109,11 +109,12 @@ fun PlayerSprite(
         }
         val frames = remember(url, modeName) { CharacterFrames.frameUrls(url, modeName) }
         if (frames.isNotEmpty()) {
+            // 同梱スプライト（PlayerSprite）と同一のタイミング・one-shot 挙動に合わせる
             val intervalMs = when (mode) {
                 PlayerSpriteMode.Walking -> 320L
                 PlayerSpriteMode.Idle -> 600L
-                PlayerSpriteMode.Prep -> 90L
-                PlayerSpriteMode.Attack -> 90L
+                PlayerSpriteMode.Prep -> 60L
+                PlayerSpriteMode.Attack -> 60L
                 PlayerSpriteMode.Rest -> 0L
             }
             PlayerFrameImage(
@@ -121,7 +122,8 @@ fun PlayerSprite(
                 intervalMs = intervalMs,
                 size = size,
                 modifier = modifier,
-                oneShot = mode == PlayerSpriteMode.Attack
+                oneShot = mode == PlayerSpriteMode.Prep || mode == PlayerSpriteMode.Attack,
+                slide = mode == PlayerSpriteMode.Attack
             )
             return
         }
@@ -242,7 +244,8 @@ private fun PlayerFrameImage(
     intervalMs: Long,
     size: Dp,
     modifier: Modifier = Modifier,
-    oneShot: Boolean = false
+    oneShot: Boolean = false,
+    slide: Boolean = false
 ) {
     val context = LocalContext.current
     // 先に全フレームを ImageBitmap として読み込み、メモリに保持する
@@ -259,15 +262,21 @@ private fun PlayerFrameImage(
     }
     if (bitmaps.isEmpty()) return
 
+    val scope = rememberCoroutineScope()
+    val slideX = remember { Animatable(0f) }
     var index by remember(bitmaps) { mutableIntStateOf(0) }
     LaunchedEffect(bitmaps) {
         index = 0
+        slideX.snapTo(0f)
         if (bitmaps.size <= 1 || intervalMs <= 0) return@LaunchedEffect
         if (oneShot) {
+            // 同梱版と同じ: 1回だけ再生し、攻撃は斬撃の瞬間に一瞬スライド
             for (i in 1 until bitmaps.size) {
                 delay(intervalMs)
                 index = i
+                if (slide && i == 2) scope.launch { slideX.animateTo(20f, tween(50)) }
             }
+            if (slide) scope.launch { slideX.animateTo(0f, tween(120)) }
         } else {
             while (true) {
                 delay(intervalMs)
@@ -279,7 +288,7 @@ private fun PlayerFrameImage(
         bitmap = bitmaps[index.coerceIn(0, bitmaps.lastIndex)],
         contentDescription = null,
         contentScale = ContentScale.Fit,
-        modifier = modifier.size(size)
+        modifier = modifier.offset { IntOffset(slideX.value.roundToInt(), 0) }.size(size)
     )
 }
 

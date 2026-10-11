@@ -67,7 +67,13 @@ private struct PlayerSpriteView: View {
     var body: some View {
         let frames = characterFrameUrls
         if !frames.isEmpty {
-            PlayerFrameImage(frames: frames, interval: frameInterval, size: size, oneShot: mode == .attack)
+            PlayerFrameImage(
+                frames: frames,
+                interval: frameInterval,
+                size: size,
+                oneShot: mode == .prep || mode == .attack,
+                slide: mode == .attack
+            )
         } else if !partyLeadImageUrl.isEmpty, let u = URL(string: partyLeadImageUrl) {
             AsyncImage(url: u) { phase in
                 switch phase {
@@ -98,7 +104,7 @@ private struct PlayerSpriteView: View {
     private var frameInterval: TimeInterval {
         switch mode {
         case .idle: return 0.6
-        case .prep, .attack: return 0.09
+        case .prep, .attack: return 0.06
         case .walking: return 0.32
         case .rest: return 0
         }
@@ -131,15 +137,18 @@ private struct PlayerFrameImage: View {
     let interval: TimeInterval
     let size: CGFloat
     var oneShot: Bool = false
+    var slide: Bool = false
 
     @State private var images: [UIImage] = []
     @State private var currentFrame = 0
+    @State private var attackOffset: CGFloat = 0
 
     var body: some View {
         Group {
             if !images.isEmpty {
                 Image(uiImage: images[min(currentFrame, images.count - 1)])
                     .resizable().scaledToFit().frame(width: size, height: size)
+                    .offset(x: attackOffset)
             } else {
                 Color.clear.frame(width: size, height: size)
             }
@@ -168,11 +177,19 @@ private struct PlayerFrameImage: View {
         group.notify(queue: .main) {
             self.images = result.compactMap { $0 }
             self.currentFrame = 0
+            self.attackOffset = 0
             guard images.count > 1, interval > 0 else { return }
             let total = images.count
             if oneShot {
+                // 同梱版と同じ: 1回だけ再生し、攻撃は斬撃の瞬間に一瞬スライド
                 Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { t in
-                    if currentFrame + 1 >= total { t.invalidate() } else { currentFrame += 1 }
+                    if currentFrame + 1 >= total {
+                        t.invalidate()
+                        if slide { withAnimation(.easeOut(duration: 0.12)) { attackOffset = 0 } }
+                    } else {
+                        currentFrame += 1
+                        if slide && currentFrame == 2 { withAnimation(.easeOut(duration: 0.05)) { attackOffset = 20 } }
+                    }
                 }
             } else {
                 Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
