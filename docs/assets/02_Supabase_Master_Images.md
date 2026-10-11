@@ -144,6 +144,22 @@ CONFIRM_PROD_UPLOAD=yes make master-images-upload-prod
 - `--env` を指定しない従来の `make master-images-upload` も残っています（フラット変数 `SUPABASE_URL` 等）。
 - アップロードは **ローカル実行** で Render を経由しません（`docs/ENVIRONMENT.md` 相当の方針）。
 
+### Storage のみ入稿（複数フレーム等・DB 更新なし）
+
+複数フレームのキャラ画像（`character_{code}_{mode}_{frame}.webp` 等）のように `m_*` テーブルへ 1:1 対応しない画像は、**Storage のみ**へ入稿します（`image_url` は更新しません）。`upload.py` と同じ環境変数解決を再利用します。
+
+```bash
+# dry-run → 本番（stg の例）
+make master-images-upload-storage-stg \
+  DIR=backend/assets/master/source/characters PREFIX=master/characters DRY_RUN=1
+make master-images-upload-storage-stg \
+  DIR=backend/assets/master/source/characters PREFIX=master/characters
+```
+
+- `DIR` はリポジトリルート相対（`backend/.env` は `run.sh` が読み込み済み）。対象は png/webp/jpg。
+- キーは `{PREFIX}/{filename}`（例 `master/characters/character_00001_idle_1.webp`）。
+- `dev` / `prod` も `master-images-upload-storage-{dev,prod}`（prod は `CONFIRM_PROD_UPLOAD=yes` 必須）。
+
 ### 4. 動作確認
 
 - API: `GET /master/characters` 等で `image_url` が Supabase URL になっているか
