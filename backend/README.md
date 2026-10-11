@@ -150,13 +150,17 @@ Supabase は PostgreSQL + 認証 + リアルタイム等を提供する BaaS。
 
 ### マスタ画像（Supabase Storage）
 
-立ち絵・武器・ダンジョンバナー等は **Storage + `image_url` 更新** でアプリ再リリースなしに差し替え可能。
+立ち絵・武器・ダンジョンバナー等は **Storage + `image_url` 更新** でアプリ再リリースなしに差し替え可能。環境ごとにコマンドが分かれている。
 
 ```bash
 make master-images-validate
-make master-images-upload DRY_RUN=1
-make master-images-upload
+
+make master-images-upload-dev  DRY_RUN=1   # dev: ローカル DB のみ
+make master-images-upload-stg              # stg: STG_SUPABASE_* + STG_DATABASE_URL
+CONFIRM_PROD_UPLOAD=yes make master-images-upload-prod  # prod（確認必須）
 ```
+
+`--env` を指定しない従来の `make master-images-upload`（フラット変数）も残っている。
 
 手順: **`docs/assets/02_Supabase_Master_Images.md`** / `backend/assets/master/`
 

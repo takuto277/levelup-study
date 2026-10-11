@@ -12,7 +12,7 @@ MIGRATE_IMAGE ?= migrate/migrate:v4.18.2
 # Docker からホストの Postgres へ（Linux は host-gateway で host.docker.internal を解決）
 MIGRATE_DATABASE_URL ?= postgres://postgres:postgres@host.docker.internal:5432/levelup_study?sslmode=disable
 
-.PHONY: help setup run test build lint db-up db-down db-reset env migrate-up migrate-down migrate-create migrate-version seed seed-remote seed-stg seed-prod db-fresh mint-dev-jwt master-images-validate master-images-upload
+.PHONY: help setup run test build lint db-up db-down db-reset env migrate-up migrate-down migrate-create migrate-version seed seed-remote seed-stg seed-prod db-fresh mint-dev-jwt master-images-validate master-images-upload master-images-upload-dev master-images-upload-stg master-images-upload-prod
 
 # --- ヘルプ ---
 help: ## このヘルプを表示
@@ -152,8 +152,24 @@ test-short: ## テストを簡易実行
 master-images-validate: ## manifest / source の整合性を検証
 	@../scripts/master-images/run.sh ../scripts/master-images/validate.py
 
-master-images-upload: ## Supabase Storage へ upload + image_url 更新（DRY_RUN=1 で確認）
+master-images-upload: ## Supabase Storage へ upload + image_url 更新（従来のフラット変数。DRY_RUN=1 で確認）
 	@../scripts/master-images/run.sh ../scripts/master-images/upload.py
+
+# --- マスタ画像（環境別）---
+# 環境ごとに変数を分ける。詳細: docs/assets/02_Supabase_Master_Images.md
+master-images-upload-dev: ## dev（ローカル DB のみ。DEV_SUPABASE_* があれば Storage も使用）
+	@../scripts/master-images/run.sh ../scripts/master-images/upload.py --env dev
+
+master-images-upload-stg: ## stg（STG_SUPABASE_* + STG_DATABASE_URL へ入稿）
+	@../scripts/master-images/run.sh ../scripts/master-images/upload.py --env stg
+
+master-images-upload-prod: ## prod（PROD_SUPABASE_* + PROD_DATABASE_URL）※ CONFIRM_PROD_UPLOAD=yes 必須
+	@if [ "$(CONFIRM_PROD_UPLOAD)" != "yes" ]; then \
+		echo "❌ 本番 (prod) の Storage と image_url を更新します。"; \
+		echo "   実行するには CONFIRM_PROD_UPLOAD=yes make master-images-upload-prod としてください。"; \
+		exit 1; \
+	fi
+	@../scripts/master-images/run.sh ../scripts/master-images/upload.py --env prod
 
 # --- コード品質 ---
 lint: ## go vet を実行

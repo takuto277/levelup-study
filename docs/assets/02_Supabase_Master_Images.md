@@ -49,21 +49,38 @@ https://{project-ref}.supabase.co/storage/v1/object/public/game-assets/master/{e
 
 ### 2. 環境変数（`backend/.env`）
 
-```bash
-# 既存
-DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres
+環境別コマンドを使う場合は、環境ごとにプレフィックス付きの変数を設定します。
 
-# 追加（Settings > API）
+```bash
+# --- stg ---
+STG_DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+STG_SUPABASE_URL=https://xxxxxxxx.supabase.co
+STG_SUPABASE_SERVICE_ROLE_KEY=eyJ...   # service_role — モバイルに絶対入れない
+STG_SUPABASE_STORAGE_BUCKET=game-assets
+
+# --- prod ---
+PROD_DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-....pooler.supabase.com:6543/postgres
+PROD_SUPABASE_URL=https://yyyyyyyy.supabase.co
+PROD_SUPABASE_SERVICE_ROLE_KEY=eyJ...
+PROD_SUPABASE_STORAGE_BUCKET=game-assets
+
+# --- dev（ローカル DB のみ。DEV_SUPABASE_* は任意） ---
+DEV_DATABASE_URL=host=localhost user=postgres password=postgres dbname=levelup_study port=5432 sslmode=disable
+DEV_ASSET_BASE_URL=http://localhost:8080/assets
+# DEV_SUPABASE_URL= / DEV_SUPABASE_SERVICE_ROLE_KEY=（Storage も使う場合のみ）
+
+# --- 従来（--env 未指定の make master-images-upload 用） ---
 SUPABASE_URL=https://xxxxxxxx.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJ...   # service_role — モバイルに絶対入れない
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
 SUPABASE_STORAGE_BUCKET=game-assets
 ```
 
 | キー | 用途 |
 |------|------|
-| `SUPABASE_URL` | Storage API のベース URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | upload スクリプト専用（RLS バイパス） |
-| `DATABASE_URL` | `image_url` UPDATE 用（postgres:// 形式） |
+| `{ENV}_SUPABASE_URL` | Storage API のベース URL |
+| `{ENV}_SUPABASE_SERVICE_ROLE_KEY` | upload スクリプト専用（RLS バイパス） |
+| `{ENV}_DATABASE_URL` | `image_url` UPDATE 用（postgres:// 形式） |
+| `{ENV}_SUPABASE_STORAGE_BUCKET` | 省略時 `manifest.bucket` |
 
 ### 3. バケットポリシー（public バケットなら通常不要）
 
@@ -97,12 +114,35 @@ assets:
 
 ### 3. 検証 → dry-run → 本番アップロード
 
+対象環境ごとにコマンドを分けています。`backend/.env` に環境別の値を設定してください。
+
 ```bash
 cd backend
 make master-images-validate
-make master-images-upload DRY_RUN=1
-make master-images-upload
+
+# dev: ローカル DB のみ（Storage には上げない）
+make master-images-upload-dev DRY_RUN=1
+make master-images-upload-dev
+
+# stg: STG_SUPABASE_* + STG_DATABASE_URL へ入稿
+make master-images-upload-stg DRY_RUN=1
+make master-images-upload-stg
+
+# prod: PROD_SUPABASE_* + PROD_DATABASE_URL へ入稿（確認必須）
+CONFIRM_PROD_UPLOAD=yes make master-images-upload-prod DRY_RUN=1
+CONFIRM_PROD_UPLOAD=yes make master-images-upload-prod
 ```
+
+| 環境 | DB | Supabase URL / service_role | Storage |
+|------|-----|------------------------------|---------|
+| dev | `DEV_DATABASE_URL` → `DATABASE_URL` | `DEV_SUPABASE_URL` / `DEV_SUPABASE_SERVICE_ROLE_KEY`（任意） | `DEV_ASSET_BASE_URL` を基点に `image_url` 更新。未設定ならスキップ |
+| stg | `STG_DATABASE_URL` | `STG_SUPABASE_URL` / `STG_SUPABASE_SERVICE_ROLE_KEY` | Storage へアップロード |
+| prod | `PROD_DATABASE_URL` | `PROD_SUPABASE_URL` / `PROD_SUPABASE_SERVICE_ROLE_KEY` | Storage へアップロード（`CONFIRM_PROD_UPLOAD=yes` 必須） |
+
+- bucket は `{ENV}_SUPABASE_STORAGE_BUCKET`（無ければ `manifest.bucket` = `game-assets`）。
+- オブジェクトキー `master/{entity}/{id}.{ext}` は全環境で共通。
+- `--env` を指定しない従来の `make master-images-upload` も残っています（フラット変数 `SUPABASE_URL` 等）。
+- アップロードは **ローカル実行** で Render を経由しません（`docs/ENVIRONMENT.md` 相当の方針）。
 
 ### 4. 動作確認
 
