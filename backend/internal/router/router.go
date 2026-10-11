@@ -19,6 +19,7 @@ type SecurityConfig struct {
 	AllowedOrigins []string // CORS 許可オリジン
 	DevMode        bool     // true: JWT/APIKey 検証をスキップ（ローカル開発用）
 	DebugAPILog    bool     // true: 🌱 付き API デバッグログ（全ルート + /api/v1 内の認証失敗）
+	DebugEndpoints bool     // true: /debug/* を有効化（DevMode と独立。stg 検証用。認証は維持）
 }
 
 // ============================================================
@@ -130,7 +131,9 @@ func NewRouter(
 				r.Use(mw.JWTAuth(sec.JWTSecret))
 			}
 
-			if sec.DevMode {
+			if sec.DevMode || sec.DebugEndpoints {
+				// デバッグ用: 石・ゴールド増減。
+				// DevMode 時は認証なし、DebugEndpoints 単独時は JWT + OwnerGuard 下で「自分の分のみ」更新可。
 				r.Post("/debug/users/{userID}/currencies", userH.DebugPatchCurrencies)
 			}
 
