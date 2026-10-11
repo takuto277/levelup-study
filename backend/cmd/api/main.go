@@ -55,6 +55,12 @@ func main() {
 		}
 	}
 
+	// デバッグ用エンドポイント（/debug/*）。DevMode とは独立。stg 検証で使う想定（JWT + OwnerGuard は維持）。
+	debugEndpoints := strings.EqualFold(os.Getenv("ENABLE_DEBUG_ENDPOINTS"), "true")
+	if debugEndpoints {
+		log.Println("🧪 ENABLE_DEBUG_ENDPOINTS: /debug/* を有効化（認証は維持。本番では有効化しない）")
+	}
+
 	// --- Supabase JWKS の初期化（ES256/RS256 対応）---
 	supabaseRef := extractSupabaseProjectRef(os.Getenv("SUPABASE_URL"), os.Getenv("DATABASE_URL"))
 	if supabaseRef != "" {
@@ -104,6 +110,7 @@ func main() {
 		AllowedOrigins: allowedOrigins,
 		DevMode:        devMode,
 		DebugAPILog:    debugAPILog,
+		DebugEndpoints: debugEndpoints,
 	}
 
 	// --- ルーター構築 ---

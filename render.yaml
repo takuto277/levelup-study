@@ -23,6 +23,8 @@ services:
         value: "false"
       - key: DEBUG_API_LOG
         value: "true"
+      - key: ENABLE_DEBUG_ENDPOINTS
+        value: "true"
       - key: ENV
         value: "staging"
 
