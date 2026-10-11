@@ -10,7 +10,7 @@
 
 ## 入稿 4 ステップ
 
-1. PNG を `source/` に置く（命名: `SPRITES_README.md` 参照）
+1. **PNG/WebP** を `source/` に置く（命名: `SPRITES_README.md` 参照。**WebP 推奨**）
 2. `manifest.yaml` を更新（`battle_assets` または `enemy_sprite_keys` にエントリ追加）
 3. 生成・同期を実行
 4. 検証して PR
@@ -24,7 +24,7 @@
 ## クリーンアップ
 
 ```bash
-# source/manifest にない OS 側 PNG を一括削除（例外除く）
+# source/manifest にない OS 側 画像（PNG/WebP）を一括削除（例外除く）
 ./scripts/assets/run.sh scripts/assets/sync_battle_assets.py --clean
 ```
 
@@ -37,7 +37,7 @@
 
 | パス | 用途 |
 |------|------|
-| `source/` | バトル同梱 PNG（正本） |
+| `source/` | バトル同梱 画像（正本。PNG/WebP） |
 | `manifest.yaml` | アセットレジストリ・slug 対応・例外定義 |
 | `master/` | 将来: CDN 投入前のマスタ画像置き場 |
 

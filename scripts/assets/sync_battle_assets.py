@@ -22,13 +22,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib.manifest import (  # noqa: E402
     ANDROID_DRAWABLE,
     ANDROID_DRAWABLE_NODPI,
+    IMAGE_EXTS,
     IOS_ASSETS,
     IOS_CONTENTS_JSON,
     SOURCE_DIR,
-    collect_managed_filenames,
+    collect_managed_stems,
     collect_os_exceptions,
     load_manifest,
+    resolve_source_file,
 )
+
+
+def _remove_stale_siblings(dest_dir: Path, filename: str) -> None:
+    """同じ stem で拡張子が違う古い画像（例: .png 残骸）を削除する。"""
+    stem = Path(filename).stem
+    for ext in IMAGE_EXTS:
+        cand = dest_dir / f"{stem}{ext}"
+        if cand.name != filename and cand.exists():
+            cand.unlink()
 
 
 def ios_imageset_dir(filename: str) -> Path:
@@ -49,16 +60,17 @@ def sync_ios(filename: str, dry_check: bool) -> bool:
         return False
 
     imageset = ios_imageset_dir(filename)
-    dest_png = imageset / filename
+    dest = imageset / filename
     contents = imageset / "Contents.json"
     expected_contents = IOS_CONTENTS_JSON % {"filename": filename}
 
     changed = False
-    if not dest_png.is_file() or not filecmp.cmp(src, dest_png, shallow=False):
+    if not dest.is_file() or not filecmp.cmp(src, dest, shallow=False):
         changed = True
         if not dry_check:
             imageset.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dest_png)
+            shutil.copy2(src, dest)
+            _remove_stale_siblings(imageset, filename)
 
     if not contents.is_file() or contents.read_text(encoding="utf-8") != expected_contents:
         changed = True
@@ -81,6 +93,7 @@ def sync_android(filename: str, dry_check: bool) -> bool:
     if not dry_check:
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dest)
+        _remove_stale_siblings(dest.parent, filename)
     return True
 
 
@@ -88,20 +101,23 @@ def collect_source_files(manifest: dict) -> list[str]:
     files: list[str] = []
     for entry in manifest.get("battle_assets", []):
         name = entry.get("file")
-        if name and (SOURCE_DIR / name).is_file():
-            files.append(name)
+        if not name:
+            continue
+        resolved = resolve_source_file(name)
+        if resolved is not None:
+            files.append(resolved.name)
 
     for key in manifest.get("enemy_sprite_keys", []):
-        name = f"sprite_enemy_{key}_1.png"
-        if (SOURCE_DIR / name).is_file():
-            files.append(name)
+        resolved = resolve_source_file(f"sprite_enemy_{key}_1.png")
+        if resolved is not None:
+            files.append(resolved.name)
 
     return sorted(set(files))
 
 
 def clean_os_orphans(manifest: dict, dry_check: bool) -> list[str]:
-    """source/manifest に登録のない OS 側 PNG を列挙／削除する。例外は除外。"""
-    managed_names = collect_managed_filenames(manifest)
+    """source/manifest に登録のない OS 側画像を列挙／削除する。例外は除外。"""
+    managed_stems = collect_managed_stems(manifest)
     os_exceptions = collect_os_exceptions(manifest)
     removed: list[str] = []
 
@@ -109,10 +125,12 @@ def clean_os_orphans(manifest: dict, dry_check: bool) -> list[str]:
     for d in (ANDROID_DRAWABLE, ANDROID_DRAWABLE_NODPI):
         if not d.is_dir():
             continue
-        for p in sorted(d.glob("*.png")):
-            if p.name in os_exceptions:
+        for p in sorted(d.iterdir()):
+            if p.suffix.lower() not in IMAGE_EXTS:
                 continue
-            if p.name not in managed_names:
+            if p.name in os_exceptions or p.stem in os_exceptions:
+                continue
+            if p.stem not in managed_stems:
                 removed.append(str(p.relative_to(d.parents[2])))  # relative to res/
                 if not dry_check:
                     p.unlink()
@@ -123,11 +141,13 @@ def clean_os_orphans(manifest: dict, dry_check: bool) -> list[str]:
             imageset = contents_json.parent
             if imageset.name in os_exceptions:
                 continue
-            for png in imageset.glob("*.png"):
-                if png.name in os_exceptions:
+            for img in sorted(imageset.iterdir()):
+                if img.suffix.lower() not in IMAGE_EXTS:
                     continue
-                if png.name not in managed_names:
-                    removed.append(str(png.relative_to(IOS_ASSETS)))
+                if img.name in os_exceptions or img.stem in os_exceptions:
+                    continue
+                if img.stem not in managed_stems:
+                    removed.append(str(img.relative_to(IOS_ASSETS)))
                     if not dry_check:
                         shutil.rmtree(imageset, ignore_errors=True)
                     break

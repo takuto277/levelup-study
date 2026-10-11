@@ -25,13 +25,14 @@ from lib.manifest import (  # noqa: E402
     ENEMY_SPRITE_KT,
     IOS_ASSETS,
     MANIFEST_PATH,
-    SOURCE_DIR,
-    collect_managed_filenames,
+    collect_managed_stems,
     collect_os_exceptions,
-    enumerate_android_pngs,
+    enumerate_android_images,
     enumerate_ios_imagesets,
+    find_image_with_ext,
     load_manifest,
     parse_monster_slugs_from_seed,
+    resolve_source_file,
 )
 
 
@@ -50,7 +51,7 @@ def main() -> int:
     manifest = load_manifest()
     slug_map: dict[str, str] = manifest.get("monster_slug_to_sprite_key") or {}
     enemy_keys: set[str] = set(manifest.get("enemy_sprite_keys") or [])
-    managed_names = collect_managed_filenames(manifest)
+    managed_stems = collect_managed_stems(manifest)
     os_exceptions = collect_os_exceptions(manifest)
 
     # ---- source → sync 整合性 ----
@@ -60,49 +61,46 @@ def main() -> int:
         if not filename:
             errors.append("battle_assets entry missing 'file'")
             continue
-        src = SOURCE_DIR / filename
-        if required and not src.is_file():
+        resolved = resolve_source_file(filename)
+        if required and resolved is None:
             errors.append(f"Required source missing: {filename}")
-        if src.is_file():
-            if not (ANDROID_DRAWABLE / filename).is_file():
+        if resolved is not None:
+            stem = Path(filename).stem
+            if find_image_with_ext(ANDROID_DRAWABLE, stem) is None:
                 errors.append(f"Android drawable missing (run sync): {filename}")
-            imageset = IOS_ASSETS / f"{Path(filename).stem}.imageset" / filename
-            if not imageset.is_file():
+            if find_image_with_ext(IOS_ASSETS / f"{stem}.imageset", stem) is None:
                 errors.append(f"iOS imageset missing (run sync): {filename}")
 
     # ---- enemy sprite_keys の source → drawable-nodpi 整合性 ----
     for key_ in enemy_keys:
-        name = f"sprite_enemy_{key_}_1.png"
-        src = SOURCE_DIR / name
-        if src.is_file():
-            dest_nodpi = ANDROID_DRAWABLE_NODPI / name
-            if not dest_nodpi.is_file():
-                errors.append(f"Android drawable-nodpi missing (run sync): {name}")
-            imageset = IOS_ASSETS / f"sprite_enemy_{key_}_1.imageset" / name
-            if not imageset.is_file():
-                errors.append(f"iOS imageset missing (run sync): {name}")
+        stem = f"sprite_enemy_{key_}_1"
+        if resolve_source_file(f"{stem}.png") is not None:
+            if find_image_with_ext(ANDROID_DRAWABLE_NODPI, stem) is None:
+                errors.append(f"Android drawable-nodpi missing (run sync): {stem}")
+            if find_image_with_ext(IOS_ASSETS / f"{stem}.imageset", stem) is None:
+                errors.append(f"iOS imageset missing (run sync): {stem}")
 
-    # ---- OS 側 orphan PNG 検出（source/manifest 未登録、例外除く） ----
+    # ---- OS 側 orphan 画像検出（source/manifest 未登録、例外除く） ----
     # Android
-    android_pngs = enumerate_android_pngs(ANDROID_RES)
-    for rel_path in android_pngs:
+    android_images = enumerate_android_images(ANDROID_RES)
+    for rel_path in android_images:
         filename = Path(rel_path).name
-        if filename in os_exceptions or rel_path in os_exceptions:
+        stem = Path(filename).stem
+        if filename in os_exceptions or stem in os_exceptions or rel_path in os_exceptions:
             continue
         parent = Path(rel_path).parent.as_posix()
         if parent in os_exceptions:
             continue
-        if filename not in managed_names:
-            errors.append(f"Orphan PNG on Android (not in source/manifest): {rel_path}")
+        if stem not in managed_stems:
+            errors.append(f"Orphan image on Android (not in source/manifest): {rel_path}")
 
     # iOS
     ios_imagesets = enumerate_ios_imagesets(IOS_ASSETS)
-    for imageset_name, png_path in ios_imagesets.items():
+    for imageset_name, img_path in ios_imagesets.items():
         if imageset_name in os_exceptions:
             continue
-        filename = png_path.name
-        if filename not in managed_names:
-            rel = png_path.relative_to(IOS_ASSETS).as_posix()
+        if img_path.stem not in managed_stems:
+            rel = img_path.relative_to(IOS_ASSETS).as_posix()
             errors.append(f"Orphan imageset on iOS (not in source/manifest): {rel}")
 
     # ---- seed slug 整合性 ----
