@@ -25,12 +25,19 @@ from lib.manifest import (  # noqa: E402
     IMAGE_EXTS,
     IOS_ASSETS,
     IOS_CONTENTS_JSON,
+    IOS_SPRITES_DIR,
     SOURCE_DIR,
+    SPRITE_NAME_PREFIXES,
+    REPO_ROOT,
     collect_managed_stems,
     collect_os_exceptions,
     load_manifest,
     resolve_source_file,
 )
+
+
+def _is_sprite_stem(stem: str) -> bool:
+    return stem.startswith(SPRITE_NAME_PREFIXES)
 
 
 def _remove_stale_siblings(dest_dir: Path, filename: str) -> None:
@@ -59,6 +66,27 @@ def sync_ios(filename: str, dry_check: bool) -> bool:
     if not src.is_file():
         return False
 
+    stem = Path(filename).stem
+
+    # スプライトは WebP を loose resource として配置（Asset Catalog は WebP 非対応）
+    if _is_sprite_stem(stem):
+        changed = False
+        dest = IOS_SPRITES_DIR / filename
+        if not dest.is_file() or not filecmp.cmp(src, dest, shallow=False):
+            changed = True
+            if not dry_check:
+                IOS_SPRITES_DIR.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dest)
+                _remove_stale_siblings(IOS_SPRITES_DIR, filename)
+        # 旧 Asset Catalog の imageset を掃除
+        legacy = ios_imageset_dir(filename)
+        if legacy.exists():
+            changed = True
+            if not dry_check:
+                shutil.rmtree(legacy, ignore_errors=True)
+        return changed
+
+    # それ以外（bg/prop/banner など）は従来どおり imageset
     imageset = ios_imageset_dir(filename)
     dest = imageset / filename
     contents = imageset / "Contents.json"
@@ -135,11 +163,29 @@ def clean_os_orphans(manifest: dict, dry_check: bool) -> list[str]:
                 if not dry_check:
                     p.unlink()
 
-    # iOS imageset
+    # iOS loose sprite resources
+    if IOS_SPRITES_DIR.is_dir():
+        for p in sorted(IOS_SPRITES_DIR.iterdir()):
+            if p.suffix.lower() not in IMAGE_EXTS:
+                continue
+            if p.name in os_exceptions or p.stem in os_exceptions:
+                continue
+            if p.stem not in managed_stems:
+                removed.append(str(p.relative_to(REPO_ROOT)))
+                if not dry_check:
+                    p.unlink()
+
+    # iOS imageset（スプライトは loose resource へ移行済み）
     if IOS_ASSETS.is_dir():
         for contents_json in sorted(IOS_ASSETS.rglob("*.imageset/Contents.json")):
             imageset = contents_json.parent
             if imageset.name in os_exceptions:
+                continue
+            stem = imageset.name[: -len(".imageset")]
+            if _is_sprite_stem(stem):
+                removed.append(str(imageset.relative_to(IOS_ASSETS)))
+                if not dry_check:
+                    shutil.rmtree(imageset, ignore_errors=True)
                 continue
             for img in sorted(imageset.iterdir()):
                 if img.suffix.lower() not in IMAGE_EXTS:

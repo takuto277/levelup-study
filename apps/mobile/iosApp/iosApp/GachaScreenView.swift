@@ -541,10 +541,12 @@ private struct BannerCard: View {
                     .foregroundColor(.white.opacity(0.9))
             }
         case .character, .mixed:
-            Image("sprite_player_idle_1")
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: maxSide * 1.2, maxHeight: maxSide * 1.2)
+            if let img = SpriteImage.uiImage("sprite_player_idle_1") {
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: maxSide * 1.2, maxHeight: maxSide * 1.2)
+            }
         }
     }
 }
@@ -826,8 +828,8 @@ private struct SummoningOrb: View {
                                 .frame(width: 108, height: 108)
                         }
                     }
-                } else {
-                    Image("sprite_player_idle_1")
+                } else if let img = SpriteImage.uiImage("sprite_player_idle_1") {
+                    Image(uiImage: img)
                         .resizable()
                         .scaledToFill()
                         .frame(width: 108, height: 108)
