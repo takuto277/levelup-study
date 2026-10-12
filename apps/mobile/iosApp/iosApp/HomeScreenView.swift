@@ -287,7 +287,7 @@ struct HomeScreenView: View {
                             default: IdleSpriteView().frame(width: 160, height: 160)
                             }
                         }
-                    } else if UIImage(named: "sprite_player_idle_1") != nil {
+                    } else if SpriteImage.exists("sprite_player_idle_1") {
                         IdleSpriteView()
                             .frame(width: 160, height: 160)
                     } else {
@@ -475,14 +475,14 @@ struct HomeScreenView: View {
         
         var body: some View {
             let name = frame == 0 ? "sprite_player_idle_1" : "sprite_player_idle_2"
-            if UIImage(named: "sprite_player_idle_2") != nil {
-                Image(name)
+            if SpriteImage.exists("sprite_player_idle_2"), let img = SpriteImage.uiImage(name) {
+                Image(uiImage: img)
                     .resizable()
                     .interpolation(.none)
                     .scaledToFit()
                     .onReceive(timer) { _ in frame = frame == 0 ? 1 : 0 }
-            } else {
-                Image("sprite_player_idle_1")
+            } else if let img = SpriteImage.uiImage("sprite_player_idle_1") {
+                Image(uiImage: img)
                     .resizable()
                     .interpolation(.none)
                     .scaledToFit()

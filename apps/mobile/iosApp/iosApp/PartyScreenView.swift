@@ -57,20 +57,20 @@ private func partyPlayerAvatar(size: CGFloat, url: String? = nil) -> some View {
 
 @ViewBuilder
 private func bundledPlayerAvatar(size: CGFloat) -> some View {
-    if UIImage(named: "sprite_player_idle_1") != nil {
-        Image("sprite_player_idle_1")
+    if let img = SpriteImage.uiImage("sprite_player_idle_1") {
+        Image(uiImage: img)
             .resizable()
             .interpolation(.none)
             .scaledToFit()
             .frame(width: size, height: size)
-    } else if UIImage(named: "sprite_player_prep_1") != nil {
-        Image("sprite_player_prep_1")
+    } else if let img = SpriteImage.uiImage("sprite_player_prep_1") {
+        Image(uiImage: img)
             .resizable()
             .interpolation(.none)
             .scaledToFit()
             .frame(width: size, height: size)
-    } else if UIImage(named: "sprite_player_walk_1") != nil {
-        Image("sprite_player_walk_1")
+    } else if let img = SpriteImage.uiImage("sprite_player_walk_1") {
+        Image(uiImage: img)
             .resizable()
             .interpolation(.none)
             .scaledToFit()

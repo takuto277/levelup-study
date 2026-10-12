@@ -24,7 +24,9 @@ from lib.manifest import (  # noqa: E402
     ANDROID_RES,
     ENEMY_SPRITE_KT,
     IOS_ASSETS,
+    IOS_SPRITES_DIR,
     MANIFEST_PATH,
+    SPRITE_NAME_PREFIXES,
     collect_managed_stems,
     collect_os_exceptions,
     enumerate_android_images,
@@ -34,6 +36,10 @@ from lib.manifest import (  # noqa: E402
     parse_monster_slugs_from_seed,
     resolve_source_file,
 )
+
+
+def _is_sprite_stem(stem: str) -> bool:
+    return stem.startswith(SPRITE_NAME_PREFIXES)
 
 
 def fail(msg: str) -> None:
@@ -68,7 +74,10 @@ def main() -> int:
             stem = Path(filename).stem
             if find_image_with_ext(ANDROID_DRAWABLE, stem) is None:
                 errors.append(f"Android drawable missing (run sync): {filename}")
-            if find_image_with_ext(IOS_ASSETS / f"{stem}.imageset", stem) is None:
+            if _is_sprite_stem(stem):
+                if find_image_with_ext(IOS_SPRITES_DIR, stem) is None:
+                    errors.append(f"iOS sprite resource missing (run sync): {filename}")
+            elif find_image_with_ext(IOS_ASSETS / f"{stem}.imageset", stem) is None:
                 errors.append(f"iOS imageset missing (run sync): {filename}")
 
     # ---- enemy sprite_keys の source → drawable-nodpi 整合性 ----
@@ -77,8 +86,8 @@ def main() -> int:
         if resolve_source_file(f"{stem}.png") is not None:
             if find_image_with_ext(ANDROID_DRAWABLE_NODPI, stem) is None:
                 errors.append(f"Android drawable-nodpi missing (run sync): {stem}")
-            if find_image_with_ext(IOS_ASSETS / f"{stem}.imageset", stem) is None:
-                errors.append(f"iOS imageset missing (run sync): {stem}")
+            if find_image_with_ext(IOS_SPRITES_DIR, stem) is None:
+                errors.append(f"iOS sprite resource missing (run sync): {stem}")
 
     # ---- OS 側 orphan 画像検出（source/manifest 未登録、例外除く） ----
     # Android
@@ -94,10 +103,25 @@ def main() -> int:
         if stem not in managed_stems:
             errors.append(f"Orphan image on Android (not in source/manifest): {rel_path}")
 
-    # iOS
+    # iOS loose sprite resources
+    if IOS_SPRITES_DIR.is_dir():
+        for p in sorted(IOS_SPRITES_DIR.iterdir()):
+            if p.suffix.lower() not in {".webp", ".png", ".jpg", ".jpeg"}:
+                continue
+            if p.name in os_exceptions or p.stem in os_exceptions:
+                continue
+            if p.stem not in managed_stems:
+                rel = p.relative_to(IOS_SPRITES_DIR).as_posix()
+                errors.append(f"Orphan sprite resource on iOS (not in source/manifest): {rel}")
+
+    # iOS imageset（スプライトは loose resource へ移行済み）
     ios_imagesets = enumerate_ios_imagesets(IOS_ASSETS)
     for imageset_name, img_path in ios_imagesets.items():
         if imageset_name in os_exceptions:
+            continue
+        name = imageset_name[: -len(".imageset")] if imageset_name.endswith(".imageset") else imageset_name
+        if _is_sprite_stem(name):
+            errors.append(f"Legacy sprite imageset on iOS (run sync --clean): {imageset_name}")
             continue
         if img_path.stem not in managed_stems:
             rel = img_path.relative_to(IOS_ASSETS).as_posix()

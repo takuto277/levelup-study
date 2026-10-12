@@ -16,6 +16,10 @@ ANDROID_DRAWABLE = REPO_ROOT / "apps/mobile/composeApp/src/androidMain/res/drawa
 ANDROID_DRAWABLE_NODPI = REPO_ROOT / "apps/mobile/composeApp/src/androidMain/res/drawable-nodpi"
 ANDROID_RES = REPO_ROOT / "apps/mobile/composeApp/src/androidMain/res"
 IOS_ASSETS = REPO_ROOT / "apps/mobile/iosApp/iosApp/Assets.xcassets"
+# iOS の同梱スプライトは WebP を loose resource として配置（Asset Catalog は WebP 非対応のため）
+IOS_SPRITES_DIR = REPO_ROOT / "apps/mobile/iosApp/iosApp/Sprites"
+# loose resource 扱いにするスプライト名の接頭辞（bg/prop/banner は imageset のまま）
+SPRITE_NAME_PREFIXES = ("sprite_player_", "sprite_enemy_")
 SEED_SQL = REPO_ROOT / "backend/db/seed.sql"
 ENEMY_SPRITE_KT = (
     REPO_ROOT
