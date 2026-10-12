@@ -1,20 +1,22 @@
-# キャラクター フレーム生成プロンプト（ChatGPT 画像生成）
+# キャラクター フレーム生成プロンプト（ChatGPT 画像生成・日本語）
 
-全フレームを **ChatGPT（画像生成）** で作成する。`[CHARACTER]` を任意のキャラ説明に置き換える。
+全フレームを **ChatGPT（画像生成）** で作成する。`[キャラクター]` を任意の説明に置き換える。
 
 ## 方針（重要）
 
-- **1キャラ = 1スレッド**で生成する。ChatGPT は会話の文脈を保つため、同一スレッドで続けるとキャラの同一性が上がる。
+- **1キャラ = 1スレッド**で生成する。ChatGPT は会話の文脈を保つため、同じスレッドで続けると同一性が上がる。
 - **idle_1 を「正」として最初に作り込む**。以降のフレームは毎回 `idle_1` を添付し、**「キャラは完全維持・変えるのはポーズだけ」**で編集生成する。
-- 全フレームで **足元（ベースライン）・頭の高さ・カメラ・スケール・構図**を固定する。
+- 全フレームで **足元（ベースライン）・頭の高さ・カメラ・大きさ・構図**を固定する。
 - 生成順は動きの流れ順（idle → walk → prep → attack → rest）。**1枚ずつ確認**してから次へ。
-- 参照は**常に idle_1 に固定**（前コマ参照の連鎖はズレが累積しやすい）。
+- 参照は**常に idle_1 に固定**（前のコマを参照する連鎖はズレが積み重なる）。
+
+> コツ: ChatGPT は日本語でOKですが、もし絵柄やキャラがブレる場合は英語で指示すると安定することがあります。
 
 ## 手順
 
-1. 下の「idle 1（基準）」で idle_1 を生成し、納得いくまで修正。→ `sprite_player_idle_1.png` として保存（これが正本）。
-2. 2枚目以降: **毎回 `idle_1` を添付**し、次のテンプレで生成する。
-3. 生成画像は 1024〜1254px で出るので後処理で 512 に縮小（末尾のコマンド参照）。
+1. 下の「idle 1（基準）」で idle_1 を生成し、納得いくまで同じスレッドで直す。→ `sprite_player_idle_1.png` として保存（これが正本）。
+2. 2枚目以降: **毎回 `idle_1` を添付**し、下のテンプレートで生成する。
+3. 生成画像は 1024〜1254px で出るので、後処理で 512 に縮小（末尾のコマンド参照）。
 4. 透過 → ベースライン整列 → WebP 化。
 
 ---
@@ -22,11 +24,12 @@
 ## 共通ブロック（毎プロンプトの末尾に必ず付ける）
 
 ```
-Keep the character EXACTLY the same as the attached reference image:
-same face, hair, colors, armor/clothing, proportions, camera angle, scale,
-framing, and the same ground baseline (feet at the same height).
-Change ONLY the pose described above. Solid dark background (removed later).
-No text, no watermark, no extra characters, no style change, no color change.
+添付した参照画像（idle_1）のキャラクターを完全に維持してください。
+顔・髪・配色・鎧や服・体の比率・カメラ角度・大きさ・構図、
+そして足元のベースライン（足の高さ）をすべて同じにすること。
+変更してよいのは上で指定したポーズだけ。
+背景は単色の暗い背景（後で透過する）。
+文字・透かし・余計なキャラクター・絵柄の変更・色の変更は禁止。
 ```
 
 ---
@@ -34,108 +37,107 @@ No text, no watermark, no extra characters, no style change, no color change.
 ## idle 1（基準画像）
 
 ```
-Pixel art game sprite, 512x512.
-Character: [CHARACTER]
-Pose: standing, idle battle-ready, facing right (looking rightward), sword held at side.
-Style: 16-bit retro JRPG, crisp pixel edges, no anti-aliasing, 32 colors max.
-Solid dark background (will be removed later). No text, no watermark, no UI.
+ピクセルアートのゲームスプライト、512x512。
+キャラクター: [キャラクター]
+ポーズ: 立ち姿、戦闘準備のアイドル。右向き（右を向いている）。両腕は自然に下ろす。
+スタイル: 16bitレトロJRPG、ピクセルがくっきり（アンチエイリアスなし）、最大32色。
+背景: 単色の暗い背景（後で透過する）。文字・透かし・UIはなし。
 ```
 
-**[CHARACTER] 記入例:**
+**[キャラクター] 記入例:**
 
 ```
-female holy knight, long flowing red hair, elegant silver-white plate armor
-with gold trim and a crimson cape. Longsword in right hand, small shield on left arm.
-Calm noble expression, gentle light glowing from the armor.
+青いローブの男性魔導士。深い青のフード付きローブに銀の縁飾り。
+短い銀髪、穏やかな表情。左手のひらの上に、小さく光る青い球体が浮かんでいる。
 ```
 
 ```
-male dark mage, hooded black robe with purple trim, floating dark tome in left hand,
-wispy shadow energy. Pale skin, glowing red eyes, silver hair peeking from the hood.
+聖騎士の女性。長く流れる赤い髪、金の縁取りがある白銀の板金鎧、真紅のマント。
+右手に長剣、左腕に小さな盾。穏やかで気高い表情、鎧から淡い光がにじむ。
 ```
 
 ---
 
-## ポーズ表（各フレームの差分を具体的に指定）
+## ポーズ表（各フレームの動きを具体的に指定）
 
-各項目を「添付した idle_1 を編集して」に続けて指定する。関節・重心・足位置まで書くと滑らかになる。
+各ポーズ文を「添付した idle_1 を編集して」に続けて使う。関節・重心・足位置まで書くと滑らかになる。
 
 ### idle 2
 ```
-Idle frame 2 of 2. Gentle exhale: body sinks ~1px, chest slightly down,
-shoulders relax. Arms and sword unchanged from idle_1.
+アイドル2コマ目（全2コマ）。軽く息を吐く動き。体が約1ピクセル沈み、
+胸がわずかに下がる。腕と剣は idle_1 のまま変えない。
 ```
 
 ### walk 1
 ```
-Walk frame 1 of 2. Left foot steps forward ~1 step, right foot back.
-Slight forward lean, weight forward. Sword held at side, cape trailing lightly.
+歩き1コマ目（全2コマ）。左足を1歩ぶん前に出し、右足は後ろ。
+少し前傾し、重心は前。剣は体の横に保持。マントは軽く流れる。
 ```
 
 ### walk 2
 ```
-Walk frame 2 of 2. Right foot steps forward, left foot back (mirror of walk 1).
-Body lifted slightly, cape swaying back. Sword at side.
+歩き2コマ目（全2コマ）。右足を前に、左足を後ろ（walk 1 の左右反転の関係）。
+体が少し浮き、マントは後ろへなびく。剣は体の横。
 ```
 
 ### prep 1
 ```
-Prepare frame 1 of 2. Grip the sword tighter, knees slightly bent,
-sword rising to shoulder height, elbows drawing in.
+準備1コマ目（全2コマ）。剣を強く握る。ひざを少し曲げ、
+剣を肩の高さまで上げ、両肘を体側に寄せる。
 ```
 
 ### prep 2
 ```
-Prepare frame 2 of 2. Full wind-up: sword pulled back behind the right shoulder,
-torso rotated back, weight on the rear foot, body leaning slightly forward.
+準備2コマ目（全2コマ）。大きく振りかぶる。剣を右肩の後ろまで引き、
+上体を後ろにひねる。重心は後ろ足。体は少し前傾。
 ```
 
 ### attack 1
 ```
-Attack frame 1 of 5. Forward lunge: right foot steps forward,
-sword begins to swing from behind, torso starting to rotate forward.
+攻撃1コマ目（全5コマ）。前に踏み込む。右足を前に出し、
+剣を後ろから振り始める。上体が前へ回り始める。
 ```
 
 ### attack 2
 ```
-Attack frame 2 of 5. Sword mid-swing at ~45° diagonal,
-torso rotated forward, arms extended, thin white arc tracing the blade path.
+攻撃2コマ目（全5コマ）。剣が斜め約45度で振りの途中。
+上体は前へ回転、両腕を伸ばす。刃の軌跡に細い白い弧線。
 ```
 
 ### attack 3
 ```
-Attack frame 3 of 5. Peak impact: sword slashing horizontally across the center,
-strong dynamic pose, bright slash effect line, weight fully forward.
+攻撃3コマ目（全5コマ）。インパクトの頂点。剣が体の中心を水平に斬り抜ける。
+力強い動きのポーズ、明るい斬撃の光、重心は完全に前。
 ```
 
 ### attack 4
 ```
-Attack frame 4 of 5. Follow-through: sword swings through to low left,
-body momentum carrying forward, cape flowing around.
+攻撃4コマ目（全5コマ）。振り抜き。剣は左下まで振り切れ、
+体の勢いが前へ流れる。マントがなびく。
 ```
 
 ### attack 5
 ```
-Attack frame 5 of 5. Recovery: sword lowering, body straightening,
-returning toward idle_1 stance, cape settling.
+攻撃5コマ目（全5コマ）。戻り。剣を下げ、体を起こして
+idle_1 の姿勢へ戻りつつある。マントが落ち着く。
 ```
 
 ### rest 1
 ```
-Rest pose: sitting cross-legged on the ground, sword resting across the lap,
-eyes closed, breathing deeply, calm expression.
+休憩ポーズ。地面にあぐらをかいて座り、剣は膝の上に横たえる。
+目を閉じ、深く呼吸している。穏やかな表情。
 ```
 
 ---
 
 ## 滑らかにするコツ
 
-- **差分で指示する**: 「前のコマより腕を約15°上げる」のように、変化量を小さく具体的に。
-- **アンカーを固定**: 頭頂の高さ・腰の位置・両足の接地位置を毎フレーム同じにする。
-- **関節を明示**: 肩/肘/膝の角度、体のひねり、重心（前足/後ろ足）を書く。
-- **連続フレームは1枚ずつ**: 大きく飛ばさず、動きの連続性を確認しながら進める。
-- どうしてもバラつく場合の代替: 「同じキャラで attack の5フレームを横一列に並べた
-  スプライトシート（暗い背景）」を1枚で依頼し、切り出して使う（1回の生成でスタイルが揃う）。
+- **差分で指示する**: 「前のコマより腕を約15度上げる」のように、変化量を小さく具体的に。
+- **基準を固定**: 頭頂の高さ・腰の位置・両足の接地位置を毎フレームそろえる。
+- **関節を明示**: 肩・肘・ひざの角度、体のひねり、重心（前足/後ろ足）を書く。
+- **1枚ずつ進める**: 大きく飛ばさず、動きのつながりを確認しながら。
+- どうしてもバラつく場合の代替: 「同じキャラで attack の5コマを横一列に並べた
+  スプライトシート（暗い背景）」を1枚で依頼し、切り出して使う（1回の生成で絵柄がそろう）。
 
 ---
 
@@ -162,18 +164,18 @@ eyes closed, breathing deeply, calm expression.
 # 1) 生成画像は 1024〜1254px で出るので 512x512 に縮小
 sips -z 512 512 <生成画像>.png
 
-# 2) Background transparency（四隅フラッドフィル）
+# 2) 背景透過（四隅からのフラッドフィル）
 #    バトル同梱スプライト
 ./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py --kind player
 #    ガチャ立ち絵（backend/assets/master/source/characters/）
 ./scripts/assets/run.sh scripts/assets/make_player_sprites_transparent.py --kind character
 
-# 3) Sync to Android/iOS（バトル同梱スプライトのみ）
+# 3) Android/iOS へ同期（バトル同梱スプライトのみ）
 ./scripts/assets/run.sh scripts/assets/sync_battle_assets.py
 
-# 4) Validate
+# 4) 検証
 ./scripts/assets/run.sh scripts/assets/validate_assets.py
 ```
 
-> 足元（ベースライン）が揃わない場合は、縮小前後に全コマの足元ラインを揃えてから透過する。
+> 足元（ベースライン）が揃わない場合は、縮小前後に全コマの足元ラインをそろえてから透過する。
 > `--kind character` は `backend/assets/master/source/characters/` 配下の PNG/WebP を一括で背景透過します。
