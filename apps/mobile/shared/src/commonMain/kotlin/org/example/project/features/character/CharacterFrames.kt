@@ -9,6 +9,9 @@ package org.example.project.features.character
  */
 object CharacterFrames {
 
+    /** フレームのファイル名（`{mode}_{frame}.webp` 等） */
+    private val FRAME_FILE_RE = Regex("^[a-z]+_\\d+\\.(webp|png|jpg)$")
+
     /** mode -> フレーム数 */
     val modeFrameCount: Map<String, Int> = linkedMapOf(
         "idle" to 2,
@@ -21,10 +24,15 @@ object CharacterFrames {
     /**
      * `image_url`（例 `.../characters/00002/idle_1.webp`）からフレームのベース
      * （`.../characters/00002`）を返す。ファイル名を除いたディレクトリ。
+     *
+     * **命名規約（`{mode}_{frame}.webp`）に一致しない URL**（placehold 等）は null を返し、
+     * 呼び出し側は同梱スプライト等へフォールバックする。
      */
     fun baseFromImageUrl(imageUrl: String): String? {
         val trimmed = imageUrl.trim().substringBefore('?')
         if (trimmed.isEmpty()) return null
+        val fileName = trimmed.substringAfterLast('/')
+        if (!FRAME_FILE_RE.matches(fileName.lowercase())) return null
         val base = trimmed.substringBeforeLast('/', missingDelimiterValue = "")
         return base.ifEmpty { null }
     }
