@@ -144,21 +144,24 @@ CONFIRM_PROD_UPLOAD=yes make master-images-upload-prod
 - `--env` を指定しない従来の `make master-images-upload` も残っています（フラット変数 `SUPABASE_URL` 等）。
 - アップロードは **ローカル実行** で Render を経由しません（`docs/ENVIRONMENT.md` 相当の方針）。
 
-### Storage のみ入稿（複数フレーム等・DB 更新なし）
+### キャラクター複数フレームの入稿（Storage）
 
-複数フレームのキャラ画像（`character_{code}_{mode}_{frame}.webp` 等）のように `m_*` テーブルへ 1:1 対応しない画像は、**Storage のみ**へ入稿します（`image_url` は更新しません）。`upload.py` と同じ環境変数解決を再利用します。
+キャラのフレームは **`master/characters/{code}/{mode}_{frame}.webp`**（1キャラ = 1フォルダ）に置く。
+`m_characters.image_url` は代表1枚（例 `.../master/characters/00002/idle_1.webp`）を指し、アプリは URL のディレクトリをベースに各フレームURLを導出する（`CharacterFrames`）。
+
+リポジトリも同じ `characters/{code}/{mode}_{frame}.webp` 構成にする。キャラごとに入稿する:
 
 ```bash
-# dry-run → 本番（stg の例）
+# 例: 00002（DIR の中身が {PREFIX} 配下に入る）
 make master-images-upload-storage-stg \
-  DIR=backend/assets/master/source/characters PREFIX=master/characters DRY_RUN=1
+  DIR=backend/assets/master/source/characters/00002 PREFIX=master/characters/00002 DRY_RUN=1
 make master-images-upload-storage-stg \
-  DIR=backend/assets/master/source/characters PREFIX=master/characters
+  DIR=backend/assets/master/source/characters/00002 PREFIX=master/characters/00002
 ```
 
-- `DIR` はリポジトリルート相対（`backend/.env` は `run.sh` が読み込み済み）。対象は png/webp/jpg。
-- キーは `{PREFIX}/{filename}`（例 `master/characters/character_00001_idle_1.webp`）。
+- キーは `{PREFIX}/{filename}`（例 `master/characters/00002/idle_1.webp`）。
 - `dev` / `prod` も `master-images-upload-storage-{dev,prod}`（prod は `CONFIRM_PROD_UPLOAD=yes` 必須）。
+- **00001（同梱プレイヤー）はアプリ同梱のため Storage 不要**。
 
 ### 4. 動作確認
 

@@ -69,7 +69,7 @@ INSERT INTO m_study_genres (id, slug, label, emoji, color_hex, sort_order, is_de
 -- ガチャピックアップ等で image_url は開発中は空にし、クライアントは同梱 bg_gacha_banner + スプライト／アイコンで表示
 INSERT INTO m_characters (id, name, rarity, base_hp, base_atk, base_def, image_url, is_active, created_at) VALUES
   ('a0000000-0000-0000-0000-000000000001', '光の勇者アリア',       5, 1500, 420, 300, '',     true, NOW()),
-  ('a0000000-0000-0000-0000-000000000002', '青魔導士',             5, 1800, 480, 250, 'https://njjmhkmaxyceplecifwz.supabase.co/storage/v1/object/public/game-assets/master/characters/character_00002_idle_1.webp', true, NOW()),
+  ('a0000000-0000-0000-0000-000000000002', '青魔導士',             5, 1800, 480, 250, 'https://njjmhkmaxyceplecifwz.supabase.co/storage/v1/object/public/game-assets/master/characters/00002/idle_1.webp', true, NOW()),
   ('a0000000-0000-0000-0000-000000000003', '聖女セラフィーナ',     5, 1200, 200, 380, 'https://placehold.co/200x200/FFB6C1/000?text=Seraphina', true, NOW()),
   ('a0000000-0000-0000-0000-000000000004', '竜騎士ドラク',         5, 2000, 400, 350, 'https://placehold.co/200x200/DC143C/FFF?text=Draco',     true, NOW()),
   ('a0000000-0000-0000-0000-000000000005', '叡智の大賢者マーリン', 5, 1100, 500, 200, 'https://placehold.co/200x200/8B5CF6/FFF?text=Merlin',   true, NOW());
