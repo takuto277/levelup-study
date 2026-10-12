@@ -27,145 +27,26 @@ private func hasPlayerWalkSprites() -> Bool {
 private struct PartyLeadImageUrlKey: EnvironmentKey { static let defaultValue: String = "" }
 private extension EnvironmentValues { var partyLeadImageUrl: String { get { self[PartyLeadImageUrlKey.self] } set { self[PartyLeadImageUrlKey.self] = newValue } } }
 
-/// アニメーション付きプレイヤースプライト
+/// アニメーション付きプレイヤースプライト。frame source 経由で同梱/Storage を同じ経路で扱う。
 private struct PlayerSpriteView: View {
     let mode: SpriteMode
     let size: CGFloat
 
     @Environment(\.partyLeadImageUrl) private var partyLeadImageUrl
 
-    enum SpriteMode {
-        case idle
-        case prep
-        case attack
-        case rest
-        case walking(phaseTick: Int64)
-    }
-
-    @State private var currentFrame: Int = 0
-
-    private var prefix: String {
-        switch mode {
-        case .idle: return "sprite_player_idle"
-        case .prep: return "sprite_player_prep"
-        case .attack: return "sprite_player_attack"
-        case .rest: return "sprite_player_rest"
-        case .walking: return "sprite_player_walk"
-        }
-    }
-
-    private var interval: TimeInterval {
-        switch mode {
-        case .idle: return 0.6
-        case .prep: return 0.06
-        case .attack: return 0.06
-        case .rest: return 0
-        case .walking: return 0.3
-        }
-    }
-
     var body: some View {
-        if !partyLeadImageUrl.isEmpty, let u = URL(string: partyLeadImageUrl) {
-            AsyncImage(url: u) { phase in
-                switch phase {
-                case .success(let image): image.resizable().scaledToFit().frame(width: size, height: size)
-                default: bundledBody
-                }
-            }
-        } else {
-            bundledBody
-        }
+        CharacterSpriteView(source: frameSource, mode: mode, size: size)
     }
 
-    @ViewBuilder
-    private var bundledBody: some View {
-        let frames = collectFrames(prefix: prefix)
-        if frames.isEmpty {
-            Text("🧙‍♂️")
-                .font(.system(size: size * 0.42))
-                .frame(width: size, height: size)
-        } else if case .attack = mode {
-            AttackAnimView(frames: frames, interval: interval, size: size)
-        } else {
-            LoopAnimView(
-                frames: frames,
-                interval: interval,
-                isOneShot: mode == .prep,
-                mode: mode,
-                size: size
-            )
+    /// リードの image_url があれば Storage 由来、無ければ同梱スプライト。
+    private var frameSource: CharacterFrameSource {
+        if !partyLeadImageUrl.isEmpty {
+            let storage = StorageCharacterFrameSource(imageUrl: partyLeadImageUrl)
+            if !storage.frames(for: mode).isEmpty { return storage }
         }
+        return BundledCharacterFrameSource()
     }
 }
-
-private struct AttackAnimView: View {
-    let frames: [String]
-    let interval: TimeInterval
-    let size: CGFloat
-
-    @State private var currentFrame: Int = 0
-    @State private var attackOffset: CGFloat = 0
-    @State private var taskId: Int = 0
-
-    var body: some View {
-        Image(frames[min(currentFrame, frames.count - 1)])
-            .resizable()
-            .interpolation(.none)
-            .scaledToFit()
-            .frame(width: size, height: size)
-            .offset(x: attackOffset)
-            .task(id: taskId) {
-                currentFrame = 0
-                attackOffset = 0
-                // 斬撃の瞬間に一瞬スライド
-                for i in 1..<frames.count {
-                    try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-                    currentFrame = i
-                    if i == 2 { withAnimation(.easeOut(duration: 0.05)) { attackOffset = 20 } }
-                }
-                withAnimation(.easeOut(duration: 0.12)) { attackOffset = 0 }
-            }
-            .onAppear { taskId += 1 }
-    }
-}
-
-private struct LoopAnimView: View {
-    let frames: [String]
-    let interval: TimeInterval
-    let isOneShot: Bool
-    let mode: PlayerSpriteView.SpriteMode
-    let size: CGFloat
-
-    @State private var currentFrame: Int = 0
-    @State private var taskId: Int = 0
-
-    var body: some View {
-        Image(frames[min(currentFrame, frames.count - 1)])
-            .resizable()
-            .interpolation(.none)
-            .scaledToFit()
-            .frame(width: size, height: size)
-            .task(id: taskId) {
-                currentFrame = 0
-                if isOneShot {
-                    for _ in 1..<frames.count {
-                        try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-                        currentFrame += 1
-                    }
-                } else {
-                    while !Task.isCancelled {
-                        try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-                        currentFrame = (currentFrame + 1) % frames.count
-                    }
-                }
-            }
-            .onChange(of: mode) { _ in
-                taskId += 1
-            }
-    }
-}
-
-extension PlayerSpriteView.SpriteMode: Equatable {}
 
 private func playerPrepAssetName() -> String? {
     let frames = collectFrames(prefix: "sprite_player_prep")
@@ -223,55 +104,6 @@ private func remoteDungeonBgUrl(uiState: StudyQuestUiState) -> URL? {
     return URL(string: s)
 }
 
-struct AnimatedSpriteView: View {
-    let frames: [String]
-    let interval: TimeInterval
-    let size: CGFloat
-
-    @Environment(\.partyLeadImageUrl) private var partyLeadImageUrl
-    @State private var currentFrame = 0
-
-    init(frames: [String], interval: TimeInterval = 0.2, size: CGFloat = 120) {
-        self.frames = frames
-        self.interval = interval
-        self.size = size
-    }
-
-    var body: some View {
-        Group {
-            if !partyLeadImageUrl.isEmpty, let u = URL(string: partyLeadImageUrl) {
-                AsyncImage(url: u) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFit().frame(width: size, height: size, alignment: .bottom)
-                    default:
-                        framesImage
-                    }
-                }
-            } else {
-                framesImage
-            }
-        }
-        .onAppear {
-            guard frames.count > 1 else { return }
-            Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-                currentFrame = (currentFrame + 1) % frames.count
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var framesImage: some View {
-        if !frames.isEmpty {
-            Image(frames[currentFrame])
-                .resizable()
-                .interpolation(.none)
-                .scaledToFit()
-                .frame(width: size, height: size, alignment: .bottom)
-        }
-    }
-}
-
 struct DungeonBackgroundView: View {
     let dungeonName: String?
     var isTrainingGround: Bool = false
@@ -295,7 +127,7 @@ struct DungeonBackgroundView: View {
 @ViewBuilder
 private func iosCombatPlayerSprite(phaseTick: Int64, lastDamage: Int32, size: CGFloat) -> some View {
     let m = combatTurnMod(phaseTick)
-    let mode: PlayerSpriteView.SpriteMode = {
+    let mode: SpriteMode = {
         switch m {
         case 0: return lastDamage > 0 ? .attack : .idle
         case 2: return .prep
@@ -309,7 +141,7 @@ private func iosCombatPlayerSprite(phaseTick: Int64, lastDamage: Int32, size: CG
 @ViewBuilder
 private func iosTrainingPlayerSprite(phaseTick: Int64, size: CGFloat) -> some View {
     let m = combatTurnMod(phaseTick)
-    let mode: PlayerSpriteView.SpriteMode = {
+    let mode: SpriteMode = {
         switch m {
         case 0: return .attack
         case 2: return .prep
@@ -419,7 +251,7 @@ private struct BattleConfrontationIOSView: View {
                                     .padding(.bottom, adventureFloorInset)
                                     .offset(x: playerLeft + strikeNudge)
                             } else if !playerWalkFrames.isEmpty {
-                                AnimatedSpriteView(frames: playerWalkFrames, interval: 0.32, size: 118)
+                                PlayerSpriteView(mode: .walking(phaseTick: 0), size: 118)
                                     .padding(.leading, 16)
                                     .padding(.bottom, adventureFloorInset)
                                     .offset(x: playerLeft)
@@ -1238,7 +1070,7 @@ struct StudyQuestScreenView: View {
                     Spacer()
                     HStack(alignment: .bottom) {
                         if hasPlayerSprites {
-                            AnimatedSpriteView(frames: playerWalkFrameNames(), interval: 0.32, size: 118)
+                            PlayerSpriteView(mode: .walking(phaseTick: 0), size: 118)
                                 .padding(.leading, 16)
                                 .padding(.bottom, adventureFloorInset)
                         } else {

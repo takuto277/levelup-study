@@ -9,13 +9,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.example.project.domain.model.GachaResultType
+import org.example.project.features.character.CharacterFrameDownloader
 
 /**
  * 召喚（Gacha）画面の ViewModel
  * バナー選択 → 確認 → 演出 → 結果 のフェーズ管理
  */
 class GachaViewModel(
-    private val gachaUseCase: GachaUseCase
+    private val gachaUseCase: GachaUseCase,
+    private val frameDownloader: CharacterFrameDownloader,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GachaUiState())
@@ -102,6 +104,11 @@ class GachaViewModel(
                         isNew = result.isNew
                     )
                 }
+
+                // 入手したキャラのフレーム一式を Storage から取得してローカル保存（オフライン用）
+                apiResults
+                    .filter { it.resultType == GachaResultType.CHARACTER && it.imageUrl.isNotBlank() }
+                    .forEach { r -> launch { frameDownloader.downloadAll(r.imageUrl) } }
 
                 _uiState.update {
                     it.copy(

@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -17,7 +19,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.imageLoader
 import coil.request.ImageRequest
+import org.example.project.core.storage.AssetStore
+import org.example.project.features.character.CharacterFrames
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -95,6 +100,34 @@ fun PlayerSprite(
     url: String? = null
 ) {
     if (!url.isNullOrBlank()) {
+        val modeName = when (mode) {
+            PlayerSpriteMode.Walking -> "walk"
+            PlayerSpriteMode.Idle -> "idle"
+            PlayerSpriteMode.Prep -> "prep"
+            PlayerSpriteMode.Attack -> "attack"
+            PlayerSpriteMode.Rest -> "rest"
+        }
+        val frames = remember(url, modeName) { CharacterFrames.frameUrls(url, modeName) }
+        if (frames.isNotEmpty()) {
+            // 同梱スプライト（PlayerSprite）と同一のタイミング・one-shot 挙動に合わせる
+            val intervalMs = when (mode) {
+                PlayerSpriteMode.Walking -> 320L
+                PlayerSpriteMode.Idle -> 600L
+                PlayerSpriteMode.Prep -> 60L
+                PlayerSpriteMode.Attack -> 60L
+                PlayerSpriteMode.Rest -> 0L
+            }
+            PlayerFrameImage(
+                frames = frames,
+                intervalMs = intervalMs,
+                size = size,
+                modifier = modifier,
+                oneShot = mode == PlayerSpriteMode.Prep || mode == PlayerSpriteMode.Attack,
+                slide = mode == PlayerSpriteMode.Attack
+            )
+            return
+        }
+        // フレームを導出できない場合は image_url を単体表示
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(true).build(),
             contentDescription = null,
@@ -202,6 +235,61 @@ fun PlayerSprite(
             )
         }
     }
+}
+
+/** キャラのフレームを一度メモリに読み込んでから mode に応じて再生する（毎フレーム再ロードによるちらつきを防ぐ）。 */
+@Composable
+private fun PlayerFrameImage(
+    frames: List<String>,
+    intervalMs: Long,
+    size: Dp,
+    modifier: Modifier = Modifier,
+    oneShot: Boolean = false,
+    slide: Boolean = false
+) {
+    val context = LocalContext.current
+    // 先に全フレームを ImageBitmap として読み込み、メモリに保持する
+    val bitmaps by produceState(initialValue = emptyList<ImageBitmap>(), frames) {
+        val loader = context.imageLoader
+        value = frames.mapNotNull { remote ->
+            val key = CharacterFrames.storageKey(remote)
+            val data: Any = if (AssetStore.exists(key)) java.io.File(AssetStore.localPath(key)) else remote
+            runCatching {
+                val drawable = loader.execute(ImageRequest.Builder(context).data(data).build()).drawable
+                (drawable as android.graphics.drawable.BitmapDrawable).bitmap.asImageBitmap()
+            }.getOrNull()
+        }
+    }
+    if (bitmaps.isEmpty()) return
+
+    val scope = rememberCoroutineScope()
+    val slideX = remember { Animatable(0f) }
+    var index by remember(bitmaps) { mutableIntStateOf(0) }
+    LaunchedEffect(bitmaps) {
+        index = 0
+        slideX.snapTo(0f)
+        if (bitmaps.size <= 1 || intervalMs <= 0) return@LaunchedEffect
+        if (oneShot) {
+            // 同梱版と同じ: 1回だけ再生し、攻撃は斬撃の瞬間に一瞬スライド
+            for (i in 1 until bitmaps.size) {
+                delay(intervalMs)
+                index = i
+                if (slide && i == 2) scope.launch { slideX.animateTo(20f, tween(50)) }
+            }
+            if (slide) scope.launch { slideX.animateTo(0f, tween(120)) }
+        } else {
+            while (true) {
+                delay(intervalMs)
+                index = (index + 1) % bitmaps.size
+            }
+        }
+    }
+    Image(
+        bitmap = bitmaps[index.coerceIn(0, bitmaps.lastIndex)],
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = modifier.offset { IntOffset(slideX.value.roundToInt(), 0) }.size(size)
+    )
 }
 
 @Composable

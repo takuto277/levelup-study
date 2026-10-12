@@ -21,6 +21,7 @@ koin = "4.0.2"
 ktor = "3.1.1"
 coil = "2.7.0"
 supabase = "3.1.4"
+okio = "3.9.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -55,6 +56,7 @@ multiplatform-settings-no-arg = { module = "com.russhwolf:multiplatform-settings
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt", version.ref = "supabase" }
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
