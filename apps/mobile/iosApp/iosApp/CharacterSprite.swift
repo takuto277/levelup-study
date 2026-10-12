@@ -155,7 +155,7 @@ struct AnimatedFramesView: View {
     private static func loadImage(_ frame: CharacterFrame) async -> UIImage? {
         switch frame {
         case .assetName(let name):
-            return UIImage(named: name)
+            return SpriteImage.uiImage(name)
         case .localFile(let path):
             return UIImage(contentsOfFile: path)
         case .remoteURL(let url):

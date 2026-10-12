@@ -5,13 +5,13 @@ import UIKit
 // MARK: - Sprite Helpers
 
 private func hasSpriteAsset(_ name: String) -> Bool {
-    UIImage(named: name) != nil
+    SpriteImage.exists(name)
 }
 
 private func collectFrames(prefix: String) -> [String] {
     (1...8).compactMap { frame in
         let name = "\(prefix)_\(frame)"
-        return UIImage(named: name) != nil ? name : nil
+        return SpriteImage.exists(name) ? name : nil
     }
 }
 
@@ -51,7 +51,7 @@ private struct PlayerSpriteView: View {
 private func playerPrepAssetName() -> String? {
     let frames = collectFrames(prefix: "sprite_player_prep")
     if let first = frames.first { return first }
-    if UIImage(named: "sprite_player_idle_1") != nil { return "sprite_player_idle_1" }
+    if SpriteImage.exists("sprite_player_idle_1") { return "sprite_player_idle_1" }
     return playerWalkFrameNames().first
 }
 
@@ -81,7 +81,7 @@ private func enemySpriteFrames(_ key: String) -> [String] {
     var frames: [String] = []
     for i in 1...8 {
         let name = "sprite_enemy_\(key)_\(i)"
-        if UIImage(named: name) != nil {
+        if SpriteImage.exists(name) {
             frames.append(name)
         }
     }
@@ -307,8 +307,8 @@ private struct BattleConfrontationIOSView: View {
     /// 正方形セル内に収め、下端で床に接地（ボスはセル約 2 倍）
     @ViewBuilder
     private func enemySpriteOnly(eW: CGFloat, cellH: CGFloat, isBoss: Bool) -> some View {
-        if let name = enemyFirstFrameName, UIImage(named: name) != nil {
-            Image(name)
+        if let name = enemyFirstFrameName, let img = SpriteImage.uiImage(name) {
+            Image(uiImage: img)
                 .resizable()
                 .interpolation(.none)
                 .scaledToFit()

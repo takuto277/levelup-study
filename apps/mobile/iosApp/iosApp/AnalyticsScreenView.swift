@@ -201,8 +201,8 @@ struct AnalyticsScreenView: View {
 
     @ViewBuilder
     private func recordPortraitSpriteOrEmoji(emoji: String) -> some View {
-        if UIImage(named: "sprite_player_idle_1") != nil {
-            Image("sprite_player_idle_1")
+        if let img = SpriteImage.uiImage("sprite_player_idle_1") {
+            Image(uiImage: img)
                 .resizable()
                 .interpolation(.none)
                 .scaledToFit()
@@ -210,8 +210,8 @@ struct AnalyticsScreenView: View {
                 .frame(width: 48, height: 54, alignment: .top)
                 .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: 14))
-        } else if UIImage(named: "sprite_player_prep_1") != nil {
-            Image("sprite_player_prep_1")
+        } else if let img = SpriteImage.uiImage("sprite_player_prep_1") {
+            Image(uiImage: img)
                 .resizable()
                 .interpolation(.none)
                 .scaledToFit()
