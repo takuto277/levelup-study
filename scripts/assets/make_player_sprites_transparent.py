@@ -175,12 +175,12 @@ def collect_enemy_sprite_files() -> list[Path]:
 
 
 def collect_character_files() -> list[Path]:
-    """Master character portraits (backend/assets/master/source/characters/)."""
+    """Master character portraits (backend/assets/master/source/characters/{code}/...)."""
     if not MASTER_CHARACTER_DIR.is_dir():
         return []
     files = [
         p
-        for p in MASTER_CHARACTER_DIR.iterdir()
+        for p in MASTER_CHARACTER_DIR.rglob("*")
         if p.is_file() and p.suffix.lower() in {".png", ".webp"}
     ]
     return sorted(files)
