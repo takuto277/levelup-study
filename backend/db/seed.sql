@@ -72,7 +72,8 @@ INSERT INTO m_characters (id, name, rarity, base_hp, base_atk, base_def, image_u
   ('a0000000-0000-0000-0000-000000000002', '青魔導士',             5, 1800, 480, 250, 'https://njjmhkmaxyceplecifwz.supabase.co/storage/v1/object/public/game-assets/master/characters/00002/idle_1.webp', true, NOW()),
   ('a0000000-0000-0000-0000-000000000003', '聖女セラフィーナ',     5, 1200, 200, 380, 'https://placehold.co/200x200/FFB6C1/000?text=Seraphina', true, NOW()),
   ('a0000000-0000-0000-0000-000000000004', '竜騎士ドラク',         5, 2000, 400, 350, 'https://placehold.co/200x200/DC143C/FFF?text=Draco',     true, NOW()),
-  ('a0000000-0000-0000-0000-000000000005', '叡智の大賢者マーリン', 5, 1100, 500, 200, 'https://placehold.co/200x200/8B5CF6/FFF?text=Merlin',   true, NOW());
+  ('a0000000-0000-0000-0000-000000000005', '叡智の大賢者マーリン', 5, 1100, 500, 200, 'https://placehold.co/200x200/8B5CF6/FFF?text=Merlin',   true, NOW()),
+  ('a0000000-0000-0000-0000-00000000001f', '緑の剣士',             5,  900, 400, 250, 'https://njjmhkmaxyceplecifwz.supabase.co/storage/v1/object/public/game-assets/master/characters/00003/idle_1.webp', true, NOW());
 
 -- ★4（10体）
 INSERT INTO m_characters (id, name, rarity, base_hp, base_atk, base_def, image_url, is_active, created_at) VALUES
@@ -305,12 +306,13 @@ INSERT INTO m_dungeon_stage_enemies (id, stage_id, monster_id, sort_order, count
 -- 5. ガチャバナー（3種）
 --    UUID prefix: f0000000-0000-0000-0000-0000000000xx
 -- ────────────────────────────────────────────────
--- ★一時テスト用: このキャラバナーは常に 00002（青魔導士）を排出する。検証後に元の排出テーブルへ戻す。
+-- ★一時テスト用: このキャラバナーは 00002（青魔導士）と 00003（緑の剣士）を 50/50 で排出する。検証後に元の排出テーブルへ戻す。
 INSERT INTO m_gacha_banners (id, name, banner_type, start_at, end_at, pity_threshold, rate_table, is_active) VALUES
-  ('f0000000-0000-0000-0000-000000000001', '青魔導士ピックアップ', 'character',
+  ('f0000000-0000-0000-0000-000000000001', '新キャラピックアップ', 'character',
    '2026-01-01 00:00:00+00', '2027-12-31 23:59:59+00', 90,
    '[
-     {"item_id":"a0000000-0000-0000-0000-000000000002","result_type":"character","rarity":5,"rate":1.0}
+     {"item_id":"a0000000-0000-0000-0000-000000000002","result_type":"character","rarity":5,"rate":0.5},
+     {"item_id":"a0000000-0000-0000-0000-00000000001f","result_type":"character","rarity":5,"rate":0.5}
    ]'::jsonb, true),
 
   ('f0000000-0000-0000-0000-000000000002', '伝説の聖剣ガチャ', 'weapon',
