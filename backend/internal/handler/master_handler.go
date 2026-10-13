@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -103,7 +104,42 @@ func (h *MasterHandler) buildGachaBannerJSON(b model.MasterGachaBanner, feats []
 		arr = append(arr, h.enrichGachaFeaturedJSON(f))
 	}
 	m["featured"] = arr
+	m["characters"] = h.bannerCharactersJSON(json.RawMessage(b.RateTable))
 	return m
+}
+
+// bannerCharactersJSON — rate_table の character を解決し、表示用（id/name/rarity/image_url）を
+// レアリティ降順で返す。UI で「このバナーから排出されるキャラ」を出すために使う。
+func (h *MasterHandler) bannerCharactersJSON(rateJSON []byte) []map[string]interface{} {
+	var entries []struct {
+		ItemID     uuid.UUID `json:"item_id"`
+		ResultType string    `json:"result_type"`
+	}
+	if err := json.Unmarshal(rateJSON, &entries); err != nil {
+		return []map[string]interface{}{}
+	}
+	seen := make(map[uuid.UUID]bool)
+	out := make([]map[string]interface{}, 0)
+	for _, e := range entries {
+		if strings.ToLower(e.ResultType) != "character" || seen[e.ItemID] {
+			continue
+		}
+		seen[e.ItemID] = true
+		c, err := h.repo.GetCharacter(e.ItemID)
+		if err != nil || c == nil {
+			continue
+		}
+		out = append(out, map[string]interface{}{
+			"id":        c.ID.String(),
+			"name":      c.Name,
+			"rarity":    c.Rarity,
+			"image_url": c.ImageURL,
+		})
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return out[i]["rarity"].(int) > out[j]["rarity"].(int)
+	})
+	return out
 }
 
 func (h *MasterHandler) enrichGachaFeaturedJSON(f model.MasterGachaBannerFeatured) map[string]interface{} {

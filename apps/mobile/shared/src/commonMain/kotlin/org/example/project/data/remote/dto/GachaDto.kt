@@ -3,6 +3,7 @@ package org.example.project.data.remote.dto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import org.example.project.domain.model.BannerCharacter
 import org.example.project.domain.model.BannerType
 import org.example.project.domain.model.GachaBanner
 import org.example.project.domain.model.GachaBannerFeatured
@@ -24,6 +25,14 @@ data class GachaBannerFeaturedResponse(
 )
 
 @Serializable
+data class GachaBannerCharacterResponse(
+    val id: String,
+    val name: String = "",
+    val rarity: Int = 0,
+    @SerialName("image_url") val imageUrl: String = ""
+)
+
+@Serializable
 data class GachaBannerResponse(
     val id: String,
     val name: String,
@@ -33,7 +42,8 @@ data class GachaBannerResponse(
     @SerialName("pity_threshold") val pityThreshold: Int? = null,
     @SerialName("rate_table") val rateTable: JsonElement,
     @SerialName("is_active") val isActive: Boolean,
-    val featured: List<GachaBannerFeaturedResponse> = emptyList()
+    val featured: List<GachaBannerFeaturedResponse> = emptyList(),
+    val characters: List<GachaBannerCharacterResponse> = emptyList()
 )
 
 @Serializable
@@ -117,7 +127,10 @@ fun GachaBannerResponse.toDomain(): GachaBanner {
         rateTable = rateTable.toString(),
         isActive = isActive,
         featured = feat,
-        featuredSummary = summary
+        featuredSummary = summary,
+        characters = characters.map {
+            BannerCharacter(id = it.id, name = it.name, rarity = it.rarity, imageUrl = it.imageUrl)
+        }
     )
 }
 
