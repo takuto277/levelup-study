@@ -134,13 +134,18 @@ iOS の `Contents.json` テンプレート:
 
 ### ドット絵のコツ
 - `FilterQuality.None`（Android）/ `.interpolation(.none)`（iOS）で拡大するため、ぼやけずにピクセルがくっきり表示される
-- 背景は透過にする（黒背景だとダンジョン背景と馴染まない）
+- 背景は最終的に透過にする（生成時は単色の暗い背景にして、後処理で透過する）
 - 各フレーム間でキャラクターの位置・サイズを揃える
 
 ### AI生成のプロンプト例
+
+キャラクターの複数フレーム生成は、詳細版の
+[`assets/source/PROMPTS.md`](assets/source/PROMPTS.md) を使う。
+同一性ロック、`idle/prep/attack/rest/walk` のフレーム指定、修正用プロンプトまで含む。
+
 ```
 Pixel art, 512x512 sprite, [キャラクター説明],
 16-bit retro JRPG style, clean pixel art,
-transparent background, no anti-aliasing,
+solid dark plain background for later transparency removal, no anti-aliasing,
 limited color palette
 ```
