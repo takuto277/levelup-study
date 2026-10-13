@@ -16,7 +16,17 @@ data class GachaBanner(
     /** ピックアップ行（サーバー `m_gacha_banner_featured`） */
     val featured: List<GachaBannerFeatured> = emptyList(),
     /** 表示用: ピックアップの `item_name` を「 · 」で連結（空なら UI でフォールバック） */
-    val featuredSummary: String = ""
+    val featuredSummary: String = "",
+    /** このバナーから排出されるキャラ（表示用。レアリティ降順） */
+    val characters: List<BannerCharacter> = emptyList()
+)
+
+/** ガチャバナーの排出キャラ（表示用。画像URL付き） */
+data class BannerCharacter(
+    val id: String,
+    val name: String,
+    val rarity: Int,
+    val imageUrl: String
 )
 
 /** バナー種別 */

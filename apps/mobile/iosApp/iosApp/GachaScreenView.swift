@@ -33,6 +33,8 @@ private struct BannerDisplay: Identifiable {
     let type: UIBannerType
     /// ピックアップ立ち絵（マスタの image_url）
     let pickupImageUrl: String?
+    /// このバナーから排出されるキャラ（表示用。レアリティ降順）
+    let characters: [BannerCharacter]
     /// マスタ `start_at` / `end_at`（API の文字列をそのまま）
     let startAt: String
     let endAt: String
@@ -215,6 +217,7 @@ private class GachaStore: ObservableObject {
             name: b.name,
             type: bt,
             pickupImageUrl: pickupUrl,
+            characters: b.characters,
             startAt: b.startAt,
             endAt: b.endAt
         )
@@ -380,6 +383,28 @@ private struct GachaStonesBottomBar: View {
     }
 }
 
+private struct BannerCharactersRow: View {
+    let characters: [BannerCharacter]
+    var maxCount: Int = 4
+
+    var body: some View {
+        let shown = Array(characters.prefix(maxCount))
+        HStack(spacing: 8) {
+            ForEach(shown, id: \.id) { c in
+                AsyncImage(url: URL(string: c.imageUrl)) { phase in
+                    switch phase {
+                    case .success(let img):
+                        img.resizable().scaledToFit()
+                    default:
+                        Color.clear
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
+}
+
 private struct BannerCard: View {
     let banner: BannerDisplay
     let onTap: () -> Void
@@ -390,10 +415,6 @@ private struct BannerCard: View {
             GeometryReader { geo in
                 let w = geo.size.width
                 let h = geo.size.height
-                /// 背景（カード）の短辺の 1/2 をピックアップ表示の基準サイズにする
-                let heroBase = min(w, h) * 0.5
-                let heroW = min(w * 0.48, heroBase * 1.15)
-                let heroH = min(h * 0.62, heroBase * 1.28)
 
                 ZStack(alignment: .bottomLeading) {
                     Image(gachaBannerBackgroundAsset)
@@ -413,17 +434,10 @@ private struct BannerCard: View {
                     .frame(width: w, height: h)
                     .allowsHitTesting(false)
 
-                    HStack(alignment: .center) {
-                        Spacer(minLength: 0)
-                        bannerPickupLayer(maxSide: heroBase)
-                            .frame(width: heroW, height: heroH)
-                            .clipped()
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .shadow(color: .black.opacity(0.32), radius: 8, y: 4)
-                    }
-                    .frame(width: w, height: h)
-                    .padding(.trailing, 10)
-                    .padding(.top, 10)
+                    BannerCharactersRow(characters: banner.characters)
+                        .frame(width: w * 0.84, height: h * 0.44)
+                        .frame(width: w, height: h, alignment: .top)
+                        .padding(.top, 26)
 
                     LinearGradient(
                         colors: [.clear, .clear, .black.opacity(0.82)],
@@ -594,10 +608,15 @@ private struct ConfirmView: View {
                             }
                             .opacity(appeared ? 1 : 0)
 
-                            SummoningOrb(bannerType: banner.type, pickupImageUrl: banner.pickupImageUrl)
-                                .frame(height: 220)
-                                .scaleEffect(appeared ? 1 : 0.92)
-                                .opacity(appeared ? 1 : 0)
+                            VStack(spacing: 10) {
+                                Text("こんなキャラが排出されます")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.white.opacity(0.7))
+                                BannerCharactersRow(characters: banner.characters)
+                                    .frame(height: 170)
+                            }
+                            .scaleEffect(appeared ? 1 : 0.92)
+                            .opacity(appeared ? 1 : 0)
 
                             HStack(spacing: 10) {
                                 GlowPullButton(
