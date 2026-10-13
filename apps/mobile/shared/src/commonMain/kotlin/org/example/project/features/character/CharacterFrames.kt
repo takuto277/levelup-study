@@ -18,7 +18,7 @@ object CharacterFrames {
         "prep" to 2,
         "attack" to 5,
         "rest" to 1,
-        "walk" to 2,
+        "walk" to 4,
     )
 
     /**
@@ -48,7 +48,7 @@ object CharacterFrames {
     fun byMode(imageUrl: String): Map<String, List<String>> =
         modeFrameCount.keys.associateWith { frameUrls(imageUrl, it) }
 
-    /** 全フレーム URL（12枚）。 */
+    /** 全フレーム URL（14枚）。 */
     fun all(imageUrl: String): List<String> = byMode(imageUrl).values.flatten()
 
     /**

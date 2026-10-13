@@ -29,7 +29,7 @@ import kotlin.math.roundToInt
 
 /** プレイヤー表示モード（歩き / 待機 / 攻撃準備 / 攻撃 / 休憩） */
 enum class PlayerSpriteMode {
-    /** `sprite_player_walk_1` と `sprite_player_walk_2` を交互 */
+    /** `sprite_player_walk_1` 〜 `sprite_player_walk_4` を順再生（存在する分だけ使用） */
     Walking,
     /** `sprite_player_idle_1` と `sprite_player_idle_2` を交互 */
     Idle,
@@ -43,6 +43,8 @@ enum class PlayerSpriteMode {
 
 private fun drawableId(context: android.content.Context, baseName: String): Int =
     context.resources.getIdentifier(baseName, "drawable", context.packageName)
+
+private const val WALK_CYCLE_MS = 640L
 
 @Composable
 fun BattleSprite(
@@ -123,7 +125,8 @@ fun PlayerSprite(
                 size = size,
                 modifier = modifier,
                 oneShot = mode == PlayerSpriteMode.Prep || mode == PlayerSpriteMode.Attack,
-                slide = mode == PlayerSpriteMode.Attack
+                slide = mode == PlayerSpriteMode.Attack,
+                cycleMs = WALK_CYCLE_MS.takeIf { mode == PlayerSpriteMode.Walking }
             )
             return
         }
@@ -143,19 +146,15 @@ fun PlayerSprite(
 
     when (mode) {
         PlayerSpriteMode.Walking -> {
-            val id1 = drawableId(context, "sprite_player_walk_1")
-            val id2 = drawableId(context, "sprite_player_walk_2")
-            val frames = listOfNotNull(
-                id1.takeIf { it != 0 },
-                id2.takeIf { it != 0 }
-            ).distinct()
+            val frames = collectFrameIds(context, "sprite_player_walk")
             if (frames.isEmpty()) return
+            val intervalMs = (WALK_CYCLE_MS / frames.size).coerceAtLeast(1L)
 
             var currentFrame by remember { mutableIntStateOf(0) }
             if (frames.size > 1) {
                 LaunchedEffect(Unit) {
                     while (true) {
-                        delay(320L)
+                        delay(intervalMs)
                         currentFrame = (currentFrame + 1) % frames.size
                     }
                 }
@@ -245,7 +244,8 @@ private fun PlayerFrameImage(
     size: Dp,
     modifier: Modifier = Modifier,
     oneShot: Boolean = false,
-    slide: Boolean = false
+    slide: Boolean = false,
+    cycleMs: Long? = null
 ) {
     val context = LocalContext.current
     // 先に全フレームを ImageBitmap として読み込み、メモリに保持する
@@ -269,17 +269,18 @@ private fun PlayerFrameImage(
         index = 0
         slideX.snapTo(0f)
         if (bitmaps.size <= 1 || intervalMs <= 0) return@LaunchedEffect
+        val frameDelayMs = cycleMs?.let { (it / bitmaps.size).coerceAtLeast(1L) } ?: intervalMs
         if (oneShot) {
             // 同梱版と同じ: 1回だけ再生し、攻撃は斬撃の瞬間に一瞬スライド
             for (i in 1 until bitmaps.size) {
-                delay(intervalMs)
+                delay(frameDelayMs)
                 index = i
                 if (slide && i == 2) scope.launch { slideX.animateTo(20f, tween(50)) }
             }
             if (slide) scope.launch { slideX.animateTo(0f, tween(120)) }
         } else {
             while (true) {
-                delay(intervalMs)
+                delay(frameDelayMs)
                 index = (index + 1) % bitmaps.size
             }
         }

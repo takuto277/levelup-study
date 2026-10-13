@@ -31,6 +31,13 @@ enum SpriteMode: Equatable {
         }
     }
 
+    var cycleDuration: TimeInterval? {
+        switch self {
+        case .walking: return 0.64
+        default: return nil
+        }
+    }
+
     var isOneShot: Bool {
         switch self {
         case .prep, .attack: return true
@@ -101,6 +108,7 @@ struct AnimatedFramesView: View {
     var oneShot: Bool = false
     var slide: Bool = false
     var interpolation: Image.Interpolation = .none
+    var cycleDuration: TimeInterval? = nil
 
     @State private var images: [UIImage] = []
     @State private var currentFrame = 0
@@ -126,10 +134,11 @@ struct AnimatedFramesView: View {
             currentFrame = 0
             attackOffset = 0
             guard images.count > 1, interval > 0 else { return }
+            let frameInterval = cycleDuration.map { max($0 / Double(images.count), 0.001) } ?? interval
             if oneShot {
                 // 同梱版と同じ: 1回だけ再生し、攻撃は斬撃の瞬間に一瞬スライド
                 for i in 1..<images.count {
-                    try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                    try? await Task.sleep(nanoseconds: UInt64(frameInterval * 1_000_000_000))
                     if Task.isCancelled { return }
                     currentFrame = i
                     if slide && i == 2 { withAnimation(.easeOut(duration: 0.05)) { attackOffset = 20 } }
@@ -137,7 +146,7 @@ struct AnimatedFramesView: View {
                 if slide { withAnimation(.easeOut(duration: 0.12)) { attackOffset = 0 } }
             } else {
                 while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                    try? await Task.sleep(nanoseconds: UInt64(frameInterval * 1_000_000_000))
                     currentFrame = (currentFrame + 1) % images.count
                 }
             }
@@ -184,7 +193,8 @@ struct CharacterSpriteView: View {
                 size: size,
                 oneShot: mode.isOneShot,
                 slide: mode == .attack,
-                interpolation: source.interpolation
+                interpolation: source.interpolation,
+                cycleDuration: mode.cycleDuration
             )
         }
     }
