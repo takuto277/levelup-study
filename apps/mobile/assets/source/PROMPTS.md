@@ -3,7 +3,7 @@
 levelup-study の 2D キャラクターを ChatGPT 画像生成などで作るための制作仕様。
 目的は「同じキャラに見える」ことと「少ない枚数でも滑らかに見える」こと。
 
-このゲームの標準フレーム構成は次の 12 枚。
+このゲームの標準フレーム構成は次の 14 枚。
 
 | mode | 枚数 | 用途 |
 | --- | ---: | --- |
@@ -11,10 +11,10 @@ levelup-study の 2D キャラクターを ChatGPT 画像生成などで作る�
 | `prep` | 2 | 攻撃前のため |
 | `attack` | 5 | 攻撃の本動作 |
 | `rest` | 1 | 休憩表示 |
-| `walk` | 2 | ホーム/冒険中の歩行 |
+| `walk` | 4 | ホーム/冒険中の歩行 |
 
 戦闘の気持ちよさだけなら `idle 2 + prep 2 + attack 5 = 9枚` で十分に成立する。
-ただしアプリ全体では休憩と歩行も使うため、納品単位は 12 枚にそろえる。
+ただしアプリ全体では休憩と歩行も使うため、納品単位は 14 枚にそろえる。
 
 ## 最重要ルール
 
@@ -73,7 +73,7 @@ a crimson cape, dark boots, a longsword in her right hand, and a small round shi
 Her expression is calm and brave. The armor design is clean and consistent, not overly detailed.
 ```
 
-### 2. 12枚の動き設計を先に固定する
+### 2. 14枚の動き設計を先に固定する
 
 生成前に、動きの役割を固定する。
 
@@ -87,8 +87,10 @@ Her expression is calm and brave. The armor design is clean and consistent, not 
 - `attack_4`: 振り抜き。勢いが残る
 - `attack_5`: 戻り。次の idle へつながる
 - `rest_1`: 休憩。戦闘外で使う単独ポーズ
-- `walk_1`: 左足前
-- `walk_2`: 右足前
+- `walk_1`: 左足前で接地
+- `walk_2`: 左足に体重が乗り、膝を折って少し沈む
+- `walk_3`: 右足前で接地
+- `walk_4`: 右足に体重が乗り、膝を折って少し沈む
 
 ### 3. 1枚ずつ生成する
 
@@ -315,10 +317,10 @@ Keep the same dark plain background and do not add scenery.
 ### `walk_1`
 
 ```text
-Frame: walk_1 of 2.
+Frame: walk_1 of 4.
 
 Motion role:
-First frame of a simple two-frame walk loop.
+Left-foot contact frame of a four-frame walk loop.
 
 Pose:
 The character walks to the right.
@@ -334,44 +336,87 @@ Keep the character centered and at the same scale.
 ### `walk_2`
 
 ```text
-Frame: walk_2 of 2.
+Frame: walk_2 of 4.
 
 Motion role:
-Second frame of a simple two-frame walk loop.
+Weight-down frame after walk_1. This is the knee-bend frame that prevents sliding.
+
+Pose:
+The character walks to the right.
+The left foot remains forward and planted.
+The left knee bends slightly as the body weight lands on it.
+The body sinks about 1-2 pixels compared with walk_1.
+The rear foot begins to lift lightly from the heel.
+Shoulders and hips drop subtly with the weight.
+Arms, weapon, cape, hair, and cloth follow the downward motion with a tiny delay.
+
+Do not make this a new stride. It is the in-between compression after walk_1.
+Keep the character centered and at the same scale.
+```
+
+### `walk_3`
+
+```text
+Frame: walk_3 of 4.
+
+Motion role:
+Right-foot contact frame, opposite of walk_1.
 
 Pose:
 The character walks to the right.
 Right foot is forward and planted on the baseline.
 Left foot is slightly behind.
-The body rises very slightly compared with walk_1.
-Arms and weapon counterbalance the step in the opposite way from walk_1.
+Torso leans forward very slightly.
+Arms and weapon counterbalance the step in the opposite direction from walk_1.
 Cape, hair, and cloth move subtly backward.
 
-This frame must loop cleanly with walk_1.
+This frame should feel like the opposite-foot version of walk_1, not a different character pose.
+Keep the character centered and at the same scale.
+```
+
+### `walk_4`
+
+```text
+Frame: walk_4 of 4.
+
+Motion role:
+Weight-down frame after walk_3. This is the second knee-bend frame.
+
+Pose:
+The character walks to the right.
+The right foot remains forward and planted.
+The right knee bends slightly as the body weight lands on it.
+The body sinks about 1-2 pixels compared with walk_3.
+The rear foot begins to lift lightly from the heel.
+Shoulders and hips drop subtly with the weight.
+Arms, weapon, cape, hair, and cloth follow the downward motion with a tiny delay.
+
+This frame must loop cleanly back into walk_1.
 Keep the character centered and at the same scale.
 ```
 
 ## スプライトシート方式
 
-1枚ずつ生成してブレる場合は、先に 12 コマのスプライトシートを作る。
+1枚ずつ生成してブレる場合は、先に 14 コマのスプライトシートを作る。
 同一生成内に全コマを並べるため、顔・服・配色がそろいやすい。
 品質がよければ切り出して使う。崩れたコマだけ、上の個別プロンプトで修正する。
 
 ```text
-Using the attached idle_1 as the identity reference, create a 12-frame pixel-art animation sprite sheet
+Using the attached idle_1 as the identity reference, create a 14-frame pixel-art animation sprite sheet
 of the exact same character.
 
 Layout:
-4 columns x 3 rows, equal square cells, no labels, no text.
+7 columns x 2 rows, equal square cells, no labels, no text.
 Frame order:
-row 1: idle_1, idle_2, prep_1, prep_2
-row 2: attack_1, attack_2, attack_3, attack_4
-row 3: attack_5, rest_1, walk_1, walk_2
+row 1: idle_1, idle_2, prep_1, prep_2, attack_1, attack_2, attack_3
+row 2: attack_4, attack_5, rest_1, walk_1, walk_2, walk_3, walk_4
 
 Animation:
 The motion is [[ATTACK_STYLE]].
 The sequence must read smoothly as:
 neutral idle -> subtle breath -> anticipation -> maximum wind-up -> release -> acceleration -> impact -> follow-through -> recovery.
+The walk frames must read as:
+left foot contact -> left knee bends/body sinks -> right foot contact -> right knee bends/body sinks.
 
 Consistency:
 Keep the same face, hairstyle, outfit, equipment, colors, body proportions, pixel-art style,
@@ -444,14 +489,14 @@ The frame must loop naturally with the other frame.
 - `attack_1` から `attack_3` は素早く大きく動く。ここで勢いを作る。
 - `attack_3` は一番強い絵にする。ダメージ発生タイミングに合う。
 - `attack_4` と `attack_5` は戻りを見せる。急に idle に戻さない。
-- `walk` 2枚は足の接地をはっきり分ける。上下移動は小さくする。
+- `walk` 4枚は「接地 -> 膝を折って沈む -> 反対足で接地 -> 膝を折って沈む」にする。2枚歩行よりスライド感が減る。
 
 アプリ側の現行タイミング目安:
 
 | mode | 表示間隔 |
 | --- | ---: |
 | `idle` | 600ms |
-| `walk` | 320ms |
+| `walk` | 1周期約640ms（2枚なら320ms/枚、4枚なら160ms/枚） |
 | `prep` | 60ms |
 | `attack` | 60ms |
 | `rest` | 静止 |
@@ -491,6 +536,8 @@ backend/assets/master/source/characters/{code}/attack_5.webp
 backend/assets/master/source/characters/{code}/rest_1.webp
 backend/assets/master/source/characters/{code}/walk_1.webp
 backend/assets/master/source/characters/{code}/walk_2.webp
+backend/assets/master/source/characters/{code}/walk_3.webp
+backend/assets/master/source/characters/{code}/walk_4.webp
 ```
 
 アプリ同梱の標準プレイヤーは従来どおり `apps/mobile/assets/source/sprite_player_*`。
@@ -509,6 +556,8 @@ backend/assets/master/source/characters/{code}/walk_2.webp
 | 10 | `sprite_player_rest_1.png` | `rest_1.webp` |
 | 11 | `sprite_player_walk_1.png` | `walk_1.webp` |
 | 12 | `sprite_player_walk_2.png` | `walk_2.webp` |
+| 13 | `sprite_player_walk_3.png` | `walk_3.webp` |
+| 14 | `sprite_player_walk_4.png` | `walk_4.webp` |
 
 ## Post-Generation Commands
 
