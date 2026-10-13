@@ -69,7 +69,7 @@ struct BundledCharacterFrameSource: CharacterFrameSource {
         }
         return (1...8).compactMap { i in
             let name = "\(prefix)_\(i)"
-            return UIImage(named: name) != nil ? .assetName(name) : nil
+            return SpriteImage.exists(name) ? .assetName(name) : nil
         }
     }
 }
